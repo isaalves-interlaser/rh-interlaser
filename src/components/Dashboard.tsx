@@ -6,6 +6,7 @@ import Candidatos from './Candidatos'
 import Pipeline from './Pipeline'
 import Agenda from './Agenda'
 import Onboarding from './Onboarding'
+import DashboardHome from './DashboardHome'
 import './Dashboard.css'
 
 type PageId =
@@ -263,7 +264,10 @@ function Dashboard({
 
       <div className="system-content">
         {activePage === 'dashboard' && (
-          <DashboardHome userName={userName} />
+         <DashboardHome
+          userName={userName}
+          onNavigate={(page) => setActivePage(page)}
+        />
         )}
 
         {activePage === 'pipeline' && <Pipeline />}
@@ -292,133 +296,11 @@ function Dashboard({
             />
           )}
       </div>
-        </main>
+      </main>
     </div>
   )
 }
 
-function DashboardHome({
-  userName,
-}: {
-  userName: string
-}) {
-  const currentDate = new Date()
-
-  const month = new Intl.DateTimeFormat('pt-BR', {
-    month: 'long',
-  }).format(currentDate)
-
-  const formattedMonth =
-    month.charAt(0).toUpperCase() + month.slice(1)
-
-  const year = currentDate.getFullYear()
-
-  return (
-    <>
-      <section className="welcome-banner">
-        <div>
-          <span>Visão geral</span>
-
-          <h2>Olá, {userName}</h2>
-
-          <p>
-            Acompanhe os principais dados do processo de
-            recrutamento e integração.
-          </p>
-        </div>
-
-        <div className="welcome-date">
-          <strong>{formattedMonth}</strong>
-          <span>{year}</span>
-        </div>
-      </section>
-
-      <section className="statistics-grid">
-        <article className="statistic-card">
-          <div className="statistic-card-header">
-            <span>Candidatos ativos</span>
-            <div className="statistic-icon">♙</div>
-          </div>
-
-          <strong>0</strong>
-          <small>Nenhum candidato cadastrado</small>
-        </article>
-
-        <article className="statistic-card">
-          <div className="statistic-card-header">
-            <span>Vagas abertas</span>
-            <div className="statistic-icon">▣</div>
-          </div>
-
-          <strong>0</strong>
-          <small>Nenhuma vaga cadastrada</small>
-        </article>
-
-        <article className="statistic-card">
-          <div className="statistic-card-header">
-            <span>Entrevistas</span>
-            <div className="statistic-icon">□</div>
-          </div>
-
-          <strong>0</strong>
-          <small>Nenhuma entrevista agendada</small>
-        </article>
-
-        <article className="statistic-card">
-          <div className="statistic-card-header">
-            <span>Em onboarding</span>
-            <div className="statistic-icon">✓</div>
-          </div>
-
-          <strong>0</strong>
-          <small>Nenhum onboarding iniciado</small>
-        </article>
-      </section>
-
-      <section className="dashboard-grid">
-        <article className="dashboard-panel">
-          <div className="panel-header">
-            <div>
-              <h3>Processos recentes</h3>
-              <p>Últimas movimentações realizadas</p>
-            </div>
-
-            <button type="button">Ver todos</button>
-          </div>
-
-          <div className="empty-state">
-            <div className="empty-state-icon">▦</div>
-
-            <strong>Nenhuma movimentação</strong>
-
-            <p>
-              As movimentações de candidatos aparecerão aqui.
-            </p>
-          </div>
-        </article>
-
-        <article className="dashboard-panel">
-          <div className="panel-header">
-            <div>
-              <h3>Próximas atividades</h3>
-              <p>Entrevistas e tarefas pendentes</p>
-            </div>
-          </div>
-
-          <div className="empty-state">
-            <div className="empty-state-icon">□</div>
-
-            <strong>Nenhuma atividade</strong>
-
-            <p>
-              As próximas atividades aparecerão aqui.
-            </p>
-          </div>
-        </article>
-      </section>
-    </>
-  )
-}
 
 function ModulePlaceholder({
   title,
