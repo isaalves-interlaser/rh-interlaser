@@ -1,4 +1,6 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
+import type { Session } from '@supabase/supabase-js'
+import { supabase } from './lib/supabase'
 import './App.css'
 
 function App() {
@@ -6,17 +8,115 @@ function App() {
   const [senha, setSenha] = useState('')
   const [mostrarSenha, setMostrarSenha] = useState(false)
   const [mensagem, setMensagem] = useState('')
+  const [carregando, setCarregando] = useState(false)
+  const [verificandoSessao, setVerificandoSessao] = useState(true)
+  const [session, setSession] = useState<Session | null>(null)
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  useEffect(() => {
+    async function carregarSessao() {
+      const { data, error } = await supabase.auth.getSession()
+
+      if (error) {
+        console.error('Erro ao recuperar sessão:', error.message)
+      }
+
+      setSession(data.session)
+      setVerificandoSessao(false)
+    }
+
+    carregarSessao()
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, novaSessao) => {
+      setSession(novaSessao)
+      setVerificandoSessao(false)
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [])
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    setMensagem('')
 
     if (!email.trim() || !senha.trim()) {
       setMensagem('Preencha o e-mail e a senha.')
       return
     }
 
-    setMensagem(
-      'Tela funcionando. No próximo passo conectaremos o login ao Supabase.',
+    setCarregando(true)
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password: senha,
+    })
+
+    setCarregando(false)
+
+    if (error) {
+      console.error('Erro no login:', error.message)
+      setMensagem('E-mail ou senha inválidos.')
+      return
+    }
+
+    setSenha('')
+  }
+
+  async function handleLogout() {
+    setCarregando(true)
+
+    const { error } = await supabase.auth.signOut()
+
+    setCarregando(false)
+
+    if (error) {
+      setMensagem('Não foi possível encerrar a sessão.')
+    }
+  }
+
+  if (verificandoSessao) {
+    return (
+      <main className="loading-page">
+        <div className="loading-box">
+          <div className="loading-logo">RH</div>
+          <p>Carregando sistema...</p>
+        </div>
+      </main>
+    )
+  }
+
+  if (session) {
+    return (
+      <main className="authenticated-page">
+        <section className="authenticated-card">
+          <div className="authenticated-logo">RH</div>
+
+          <span className="login-label">Acesso autorizado</span>
+
+          <h1>Login realizado com sucesso</h1>
+
+          <p>
+            O usuário está autenticado pelo Supabase.
+          </p>
+
+          <div className="user-information">
+            <span>Usuário conectado</span>
+            <strong>{session.user.email}</strong>
+          </div>
+
+          <button
+            className="logout-button"
+            type="button"
+            onClick={handleLogout}
+            disabled={carregando}
+          >
+            {carregando ? 'Saindo...' : 'Sair do sistema'}
+          </button>
+        </section>
+      </main>
     )
   }
 
@@ -92,6 +192,7 @@ function App() {
                   setMensagem('')
                 }}
                 autoComplete="email"
+                disabled={carregando}
               />
             </div>
 
@@ -109,6 +210,7 @@ function App() {
                     setMensagem('')
                   }}
                   autoComplete="current-password"
+                  disabled={carregando}
                 />
 
                 <button
@@ -116,6 +218,7 @@ function App() {
                   type="button"
                   onClick={() => setMostrarSenha((valorAtual) => !valorAtual)}
                   aria-label={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
+                  disabled={carregando}
                 >
                   {mostrarSenha ? 'Ocultar' : 'Mostrar'}
                 </button>
@@ -124,11 +227,15 @@ function App() {
 
             <div className="form-options">
               <label className="remember-option">
-                <input type="checkbox" />
+                <input type="checkbox" disabled={carregando} />
                 Manter conectado
               </label>
 
-              <button className="forgot-password" type="button">
+              <button
+                className="forgot-password"
+                type="button"
+                disabled={carregando}
+              >
                 Esqueci minha senha
               </button>
             </div>
@@ -139,8 +246,12 @@ function App() {
               </div>
             )}
 
-            <button className="login-button" type="submit">
-              Entrar
+            <button
+              className="login-button"
+              type="submit"
+              disabled={carregando}
+            >
+              {carregando ? 'Entrando...' : 'Entrar'}
             </button>
           </form>
 
