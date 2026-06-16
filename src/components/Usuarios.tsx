@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import './Usuarios.css'
 
@@ -13,8 +14,22 @@ type UserProfile = {
   updated_at: string
 }
 
+type NewUserForm = {
+  fullName: string
+  email: string
+  password: string
+  role: UserRole
+}
+
 type UsuariosProps = {
   currentUserId: string
+}
+
+const initialNewUserForm: NewUserForm = {
+  fullName: '',
+  email: '',
+  password: '',
+  role: 'consulta',
 }
 
 const roleLabels: Record<UserRole, string> = {
@@ -33,6 +48,11 @@ function Usuarios({ currentUserId }: UsuariosProps) {
   const [mensagem, setMensagem] = useState('')
   const [usuarioEditando, setUsuarioEditando] =
     useState<UserProfile | null>(null)
+  const [novoUsuarioAberto, setNovoUsuarioAberto] = useState(false)
+  const [novoUsuario, setNovoUsuario] =
+    useState<NewUserForm>(initialNewUserForm)
+  const [criandoUsuario, setCriandoUsuario] = useState(false)
+  const [novoUsuarioErro, setNovoUsuarioErro] = useState('')
 
   useEffect(() => {
     carregarUsuarios()
@@ -44,9 +64,7 @@ function Usuarios({ currentUserId }: UsuariosProps) {
 
     const { data, error } = await supabase
       .from('profiles')
-      .select(
-        'id, full_name, role, active, created_at, updated_at',
-      )
+      .select('id, full_name, role, active, created_at, updated_at')
       .order('full_name', { ascending: true })
 
     if (error) {
@@ -87,6 +105,89 @@ function Usuarios({ currentUserId }: UsuariosProps) {
     }
 
     setUsuarioEditando(null)
+    setErro('')
+  }
+
+  function abrirNovoUsuario() {
+    setNovoUsuario(initialNewUserForm)
+    setNovoUsuarioErro('')
+    setMensagem('')
+    setErro('')
+    setNovoUsuarioAberto(true)
+  }
+
+  function fecharNovoUsuario() {
+    if (criandoUsuario) {
+      return
+    }
+
+    setNovoUsuarioAberto(false)
+    setNovoUsuarioErro('')
+  }
+
+  async function criarUsuario() {
+    const fullName = novoUsuario.fullName.trim()
+    const email = novoUsuario.email.trim().toLowerCase()
+    const password = novoUsuario.password
+
+    setNovoUsuarioErro('')
+
+    if (fullName.length < 3) {
+      setNovoUsuarioErro('Informe o nome completo do usuário.')
+      return
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setNovoUsuarioErro('Informe um e-mail válido.')
+      return
+    }
+
+    if (password.length < 8) {
+      setNovoUsuarioErro(
+        'A senha inicial deve possuir pelo menos 8 caracteres.',
+      )
+      return
+    }
+
+    setCriandoUsuario(true)
+
+    const { error } = await supabase.functions.invoke('creat-user', {
+      body: {
+        fullName,
+        email,
+        password,
+        role: novoUsuario.role,
+      },
+    })
+
+    setCriandoUsuario(false)
+
+    if (error) {
+      console.error('Erro ao criar usuário:', error)
+
+      let mensagemErro = 'Não foi possível criar o usuário.'
+
+      if (error instanceof FunctionsHttpError) {
+        try {
+          const response = await error.context.json()
+
+          if (response && typeof response.error === 'string') {
+            mensagemErro = response.error
+          }
+        } catch {
+          console.error('Não foi possível ler a resposta da função.')
+        }
+      }
+
+      setNovoUsuarioErro(mensagemErro)
+      return
+    }
+
+    setNovoUsuarioAberto(false)
+    setNovoUsuario(initialNewUserForm)
+    setMensagem('Usuário criado com sucesso.')
+
+    await carregarUsuarios()
   }
 
   async function salvarUsuario() {
@@ -131,9 +232,7 @@ function Usuarios({ currentUserId }: UsuariosProps) {
         active: usuarioEditando.active,
       })
       .eq('id', usuarioEditando.id)
-      .select(
-        'id, full_name, role, active, created_at, updated_at',
-      )
+      .select('id, full_name, role, active, created_at, updated_at')
       .single()
 
     setSalvando(false)
@@ -146,9 +245,7 @@ function Usuarios({ currentUserId }: UsuariosProps) {
 
     setUsuarios((usuariosAtuais) =>
       usuariosAtuais.map((usuario) =>
-        usuario.id === data.id
-          ? (data as UserProfile)
-          : usuario,
+        usuario.id === data.id ? (data as UserProfile) : usuario,
       ),
     )
 
@@ -180,25 +277,32 @@ function Usuarios({ currentUserId }: UsuariosProps) {
             <span className="users-eyebrow">Configurações</span>
             <h2>Usuários e permissões</h2>
             <p>
-              Gerencie os nomes, perfis de acesso e situação dos
-              usuários.
+              Gerencie os nomes, perfis de acesso e situação dos usuários.
             </p>
           </div>
 
-          <button
-            className="secondary-button"
-            type="button"
-            onClick={carregarUsuarios}
-          >
-            Atualizar lista
-          </button>
+          <div className="users-header-actions">
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={carregarUsuarios}
+            >
+              Atualizar lista
+            </button>
+
+            <button
+              className="primary-button"
+              type="button"
+              onClick={abrirNovoUsuario}
+            >
+              + Novo usuário
+            </button>
+          </div>
         </div>
 
         <div className="users-toolbar">
           <div className="users-search">
-            <label htmlFor="pesquisa-usuario">
-              Pesquisar usuário
-            </label>
+            <label htmlFor="pesquisa-usuario">Pesquisar usuário</label>
 
             <input
               id="pesquisa-usuario"
@@ -222,7 +326,7 @@ function Usuarios({ currentUserId }: UsuariosProps) {
           </div>
         </div>
 
-        {erro && (
+        {erro && !usuarioEditando && (
           <div className="users-message error" role="alert">
             {erro}
           </div>
@@ -252,9 +356,7 @@ function Usuarios({ currentUserId }: UsuariosProps) {
                   <td>
                     <div className="user-cell">
                       <div className="user-avatar">
-                        {usuario.full_name
-                          .charAt(0)
-                          .toUpperCase()}
+                        {usuario.full_name.charAt(0).toUpperCase()}
                       </div>
 
                       <div>
@@ -268,9 +370,7 @@ function Usuarios({ currentUserId }: UsuariosProps) {
                   </td>
 
                   <td>
-                    <span
-                      className={`role-badge role-${usuario.role}`}
-                    >
+                    <span className={`role-badge role-${usuario.role}`}>
                       {roleLabels[usuario.role]}
                     </span>
                   </td>
@@ -305,9 +405,7 @@ function Usuarios({ currentUserId }: UsuariosProps) {
                   <td colSpan={5}>
                     <div className="users-empty">
                       <strong>Nenhum usuário encontrado</strong>
-                      <p>
-                        Altere o termo usado na pesquisa.
-                      </p>
+                      <p>Altere o termo usado na pesquisa.</p>
                     </div>
                   </td>
                 </tr>
@@ -316,6 +414,144 @@ function Usuarios({ currentUserId }: UsuariosProps) {
           </table>
         </div>
       </section>
+
+      {novoUsuarioAberto && (
+        <div
+          className="users-modal-overlay"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              fecharNovoUsuario()
+            }
+          }}
+        >
+          <section
+            className="users-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="titulo-novo-usuario"
+          >
+            <div className="users-modal-header">
+              <div>
+                <span className="users-eyebrow">Configurações</span>
+                <h2 id="titulo-novo-usuario">Novo usuário</h2>
+              </div>
+
+              <button
+                className="modal-close-button"
+                type="button"
+                onClick={fecharNovoUsuario}
+                disabled={criandoUsuario}
+                aria-label="Fechar"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="users-form-group">
+              <label htmlFor="novo-usuario-nome">Nome completo</label>
+              <input
+                id="novo-usuario-nome"
+                type="text"
+                placeholder="Ex.: Maria da Silva"
+                value={novoUsuario.fullName}
+                onChange={(event) =>
+                  setNovoUsuario({
+                    ...novoUsuario,
+                    fullName: event.target.value,
+                  })
+                }
+                disabled={criandoUsuario}
+                autoFocus
+              />
+            </div>
+
+            <div className="users-form-group">
+              <label htmlFor="novo-usuario-email">E-mail</label>
+              <input
+                id="novo-usuario-email"
+                type="email"
+                placeholder="nome@interlasermaquinas.com.br"
+                value={novoUsuario.email}
+                onChange={(event) =>
+                  setNovoUsuario({
+                    ...novoUsuario,
+                    email: event.target.value,
+                  })
+                }
+                disabled={criandoUsuario}
+                autoComplete="email"
+              />
+            </div>
+
+            <div className="users-form-group">
+              <label htmlFor="novo-usuario-senha">Senha inicial</label>
+              <input
+                id="novo-usuario-senha"
+                type="password"
+                placeholder="Mínimo de 8 caracteres"
+                value={novoUsuario.password}
+                onChange={(event) =>
+                  setNovoUsuario({
+                    ...novoUsuario,
+                    password: event.target.value,
+                  })
+                }
+                disabled={criandoUsuario}
+                autoComplete="new-password"
+                minLength={8}
+              />
+              <small>O usuário poderá usar essa senha no primeiro acesso.</small>
+            </div>
+
+            <div className="users-form-group">
+              <label htmlFor="novo-usuario-perfil">Perfil de acesso</label>
+              <select
+                id="novo-usuario-perfil"
+                value={novoUsuario.role}
+                onChange={(event) =>
+                  setNovoUsuario({
+                    ...novoUsuario,
+                    role: event.target.value as UserRole,
+                  })
+                }
+                disabled={criandoUsuario}
+              >
+                <option value="consulta">Consulta</option>
+                <option value="gestor">Gestor</option>
+                <option value="rh">Recursos Humanos</option>
+                <option value="admin">Administrador</option>
+              </select>
+            </div>
+
+            {novoUsuarioErro && (
+              <div className="users-message error" role="alert">
+                {novoUsuarioErro}
+              </div>
+            )}
+
+            <div className="users-modal-actions">
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={fecharNovoUsuario}
+                disabled={criandoUsuario}
+              >
+                Cancelar
+              </button>
+
+              <button
+                className="primary-button"
+                type="button"
+                onClick={criarUsuario}
+                disabled={criandoUsuario}
+              >
+                {criandoUsuario ? 'Criando usuário...' : 'Criar usuário'}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
 
       {usuarioEditando && (
         <div
@@ -335,13 +571,8 @@ function Usuarios({ currentUserId }: UsuariosProps) {
           >
             <div className="users-modal-header">
               <div>
-                <span className="users-eyebrow">
-                  Configurações
-                </span>
-
-                <h2 id="titulo-editar-usuario">
-                  Editar usuário
-                </h2>
+                <span className="users-eyebrow">Configurações</span>
+                <h2 id="titulo-editar-usuario">Editar usuário</h2>
               </div>
 
               <button
@@ -356,10 +587,7 @@ function Usuarios({ currentUserId }: UsuariosProps) {
             </div>
 
             <div className="users-form-group">
-              <label htmlFor="usuario-nome">
-                Nome completo
-              </label>
-
+              <label htmlFor="usuario-nome">Nome completo</label>
               <input
                 id="usuario-nome"
                 type="text"
@@ -375,10 +603,7 @@ function Usuarios({ currentUserId }: UsuariosProps) {
             </div>
 
             <div className="users-form-group">
-              <label htmlFor="usuario-perfil">
-                Perfil de acesso
-              </label>
-
+              <label htmlFor="usuario-perfil">Perfil de acesso</label>
               <select
                 id="usuario-perfil"
                 value={usuarioEditando.role}
@@ -388,10 +613,7 @@ function Usuarios({ currentUserId }: UsuariosProps) {
                     role: event.target.value as UserRole,
                   })
                 }
-                disabled={
-                  salvando ||
-                  usuarioEditando.id === currentUserId
-                }
+                disabled={salvando || usuarioEditando.id === currentUserId}
               >
                 <option value="admin">Administrador</option>
                 <option value="rh">Recursos Humanos</option>
@@ -401,8 +623,8 @@ function Usuarios({ currentUserId }: UsuariosProps) {
 
               {usuarioEditando.id === currentUserId && (
                 <small>
-                  Seu próprio perfil de administrador não pode ser
-                  alterado nesta tela.
+                  Seu próprio perfil de administrador não pode ser alterado
+                  nesta tela.
                 </small>
               )}
             </div>
@@ -417,10 +639,7 @@ function Usuarios({ currentUserId }: UsuariosProps) {
                     active: event.target.checked,
                   })
                 }
-                disabled={
-                  salvando ||
-                  usuarioEditando.id === currentUserId
-                }
+                disabled={salvando || usuarioEditando.id === currentUserId}
               />
 
               <span>

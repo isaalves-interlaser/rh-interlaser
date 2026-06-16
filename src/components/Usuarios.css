@@ -428,3 +428,21 @@
     width: 100%;
   }
 }
+
+.users-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 560px) {
+  .users-header-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .users-header-actions button {
+    width: 100%;
+  }
+}
