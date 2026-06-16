@@ -1,24 +1,55 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import {
+  useEffect,
+  useState,
+  type FormEvent,
+} from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
-import './App.css'
 import Dashboard from './components/Dashboard'
+import './App.css'
+
+type AuthView = 'login' | 'forgot-password' | 'update-password'
+
+function hasRecoveryUrl() {
+  return (
+    window.location.search.includes('recovery=1') ||
+    window.location.hash.includes('type=recovery')
+  )
+}
 
 function App() {
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
+  const [novaSenha, setNovaSenha] = useState('')
+  const [confirmarSenha, setConfirmarSenha] = useState('')
   const [mostrarSenha, setMostrarSenha] = useState(false)
+  const [mostrarNovaSenha, setMostrarNovaSenha] = useState(false)
   const [mensagem, setMensagem] = useState('')
+  const [mensagemTipo, setMensagemTipo] =
+    useState<'info' | 'success' | 'error'>('info')
   const [carregando, setCarregando] = useState(false)
-  const [verificandoSessao, setVerificandoSessao] = useState(true)
+  const [verificandoSessao, setVerificandoSessao] =
+    useState(true)
   const [session, setSession] = useState<Session | null>(null)
+  const [authView, setAuthView] = useState<AuthView>(
+    hasRecoveryUrl() ? 'update-password' : 'login',
+  )
 
   useEffect(() => {
+    let mounted = true
+
     async function carregarSessao() {
       const { data, error } = await supabase.auth.getSession()
 
+      if (!mounted) {
+        return
+      }
+
       if (error) {
-        console.error('Erro ao recuperar sessão:', error.message)
+        console.error(
+          'Erro ao recuperar sessão:',
+          error.message,
+        )
       }
 
       setSession(data.session)
@@ -29,29 +60,72 @@ function App() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, novaSessao) => {
-      setSession(novaSessao)
-      setVerificandoSessao(false)
-    })
+    } = supabase.auth.onAuthStateChange(
+      (event, novaSessao) => {
+        if (!mounted) {
+          return
+        }
+
+        if (event === 'PASSWORD_RECOVERY') {
+          setAuthView('update-password')
+          setMensagem(
+            'Link confirmado. Agora crie uma nova senha.',
+          )
+          setMensagemTipo('info')
+        }
+
+        if (event === 'SIGNED_OUT') {
+          setAuthView('login')
+        }
+
+        setSession(novaSessao)
+        setVerificandoSessao(false)
+      },
+    )
 
     return () => {
+      mounted = false
       subscription.unsubscribe()
     }
   }, [])
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+  function limparMensagem() {
     setMensagem('')
+    setMensagemTipo('info')
+  }
 
-    if (!email.trim() || !senha.trim()) {
+  function voltarParaLogin() {
+    setAuthView('login')
+    setSenha('')
+    setNovaSenha('')
+    setConfirmarSenha('')
+    limparMensagem()
+
+    window.history.replaceState(
+      {},
+      document.title,
+      window.location.pathname,
+    )
+  }
+
+  async function handleLogin(
+    event: FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault()
+    limparMensagem()
+
+    const emailNormalizado = email.trim().toLowerCase()
+
+    if (!emailNormalizado || !senha.trim()) {
       setMensagem('Preencha o e-mail e a senha.')
+      setMensagemTipo('error')
       return
     }
 
     setCarregando(true)
 
     const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
+      email: emailNormalizado,
       password: senha,
     })
 
@@ -59,11 +133,132 @@ function App() {
 
     if (error) {
       console.error('Erro no login:', error.message)
-      setMensagem('E-mail ou senha inválidos.')
+      setMensagem(
+        'Não foi possível entrar. Confira o e-mail e a senha.',
+      )
+      setMensagemTipo('error')
       return
     }
 
     setSenha('')
+  }
+
+  async function handleForgotPassword(
+    event: FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault()
+    limparMensagem()
+
+    const emailNormalizado = email.trim().toLowerCase()
+
+    if (!emailNormalizado) {
+      setMensagem('Informe o e-mail usado no sistema.')
+      setMensagemTipo('error')
+      return
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNormalizado)) {
+      setMensagem('Informe um endereço de e-mail válido.')
+      setMensagemTipo('error')
+      return
+    }
+
+    setCarregando(true)
+
+    const redirectTo = `${window.location.origin}/?recovery=1`
+
+    const { error } =
+      await supabase.auth.resetPasswordForEmail(
+        emailNormalizado,
+        { redirectTo },
+      )
+
+    setCarregando(false)
+
+    if (error) {
+      console.error(
+        'Erro ao solicitar recuperação de senha:',
+        error.message,
+      )
+
+      setMensagem(
+        'Não foi possível enviar o link agora. Aguarde alguns minutos e tente novamente.',
+      )
+      setMensagemTipo('error')
+      return
+    }
+
+    setMensagem(
+      'Se o e-mail estiver cadastrado, você receberá um link para criar uma nova senha. Verifique também a caixa de spam.',
+    )
+    setMensagemTipo('success')
+  }
+
+  async function handleUpdatePassword(
+    event: FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault()
+    limparMensagem()
+
+    if (novaSenha.length < 8) {
+      setMensagem(
+        'A nova senha deve possuir pelo menos 8 caracteres.',
+      )
+      setMensagemTipo('error')
+      return
+    }
+
+    if (novaSenha !== confirmarSenha) {
+      setMensagem('As senhas informadas não são iguais.')
+      setMensagemTipo('error')
+      return
+    }
+
+    setCarregando(true)
+
+    const { error } = await supabase.auth.updateUser({
+      password: novaSenha,
+    })
+
+    if (error) {
+      console.error(
+        'Erro ao atualizar a senha:',
+        error.message,
+      )
+      setCarregando(false)
+      setMensagem(
+        'Não foi possível atualizar a senha. Solicite um novo link e tente novamente.',
+      )
+      setMensagemTipo('error')
+      return
+    }
+
+    const { error: signOutError } =
+      await supabase.auth.signOut()
+
+    if (signOutError) {
+      console.error(
+        'Senha alterada, mas houve erro ao encerrar a sessão:',
+        signOutError.message,
+      )
+    }
+
+    setSession(null)
+    setNovaSenha('')
+    setConfirmarSenha('')
+    setAuthView('login')
+    setCarregando(false)
+
+    window.history.replaceState(
+      {},
+      document.title,
+      window.location.pathname,
+    )
+
+    setMensagem(
+      'Senha atualizada com sucesso. Entre novamente usando a nova senha.',
+    )
+    setMensagemTipo('success')
   }
 
   async function handleLogout() {
@@ -75,31 +270,332 @@ function App() {
 
     if (error) {
       setMensagem('Não foi possível encerrar a sessão.')
+      setMensagemTipo('error')
     }
   }
 
   if (verificandoSessao) {
     return (
-      <main className="loading-page">
-        <div className="loading-box">
-          <div className="loading-logo">RH</div>
-          <p>Carregando sistema...</p>
-        </div>
-      </main>
+      <div className="app-loading">
+        <div className="app-loading-logo">RH</div>
+        <strong>Carregando sistema</strong>
+        <span>Aguarde um instante...</span>
+      </div>
     )
   }
 
- if (session) {
+  if (authView === 'update-password') {
+    return (
+      <AuthLayout>
+        <section className="login-card">
+          <div className="mobile-logo">RH</div>
+
+          <header className="login-header">
+            <span className="login-label">Segurança</span>
+            <h2>Criar nova senha</h2>
+            <p>
+              Escolha uma senha nova para voltar a acessar o
+              sistema de RH.
+            </p>
+          </header>
+
+          <form onSubmit={handleUpdatePassword}>
+            <div className="form-group">
+              <label htmlFor="new-password">Nova senha</label>
+
+              <div className="password-field">
+                <input
+                  id="new-password"
+                  type={
+                    mostrarNovaSenha ? 'text' : 'password'
+                  }
+                  value={novaSenha}
+                  onChange={(event) => {
+                    setNovaSenha(event.target.value)
+                    limparMensagem()
+                  }}
+                  minLength={8}
+                  autoComplete="new-password"
+                  disabled={carregando}
+                  autoFocus
+                />
+
+                <button
+                  className="show-password"
+                  type="button"
+                  onClick={() =>
+                    setMostrarNovaSenha(
+                      (current) => !current,
+                    )
+                  }
+                  disabled={carregando}
+                >
+                  {mostrarNovaSenha ? 'Ocultar' : 'Mostrar'}
+                </button>
+              </div>
+
+              <small className="field-help">
+                Use pelo menos 8 caracteres.
+              </small>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="confirm-password">
+                Confirmar nova senha
+              </label>
+
+              <input
+                id="confirm-password"
+                type={
+                  mostrarNovaSenha ? 'text' : 'password'
+                }
+                value={confirmarSenha}
+                onChange={(event) => {
+                  setConfirmarSenha(event.target.value)
+                  limparMensagem()
+                }}
+                minLength={8}
+                autoComplete="new-password"
+                disabled={carregando}
+              />
+            </div>
+
+            {mensagem && (
+              <div
+                className={`form-message ${mensagemTipo}`}
+                role="alert"
+              >
+                {mensagem}
+              </div>
+            )}
+
+            <button
+              className="login-button"
+              type="submit"
+              disabled={carregando}
+            >
+              {carregando
+                ? 'Atualizando senha...'
+                : 'Salvar nova senha'}
+            </button>
+          </form>
+
+          <button
+            className="back-to-login"
+            type="button"
+            onClick={voltarParaLogin}
+            disabled={carregando}
+          >
+            Voltar para o login
+          </button>
+        </section>
+      </AuthLayout>
+    )
+  }
+
+  if (session) {
+    return (
+      <Dashboard
+        userId={session.user.id}
+        userEmail={session.user.email ?? ''}
+        loading={carregando}
+        onLogout={handleLogout}
+      />
+    )
+  }
+
+  if (authView === 'forgot-password') {
+    return (
+      <AuthLayout>
+        <section className="login-card">
+          <div className="mobile-logo">RH</div>
+
+          <header className="login-header">
+            <span className="login-label">
+              Recuperação de acesso
+            </span>
+            <h2>Esqueci minha senha</h2>
+            <p>
+              Informe o e-mail cadastrado. Enviaremos um link
+              para você criar uma nova senha.
+            </p>
+          </header>
+
+          <form onSubmit={handleForgotPassword}>
+            <div className="form-group">
+              <label htmlFor="recovery-email">E-mail</label>
+
+              <input
+                id="recovery-email"
+                type="email"
+                value={email}
+                onChange={(event) => {
+                  setEmail(event.target.value)
+                  limparMensagem()
+                }}
+                placeholder="nome@interlaser.com.br"
+                autoComplete="email"
+                disabled={carregando}
+                autoFocus
+              />
+            </div>
+
+            {mensagem && (
+              <div
+                className={`form-message ${mensagemTipo}`}
+                role="alert"
+              >
+                {mensagem}
+              </div>
+            )}
+
+            <button
+              className="login-button"
+              type="submit"
+              disabled={carregando}
+            >
+              {carregando
+                ? 'Enviando link...'
+                : 'Enviar link de recuperação'}
+            </button>
+          </form>
+
+          <button
+            className="back-to-login"
+            type="button"
+            onClick={voltarParaLogin}
+            disabled={carregando}
+          >
+            Voltar para o login
+          </button>
+
+          <p className="login-support">
+            O link possui validade limitada. Caso não receba,
+            confira a caixa de spam.
+          </p>
+        </section>
+      </AuthLayout>
+    )
+  }
+
   return (
-    <Dashboard
-    userId={session.user.id}
-    userEmail={session.user.email ?? 'Usuário'}
-    loading={carregando}
-    onLogout={handleLogout}
-   />
+    <AuthLayout>
+      <section className="login-card">
+        <div className="mobile-logo">RH</div>
+
+        <header className="login-header">
+          <span className="login-label">Acesso seguro</span>
+          <h2>Entrar no RH</h2>
+          <p>
+            Use seu e-mail e senha para acessar a gestão de
+            vagas, candidaturas e entrevistas.
+          </p>
+        </header>
+
+        <form onSubmit={handleLogin}>
+          <div className="form-group">
+            <label htmlFor="email">E-mail</label>
+
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(event) => {
+                setEmail(event.target.value)
+                limparMensagem()
+              }}
+              placeholder="nome@interlaser.com.br"
+              autoComplete="email"
+              disabled={carregando}
+              autoFocus
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="password">Senha</label>
+
+            <div className="password-field">
+              <input
+                id="password"
+                type={mostrarSenha ? 'text' : 'password'}
+                value={senha}
+                onChange={(event) => {
+                  setSenha(event.target.value)
+                  limparMensagem()
+                }}
+                autoComplete="current-password"
+                disabled={carregando}
+              />
+
+              <button
+                className="show-password"
+                type="button"
+                onClick={() =>
+                  setMostrarSenha((current) => !current)
+                }
+                aria-label={
+                  mostrarSenha
+                    ? 'Ocultar senha'
+                    : 'Mostrar senha'
+                }
+                disabled={carregando}
+              >
+                {mostrarSenha ? 'Ocultar' : 'Mostrar'}
+              </button>
+            </div>
+          </div>
+
+          <div className="form-options">
+            <span className="secure-access-note">
+              Acesso restrito a usuários autorizados
+            </span>
+
+            <button
+              className="forgot-password"
+              type="button"
+              onClick={() => {
+                setAuthView('forgot-password')
+                setSenha('')
+                limparMensagem()
+              }}
+              disabled={carregando}
+            >
+              Esqueci minha senha
+            </button>
+          </div>
+
+          {mensagem && (
+            <div
+              className={`form-message ${mensagemTipo}`}
+              role="alert"
+            >
+              {mensagem}
+            </div>
+          )}
+
+          <button
+            className="login-button"
+            type="submit"
+            disabled={carregando}
+          >
+            {carregando ? 'Entrando...' : 'Entrar'}
+          </button>
+        </form>
+
+        <p className="login-support">
+          Problemas para acessar? Entre em contato com o
+          administrador do sistema.
+        </p>
+      </section>
+    </AuthLayout>
   )
 }
 
+function AuthLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   return (
     <main className="login-page">
       <section className="login-presentation">
@@ -113,133 +609,50 @@ function App() {
         </div>
 
         <div className="presentation-content">
-          <span className="presentation-label">Sistema interno</span>
+          <span className="presentation-label">
+            Sistema interno
+          </span>
 
-          <h1>Recrutamento e gestão de pessoas em um só lugar.</h1>
+          <h1>
+            Gestão do recrutamento do início à contratação.
+          </h1>
 
           <p>
-            Controle vagas, candidatos, entrevistas, admissões e atividades de
-            integração dos novos colaboradores.
+            Acompanhe vagas, candidaturas, entrevistas e a
+            integração dos novos colaboradores em um único
+            sistema.
           </p>
 
           <div className="feature-list">
             <div className="feature-item">
               <span>✓</span>
-              Pipeline de candidatos
+              Vagas e candidaturas em um único fluxo
             </div>
 
             <div className="feature-item">
               <span>✓</span>
-              Controle de vagas e entrevistas
+              Pipeline visual por etapa do processo
             </div>
 
             <div className="feature-item">
               <span>✓</span>
-              Onboarding e documentos admissionais
+              Agenda de entrevistas e avaliações
             </div>
 
             <div className="feature-item">
               <span>✓</span>
-              Usuários e permissões
+              Onboarding dos candidatos aprovados
             </div>
           </div>
         </div>
 
-        <small>Interlaser Máquinas © 2026</small>
+        <small>
+          Interlaser Máquinas © {new Date().getFullYear()} · Uso
+          interno e restrito
+        </small>
       </section>
 
-      <section className="login-area">
-        <div className="login-card">
-          <div className="login-header">
-            <div className="mobile-logo">RH</div>
-
-            <span className="login-label">Acesso ao sistema</span>
-            <h2>Bem-vindo</h2>
-            <p>Informe seus dados para entrar no sistema.</p>
-          </div>
-
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label htmlFor="email">E-mail</label>
-
-              <input
-                id="email"
-                type="email"
-                placeholder="nome@interlaser.com.br"
-                value={email}
-                onChange={(event) => {
-                  setEmail(event.target.value)
-                  setMensagem('')
-                }}
-                autoComplete="email"
-                disabled={carregando}
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="senha">Senha</label>
-
-              <div className="password-field">
-                <input
-                  id="senha"
-                  type={mostrarSenha ? 'text' : 'password'}
-                  placeholder="Digite sua senha"
-                  value={senha}
-                  onChange={(event) => {
-                    setSenha(event.target.value)
-                    setMensagem('')
-                  }}
-                  autoComplete="current-password"
-                  disabled={carregando}
-                />
-
-                <button
-                  className="show-password"
-                  type="button"
-                  onClick={() => setMostrarSenha((valorAtual) => !valorAtual)}
-                  aria-label={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
-                  disabled={carregando}
-                >
-                  {mostrarSenha ? 'Ocultar' : 'Mostrar'}
-                </button>
-              </div>
-            </div>
-
-            <div className="form-options">
-              <label className="remember-option">
-                <input type="checkbox" disabled={carregando} />
-                Manter conectado
-              </label>
-
-              <button
-                className="forgot-password"
-                type="button"
-                disabled={carregando}
-              >
-                Esqueci minha senha
-              </button>
-            </div>
-
-            {mensagem && (
-              <div className="form-message" role="alert">
-                {mensagem}
-              </div>
-            )}
-
-            <button
-              className="login-button"
-              type="submit"
-              disabled={carregando}
-            >
-              {carregando ? 'Entrando...' : 'Entrar'}
-            </button>
-          </form>
-
-          <p className="login-support">
-            Problemas para acessar? Entre em contato com o administrador.
-          </p>
-        </div>
-      </section>
+      <section className="login-area">{children}</section>
     </main>
   )
 }
