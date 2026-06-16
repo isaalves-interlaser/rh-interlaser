@@ -3,10 +3,12 @@ import { supabase } from '../lib/supabase'
 import Usuarios from './Usuarios'
 import Vagas from './Vagas'
 import Candidatos from './Candidatos'
+import Pipeline from './Pipeline'
 import './Dashboard.css'
 
 type PageId =
   | 'dashboard'
+  | 'pipeline'
   | 'candidatos'
   | 'vagas'
   | 'agenda'
@@ -41,6 +43,7 @@ const menuItems: Array<{
   icon: string
 }> = [
   { id: 'dashboard', label: 'Dashboard', icon: '▦' },
+  { id: 'pipeline', label: 'Pipeline', icon: '⇄' },
   { id: 'candidatos', label: 'Candidatos', icon: '♙' },
   { id: 'vagas', label: 'Vagas', icon: '▣' },
   { id: 'agenda', label: 'Agenda', icon: '□' },
@@ -257,27 +260,30 @@ function Dashboard({
         </header>
 
       <div className="system-content">
-          {activePage === 'dashboard' && (
-            <DashboardHome userName={userName} />
-          )}
+      {activePage === 'dashboard' && (
+        <DashboardHome userName={userName} />
+      )}
 
-          {activePage === 'candidatos' && <Candidatos />}
+      {activePage === 'pipeline' && <Pipeline />}
 
-          {activePage === 'vagas' && <Vagas />}
+      {activePage === 'candidatos' && <Candidatos />}
 
-          {activePage === 'configuracoes' && (
-            <Usuarios currentUserId={userId} />
-          )}
+      {activePage === 'vagas' && <Vagas />}
 
-          {activePage !== 'dashboard' &&
-            activePage !== 'candidatos' &&
-            activePage !== 'vagas' &&
-            activePage !== 'configuracoes' && (
-              <ModulePlaceholder
-                title={activeMenuItem?.label ?? ''}
-              />
-            )}
-        </div>
+      {activePage === 'configuracoes' && (
+        <Usuarios currentUserId={userId} />
+      )}
+
+      {activePage !== 'dashboard' &&
+        activePage !== 'pipeline' &&
+        activePage !== 'candidatos' &&
+        activePage !== 'vagas' &&
+        activePage !== 'configuracoes' && (
+          <ModulePlaceholder
+            title={activeMenuItem?.label ?? ''}
+          />
+        )}
+    </div>
         </main>
     </div>
   )
