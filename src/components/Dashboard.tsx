@@ -5,6 +5,7 @@ import Vagas from './Vagas'
 import Candidatos from './Candidatos'
 import Pipeline from './Pipeline'
 import Agenda from './Agenda'
+import Onboarding from './Onboarding'
 import './Dashboard.css'
 
 type PageId =
@@ -273,6 +274,8 @@ function Dashboard({
 
         {activePage === 'agenda' && <Agenda />}
 
+        {activePage === 'onboarding' && <Onboarding />}
+
         {activePage === 'configuracoes' && (
           <Usuarios currentUserId={userId} />
         )}
@@ -282,6 +285,7 @@ function Dashboard({
           activePage !== 'candidatos' &&
           activePage !== 'vagas' &&
           activePage !== 'agenda' &&
+          activePage !== 'onboarding' &&
           activePage !== 'configuracoes' && (
             <ModulePlaceholder
               title={activeMenuItem?.label ?? ''}
