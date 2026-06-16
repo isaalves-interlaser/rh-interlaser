@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
 import './App.css'
+import Dashboard from './components/Dashboard'
 
 function App() {
   const [email, setEmail] = useState('')
@@ -88,37 +89,15 @@ function App() {
     )
   }
 
-  if (session) {
-    return (
-      <main className="authenticated-page">
-        <section className="authenticated-card">
-          <div className="authenticated-logo">RH</div>
-
-          <span className="login-label">Acesso autorizado</span>
-
-          <h1>Login realizado com sucesso</h1>
-
-          <p>
-            O usuário está autenticado pelo Supabase.
-          </p>
-
-          <div className="user-information">
-            <span>Usuário conectado</span>
-            <strong>{session.user.email}</strong>
-          </div>
-
-          <button
-            className="logout-button"
-            type="button"
-            onClick={handleLogout}
-            disabled={carregando}
-          >
-            {carregando ? 'Saindo...' : 'Sair do sistema'}
-          </button>
-        </section>
-      </main>
-    )
-  }
+ if (session) {
+  return (
+    <Dashboard
+      userEmail={session.user.email ?? 'Usuário'}
+      loading={carregando}
+      onLogout={handleLogout}
+    />
+  )
+}
 
   return (
     <main className="login-page">
