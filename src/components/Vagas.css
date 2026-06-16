@@ -1,0 +1,404 @@
+.vacancies-panel {
+  overflow: hidden;
+  border: 1px solid #e3e8ef;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 5px 18px rgba(35, 56, 85, 0.04);
+}
+
+.vacancies-header {
+  padding: 24px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  border-bottom: 1px solid #edf0f4;
+}
+
+.vacancies-eyebrow {
+  display: block;
+  margin-bottom: 6px;
+  color: #185fa5;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.vacancies-header h2,
+.vacancies-modal-header h2 {
+  margin: 0;
+  color: #172033;
+  font-size: 21px;
+}
+
+.vacancies-header p {
+  margin: 7px 0 0;
+  color: #667085;
+  font-size: 12px;
+}
+
+.vacancies-header-actions,
+.vacancy-actions,
+.vacancies-modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.vacancies-primary-button,
+.vacancies-secondary-button {
+  min-height: 40px;
+  padding: 0 15px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.vacancies-primary-button {
+  border: 1px solid #185fa5;
+  color: #fff;
+  background: #185fa5;
+}
+
+.vacancies-secondary-button {
+  border: 1px solid #d0d5dd;
+  color: #344054;
+  background: #fff;
+}
+
+.vacancies-toolbar {
+  padding: 18px 24px;
+  display: grid;
+  grid-template-columns: minmax(250px, 1fr) 220px 120px;
+  gap: 16px;
+  border-bottom: 1px solid #edf0f4;
+  background: #fbfcfd;
+}
+
+.vacancies-search label,
+.vacancies-filter label,
+.vacancies-form-group label {
+  display: block;
+  margin-bottom: 6px;
+  color: #344054;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.vacancies-search input,
+.vacancies-filter select,
+.vacancies-form-group input,
+.vacancies-form-group select,
+.vacancies-form-group textarea {
+  width: 100%;
+  border: 1px solid #d0d5dd;
+  border-radius: 9px;
+  outline: none;
+  color: #172033;
+  background: #fff;
+  font: inherit;
+}
+
+.vacancies-search input,
+.vacancies-filter select,
+.vacancies-form-group input,
+.vacancies-form-group select {
+  height: 42px;
+  padding: 0 12px;
+}
+
+.vacancies-form-group textarea {
+  padding: 11px 12px;
+  resize: vertical;
+}
+
+.vacancies-search input:focus,
+.vacancies-filter select:focus,
+.vacancies-form-group input:focus,
+.vacancies-form-group select:focus,
+.vacancies-form-group textarea:focus {
+  border-color: #185fa5;
+  box-shadow: 0 0 0 3px rgba(24, 95, 165, 0.1);
+}
+
+.vacancies-summary {
+  padding: 10px 14px;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  border: 1px solid #e3e8ef;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.vacancies-summary span {
+  color: #667085;
+  font-size: 10px;
+}
+
+.vacancies-summary strong {
+  margin-top: 3px;
+  color: #172033;
+  font-size: 20px;
+}
+
+.vacancies-message {
+  margin: 16px 24px 0;
+  padding: 11px 13px;
+  border-radius: 9px;
+  font-size: 12px;
+}
+
+.vacancies-message.error {
+  border: 1px solid #f3b7b3;
+  color: #8a1c13;
+  background: #fff2f1;
+}
+
+.vacancies-message.success {
+  border: 1px solid #a9dfc0;
+  color: #126437;
+  background: #effbf4;
+}
+
+.vacancies-table-wrapper {
+  overflow-x: auto;
+}
+
+.vacancies-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.vacancies-table th,
+.vacancies-table td {
+  padding: 15px 18px;
+  border-bottom: 1px solid #edf0f4;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.vacancies-table th {
+  color: #667085;
+  background: #fbfcfd;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.vacancies-table td {
+  color: #475467;
+  font-size: 12px;
+}
+
+.vacancy-code {
+  color: #185fa5;
+  font-size: 11px;
+}
+
+.vacancy-main-cell {
+  min-width: 145px;
+  display: flex;
+  flex-direction: column;
+}
+
+.vacancy-main-cell strong {
+  color: #172033;
+  font-size: 12px;
+}
+
+.vacancy-main-cell span {
+  margin-top: 3px;
+  color: #98a2b3;
+  font-size: 10px;
+}
+
+.vacancy-status,
+.vacancy-priority {
+  display: inline-flex;
+  padding: 4px 9px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.status-rascunho,
+.priority-normal {
+  color: #444441;
+  background: #f1efe8;
+}
+
+.status-aguardando_aprovacao,
+.priority-alta {
+  color: #633806;
+  background: #faeeda;
+}
+
+.status-aberta {
+  color: #0c447c;
+  background: #e6f1fb;
+}
+
+.status-em_selecao,
+.status-preenchida {
+  color: #126437;
+  background: #eaf8f0;
+}
+
+.status-suspensa {
+  color: #7a4d00;
+  background: #fff3d6;
+}
+
+.status-cancelada,
+.priority-urgente {
+  color: #8a1c13;
+  background: #fff0ef;
+}
+
+.vacancy-actions button {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid #d0d5dd;
+  border-radius: 7px;
+  color: #344054;
+  background: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.vacancy-actions button.danger {
+  color: #8a1c13;
+}
+
+.vacancy-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.vacancies-empty {
+  padding: 54px 20px;
+  text-align: center;
+}
+
+.vacancies-empty > div,
+.vacancies-loading-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 12px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  color: #fff;
+  background: #185fa5;
+  font-weight: 800;
+}
+
+.vacancies-empty p,
+.vacancies-loading p {
+  margin: 6px 0 0;
+  color: #98a2b3;
+  font-size: 11px;
+}
+
+.vacancies-loading {
+  min-height: 380px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+}
+
+.vacancies-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  padding: 20px;
+  display: grid;
+  place-items: center;
+  background: rgba(16, 24, 40, 0.5);
+}
+
+.vacancies-modal {
+  width: min(760px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(16, 24, 40, 0.24);
+}
+
+.vacancies-modal-header {
+  padding: 22px 24px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 1px solid #edf0f4;
+}
+
+.vacancies-close-button {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #e3e8ef;
+  border-radius: 8px;
+  color: #667085;
+  background: #fff;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.vacancies-form-grid {
+  padding: 22px 24px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.vacancies-form-group.full {
+  grid-column: 1 / -1;
+}
+
+.vacancies-modal .vacancies-message {
+  margin: 0 24px 18px;
+}
+
+.vacancies-modal-actions {
+  padding: 18px 24px;
+  justify-content: flex-end;
+  border-top: 1px solid #edf0f4;
+}
+
+@media (max-width: 760px) {
+  .vacancies-header,
+  .vacancies-header-actions {
+    flex-direction: column;
+  }
+
+  .vacancies-header-actions,
+  .vacancies-header-actions button {
+    width: 100%;
+  }
+
+  .vacancies-toolbar,
+  .vacancies-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .vacancies-form-group.full {
+    grid-column: auto;
+  }
+
+  .vacancies-modal-overlay {
+    padding: 0;
+  }
+
+  .vacancies-modal {
+    width: 100%;
+    max-height: 100vh;
+    min-height: 100vh;
+    border-radius: 0;
+  }
+}
