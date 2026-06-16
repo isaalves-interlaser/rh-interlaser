@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import Usuarios from './Usuarios'
 import Vagas from './Vagas'
+import Candidatos from './Candidatos'
 import './Dashboard.css'
 
 type PageId =
@@ -254,11 +255,13 @@ function Dashboard({
             </div>
           </div>
         </header>
-        
-        <div className="system-content">
+
+      <div className="system-content">
           {activePage === 'dashboard' && (
             <DashboardHome userName={userName} />
           )}
+
+          {activePage === 'candidatos' && <Candidatos />}
 
           {activePage === 'vagas' && <Vagas />}
 
@@ -267,6 +270,7 @@ function Dashboard({
           )}
 
           {activePage !== 'dashboard' &&
+            activePage !== 'candidatos' &&
             activePage !== 'vagas' &&
             activePage !== 'configuracoes' && (
               <ModulePlaceholder
@@ -274,7 +278,7 @@ function Dashboard({
               />
             )}
         </div>
-      </main>
+        </main>
     </div>
   )
 }
