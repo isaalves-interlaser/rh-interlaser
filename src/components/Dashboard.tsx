@@ -4,6 +4,7 @@ import Usuarios from './Usuarios'
 import Vagas from './Vagas'
 import Candidatos from './Candidatos'
 import Pipeline from './Pipeline'
+import Agenda from './Agenda'
 import './Dashboard.css'
 
 type PageId =
@@ -260,30 +261,33 @@ function Dashboard({
         </header>
 
       <div className="system-content">
-      {activePage === 'dashboard' && (
-        <DashboardHome userName={userName} />
-      )}
-
-      {activePage === 'pipeline' && <Pipeline />}
-
-      {activePage === 'candidatos' && <Candidatos />}
-
-      {activePage === 'vagas' && <Vagas />}
-
-      {activePage === 'configuracoes' && (
-        <Usuarios currentUserId={userId} />
-      )}
-
-      {activePage !== 'dashboard' &&
-        activePage !== 'pipeline' &&
-        activePage !== 'candidatos' &&
-        activePage !== 'vagas' &&
-        activePage !== 'configuracoes' && (
-          <ModulePlaceholder
-            title={activeMenuItem?.label ?? ''}
-          />
+        {activePage === 'dashboard' && (
+          <DashboardHome userName={userName} />
         )}
-    </div>
+
+        {activePage === 'pipeline' && <Pipeline />}
+
+        {activePage === 'candidatos' && <Candidatos />}
+
+        {activePage === 'vagas' && <Vagas />}
+
+        {activePage === 'agenda' && <Agenda />}
+
+        {activePage === 'configuracoes' && (
+          <Usuarios currentUserId={userId} />
+        )}
+
+        {activePage !== 'dashboard' &&
+          activePage !== 'pipeline' &&
+          activePage !== 'candidatos' &&
+          activePage !== 'vagas' &&
+          activePage !== 'agenda' &&
+          activePage !== 'configuracoes' && (
+            <ModulePlaceholder
+              title={activeMenuItem?.label ?? ''}
+            />
+          )}
+      </div>
         </main>
     </div>
   )
