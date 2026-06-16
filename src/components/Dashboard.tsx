@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import './Dashboard.css'
+import Usuarios from './Usuarios'
 
 type PageId =
   | 'dashboard'
@@ -254,13 +255,20 @@ function Dashboard({
         </header>
 
         <div className="system-content">
-          {activePage === 'dashboard' ? (
+          {activePage === 'dashboard' && (
             <DashboardHome userName={userName} />
-          ) : (
-            <ModulePlaceholder
-              title={activeMenuItem?.label ?? ''}
-            />
           )}
+
+          {activePage === 'configuracoes' && (
+            <Usuarios currentUserId={userId} />
+          )}
+
+          {activePage !== 'dashboard' &&
+            activePage !== 'configuracoes' && (
+              <ModulePlaceholder
+                title={activeMenuItem?.label ?? ''}
+              />
+            )}
         </div>
       </main>
     </div>
