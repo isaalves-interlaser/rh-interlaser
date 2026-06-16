@@ -177,6 +177,9 @@ function Pipeline() {
     useState<StatusModalData | null>(null)
   const [statusObservacao, setStatusObservacao] = useState('')
   const [salvandoStatus, setSalvandoStatus] = useState(false)
+  const [modoVisualizacao, setModoVisualizacao] = useState<
+    'confortavel' | 'compacta'
+  >('confortavel')
 
   const carregarDados = useCallback(async () => {
     setCarregando(true)
@@ -315,6 +318,28 @@ function Pipeline() {
     statusSelecionado,
     vagaSelecionada,
   ])
+
+  const contagemPorEtapa = useMemo(() => {
+    return etapas.reduce<Record<CandidaturaEtapa, number>>(
+      (accumulator, etapa) => {
+        accumulator[etapa.id] = cardsFiltrados.filter(
+          (card) => card.candidatura.etapa === etapa.id,
+        ).length
+
+        return accumulator
+      },
+      {
+        recebido: 0,
+        triagem: 0,
+        entrevista_rh: 0,
+        entrevista_gestor: 0,
+        teste_pratico: 0,
+        exame_admissional: 0,
+        documentacao: 0,
+        contratado: 0,
+      },
+    )
+  }, [cardsFiltrados])
 
   async function moverCandidatura(
     candidaturaId: string,
@@ -507,6 +532,16 @@ function Pipeline() {
     setMensagem('Situação atualizada com sucesso.')
   }
 
+  function irParaEtapa(etapaId: CandidaturaEtapa) {
+    document
+      .getElementById(`pipeline-stage-${etapaId}`)
+      ?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'start',
+      })
+  }
+
   if (carregando) {
     return (
       <section className="pipeline-panel pipeline-loading">
@@ -599,7 +634,58 @@ function Pipeline() {
             <span>Resultados</span>
             <strong>{cardsFiltrados.length}</strong>
           </div>
+
+          <div className="pipeline-view-switch">
+            <span>Visualização</span>
+
+            <div>
+              <button
+                className={
+                  modoVisualizacao === 'confortavel'
+                    ? 'active'
+                    : ''
+                }
+                type="button"
+                onClick={() =>
+                  setModoVisualizacao('confortavel')
+                }
+              >
+                Confortável
+              </button>
+
+              <button
+                className={
+                  modoVisualizacao === 'compacta'
+                    ? 'active'
+                    : ''
+                }
+                type="button"
+                onClick={() =>
+                  setModoVisualizacao('compacta')
+                }
+              >
+                Compacta
+              </button>
+            </div>
+          </div>
         </div>
+
+        <nav
+          className="pipeline-stage-navigation"
+          aria-label="Navegação pelas etapas"
+        >
+          {etapas.map((etapa) => (
+            <button
+              key={etapa.id}
+              type="button"
+              onClick={() => irParaEtapa(etapa.id)}
+            >
+              <span className={`stage-dot dot-${etapa.id}`} />
+              <strong>{etapa.shortLabel}</strong>
+              <small>{contagemPorEtapa[etapa.id]}</small>
+            </button>
+          ))}
+        </nav>
 
         {erro && (
           <div className="pipeline-message error" role="alert">
@@ -613,7 +699,9 @@ function Pipeline() {
           </div>
         )}
 
-        <div className="pipeline-board-wrapper">
+        <div
+          className={`pipeline-board-wrapper mode-${modoVisualizacao}`}
+        >
           <div className="pipeline-board">
             {etapas.map((etapa) => {
               const cardsDaEtapa = cardsFiltrados.filter(
@@ -622,6 +710,7 @@ function Pipeline() {
 
               return (
                 <section
+                  id={`pipeline-stage-${etapa.id}`}
                   className={
                     draggedId
                       ? 'pipeline-column drag-active'
