@@ -92,10 +92,11 @@ function App() {
  if (session) {
   return (
     <Dashboard
-      userEmail={session.user.email ?? 'Usuário'}
-      loading={carregando}
-      onLogout={handleLogout}
-    />
+    userId={session.user.id}
+    userEmail={session.user.email ?? 'Usuário'}
+    loading={carregando}
+    onLogout={handleLogout}
+   />
   )
 }
 

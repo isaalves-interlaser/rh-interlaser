@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { supabase } from '../lib/supabase'
 import './Dashboard.css'
 
 type PageId =
@@ -9,10 +10,26 @@ type PageId =
   | 'onboarding'
   | 'configuracoes'
 
+type UserRole = 'admin' | 'rh' | 'gestor' | 'consulta'
+
+type UserProfile = {
+  full_name: string
+  role: UserRole
+  active: boolean
+}
+
 type DashboardProps = {
+  userId: string
   userEmail: string
   loading: boolean
   onLogout: () => Promise<void>
+}
+
+const roleLabels: Record<UserRole, string> = {
+  admin: 'Administrador',
+  rh: 'Recursos Humanos',
+  gestor: 'Gestor',
+  consulta: 'Consulta',
 }
 
 const menuItems: Array<{
@@ -39,6 +56,7 @@ function formatUserName(email: string) {
 }
 
 function Dashboard({
+  userId,
   userEmail,
   loading,
   onLogout,
@@ -46,11 +64,103 @@ function Dashboard({
   const [activePage, setActivePage] =
     useState<PageId>('dashboard')
 
+  const [profile, setProfile] =
+    useState<UserProfile | null>(null)
+
+  const [profileError, setProfileError] = useState('')
+
+  useEffect(() => {
+    let componentMounted = true
+
+    async function loadProfile() {
+      setProfileError('')
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('full_name, role, active')
+        .eq('id', userId)
+        .single()
+
+      if (!componentMounted) {
+        return
+      }
+
+      if (error) {
+        console.error('Erro ao buscar perfil:', error.message)
+
+        setProfileError(
+          'Não foi possível carregar seu perfil de usuário.',
+        )
+
+        return
+      }
+
+      if (!data.active) {
+        setProfileError(
+          'Este usuário está inativo. Entre em contato com o administrador.',
+        )
+
+        return
+      }
+
+      setProfile(data as UserProfile)
+    }
+
+    loadProfile()
+
+    return () => {
+      componentMounted = false
+    }
+  }, [userId])
+
   const activeMenuItem = menuItems.find(
     (item) => item.id === activePage,
   )
 
-  const userName = formatUserName(userEmail)
+  const userName =
+    profile?.full_name || formatUserName(userEmail)
+
+  const roleName = profile
+    ? roleLabels[profile.role]
+    : 'Carregando...'
+
+  if (!profile && !profileError) {
+    return (
+      <main className="loading-page">
+        <div className="loading-box">
+          <div className="loading-logo">RH</div>
+          <p>Carregando perfil...</p>
+        </div>
+      </main>
+    )
+  }
+
+  if (profileError) {
+    return (
+      <main className="authenticated-page">
+        <section className="authenticated-card">
+          <div className="authenticated-logo">RH</div>
+
+          <span className="login-label">
+            Acesso não autorizado
+          </span>
+
+          <h1>Não foi possível acessar o sistema</h1>
+
+          <p>{profileError}</p>
+
+          <button
+            className="logout-button"
+            type="button"
+            onClick={onLogout}
+            disabled={loading}
+          >
+            {loading ? 'Saindo...' : 'Voltar para o login'}
+          </button>
+        </section>
+      </main>
+    )
+  }
 
   return (
     <div className="system-layout">
@@ -89,7 +199,7 @@ function Dashboard({
 
         <div className="sidebar-user">
           <div className="sidebar-user-avatar">
-            {userName.charAt(0)}
+            {userName.charAt(0).toUpperCase()}
           </div>
 
           <div className="sidebar-user-data">
@@ -132,12 +242,12 @@ function Dashboard({
 
             <div className="header-user">
               <div className="header-user-avatar">
-                {userName.charAt(0)}
+                {userName.charAt(0).toUpperCase()}
               </div>
 
               <div>
                 <strong>{userName}</strong>
-                <span>Administrador</span>
+                <span>{roleName}</span>
               </div>
             </div>
           </div>
@@ -157,13 +267,30 @@ function Dashboard({
   )
 }
 
-function DashboardHome({ userName }: { userName: string }) {
+function DashboardHome({
+  userName,
+}: {
+  userName: string
+}) {
+  const currentDate = new Date()
+
+  const month = new Intl.DateTimeFormat('pt-BR', {
+    month: 'long',
+  }).format(currentDate)
+
+  const formattedMonth =
+    month.charAt(0).toUpperCase() + month.slice(1)
+
+  const year = currentDate.getFullYear()
+
   return (
     <>
       <section className="welcome-banner">
         <div>
           <span>Visão geral</span>
+
           <h2>Olá, {userName}</h2>
+
           <p>
             Acompanhe os principais dados do processo de
             recrutamento e integração.
@@ -171,8 +298,8 @@ function DashboardHome({ userName }: { userName: string }) {
         </div>
 
         <div className="welcome-date">
-          <strong>Junho</strong>
-          <span>2026</span>
+          <strong>{formattedMonth}</strong>
+          <span>{year}</span>
         </div>
       </section>
 
@@ -231,7 +358,9 @@ function DashboardHome({ userName }: { userName: string }) {
 
           <div className="empty-state">
             <div className="empty-state-icon">▦</div>
+
             <strong>Nenhuma movimentação</strong>
+
             <p>
               As movimentações de candidatos aparecerão aqui.
             </p>
@@ -248,7 +377,9 @@ function DashboardHome({ userName }: { userName: string }) {
 
           <div className="empty-state">
             <div className="empty-state-icon">□</div>
+
             <strong>Nenhuma atividade</strong>
+
             <p>
               As próximas atividades aparecerão aqui.
             </p>
@@ -259,7 +390,11 @@ function DashboardHome({ userName }: { userName: string }) {
   )
 }
 
-function ModulePlaceholder({ title }: { title: string }) {
+function ModulePlaceholder({
+  title,
+}: {
+  title: string
+}) {
   return (
     <section className="module-placeholder">
       <div className="module-placeholder-icon">RH</div>
