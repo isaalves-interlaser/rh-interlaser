@@ -474,6 +474,39 @@ function Pipeline() {
     setErro('')
   }
 
+
+  async function sincronizarEntrevistaGoogle(
+    entrevistaId: string,
+  ) {
+    const { data, error } = await supabase.functions.invoke(
+      'sincronizar-entrevista-google',
+      {
+        body: { entrevistaId },
+      },
+    )
+
+    if (error) {
+      throw new Error(
+        data?.error ??
+          error.message ??
+          'Não foi possível conectar ao Google Agenda.',
+      )
+    }
+
+    if (!data?.ok) {
+      throw new Error(
+        data?.error ??
+          'O Google Agenda não confirmou o agendamento.',
+      )
+    }
+
+    return data as {
+      ok: true
+      meetLink: string
+      eventLink: string | null
+    }
+  }
+
   async function salvarEntrevista() {
     if (!entrevistaModal) {
       return
@@ -571,6 +604,23 @@ function Pipeline() {
       return
     }
 
+    try {
+      await sincronizarEntrevistaGoogle(createdInterview.id)
+    } catch (syncError) {
+      await supabase
+        .from('entrevistas')
+        .delete()
+        .eq('id', createdInterview.id)
+
+      setSalvandoEntrevista(false)
+      setErro(
+        syncError instanceof Error
+          ? syncError.message
+          : 'Não foi possível criar o evento no Google Agenda.',
+      )
+      return
+    }
+
     const label =
       entrevistaModal.novaEtapa === 'entrevista_rh'
         ? 'Entrevista RH'
@@ -636,7 +686,7 @@ function Pipeline() {
     setEntrevistaModal(null)
     setSalvandoEntrevista(false)
     setMensagem(
-      `${label} agendada e adicionada à Agenda.`,
+      `${label} agendada, Google Meet criado e convite enviado.`,
     )
   }
 

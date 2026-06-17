@@ -49,6 +49,10 @@ type Entrevista = {
   entrevistador_id: string | null
   local: string | null
   link_reuniao: string | null
+  google_event_id: string | null
+  google_event_link: string | null
+  google_sync_status: string
+  google_sync_error: string | null
   observacoes: string | null
   parecer: string | null
   nota: number | null
@@ -189,6 +193,8 @@ function Agenda() {
   const [carregando, setCarregando] = useState(true)
   const [salvando, setSalvando] = useState(false)
   const [excluindoId, setExcluindoId] = useState<string | null>(null)
+  const [sincronizandoId, setSincronizandoId] =
+    useState<string | null>(null)
   const [pesquisa, setPesquisa] = useState('')
   const [filtroStatus, setFiltroStatus] = useState<
     'todos' | EntrevistaStatus
@@ -222,6 +228,10 @@ function Agenda() {
             entrevistador_id,
             local,
             link_reuniao,
+            google_event_id,
+            google_event_link,
+            google_sync_status,
+            google_sync_error,
             observacoes,
             parecer,
             nota,
@@ -420,6 +430,62 @@ function Agenda() {
     setErro('')
   }
 
+
+  async function sincronizarEntrevistaGoogle(
+    entrevistaId: string,
+  ) {
+    setSincronizandoId(entrevistaId)
+
+    const { data, error } = await supabase.functions.invoke(
+      'sincronizar-entrevista-google',
+      {
+        body: { entrevistaId },
+      },
+    )
+
+    setSincronizandoId(null)
+
+    if (error) {
+      throw new Error(
+        data?.error ??
+          error.message ??
+          'Não foi possível conectar ao Google Agenda.',
+      )
+    }
+
+    if (!data?.ok) {
+      throw new Error(
+        data?.error ??
+          'O Google Agenda não confirmou o agendamento.',
+      )
+    }
+
+    return data as {
+      ok: true
+      meetLink: string
+      eventLink: string | null
+    }
+  }
+
+  async function gerarGoogleMeet(entrevista: Entrevista) {
+    setErro('')
+    setMensagem('')
+
+    try {
+      await sincronizarEntrevistaGoogle(entrevista.id)
+      setMensagem(
+        'Google Meet criado e convite enviado ao candidato.',
+      )
+      await carregarDados()
+    } catch (syncError) {
+      setErro(
+        syncError instanceof Error
+          ? syncError.message
+          : 'Não foi possível criar o Google Meet.',
+      )
+    }
+  }
+
   async function salvarEntrevista(
     event: FormEvent<HTMLFormElement>,
   ) {
@@ -492,12 +558,24 @@ function Agenda() {
 
     setSalvando(false)
 
-    if (result.error) {
+    if (result.error || !result.data?.id) {
       console.error(
         'Erro ao salvar entrevista:',
-        result.error.message,
+        result.error?.message,
       )
       setErro('Não foi possível salvar a entrevista.')
+      return
+    }
+
+    try {
+      await sincronizarEntrevistaGoogle(result.data.id)
+    } catch (syncError) {
+      setErro(
+        syncError instanceof Error
+          ? `Entrevista salva, mas o Google Agenda falhou: ${syncError.message}`
+          : 'Entrevista salva, mas o Google Agenda falhou.',
+      )
+      await carregarDados()
       return
     }
 
@@ -506,8 +584,8 @@ function Agenda() {
     setForm(initialForm)
     setMensagem(
       entrevistaEditandoId
-        ? 'Entrevista atualizada com sucesso.'
-        : 'Entrevista agendada com sucesso.',
+        ? 'Entrevista e Google Meet atualizados.'
+        : 'Entrevista, Google Meet e convite criados.',
     )
 
     await carregarDados()
@@ -774,6 +852,28 @@ function Agenda() {
                     </div>
 
                     <div className="agenda-actions">
+                      {!card.entrevista.link_reuniao &&
+                        !['cancelada', 'realizada'].includes(
+                          card.entrevista.status,
+                        ) && (
+                          <button
+                            className="primary"
+                            type="button"
+                            onClick={() =>
+                              gerarGoogleMeet(card.entrevista)
+                            }
+                            disabled={
+                              sincronizandoId ===
+                              card.entrevista.id
+                            }
+                          >
+                            {sincronizandoId ===
+                            card.entrevista.id
+                              ? 'Gerando...'
+                              : 'Gerar Google Meet'}
+                          </button>
+                        )}
+
                       <button
                         type="button"
                         onClick={() =>
