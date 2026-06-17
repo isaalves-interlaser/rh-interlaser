@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import './ContratacaoModal.css'
 
@@ -50,30 +50,35 @@ type ContratacaoModalProps = {
   ) => void
 }
 
-const documentOptions: Array<{
+const fallbackDocumentOptions: Array<{
   id: DocumentType
   label: string
   description: string
+  defaultSelected: boolean
 }> = [
   {
     id: 'rg',
     label: 'RG',
     description: 'Documento de identificação com foto.',
+    defaultSelected: true,
   },
   {
     id: 'cpf',
     label: 'CPF',
     description: 'Comprovante ou documento que contenha o CPF.',
+    defaultSelected: true,
   },
   {
     id: 'carteira_trabalho',
     label: 'Carteira de Trabalho',
     description: 'Carteira de Trabalho digital ou física.',
+    defaultSelected: true,
   },
   {
     id: 'certidao_nascimento',
     label: 'Certidão de Nascimento',
     description: 'Certidão legível e completa.',
+    defaultSelected: true,
   },
 ]
 
@@ -114,11 +119,79 @@ function ContratacaoModal({
     dateAfter(7),
   )
   const [prazoEnvio, setPrazoEnvio] = useState(dateAfter(3))
-  const [documentos, setDocumentos] = useState<DocumentType[]>(
-    documentOptions.map((item) => item.id),
+  const [documentOptions, setDocumentOptions] = useState(
+    fallbackDocumentOptions,
   )
+  const [documentos, setDocumentos] = useState<DocumentType[]>(
+    fallbackDocumentOptions
+      .filter((item) => item.defaultSelected)
+      .map((item) => item.id),
+  )
+  const [carregandoDocumentos, setCarregandoDocumentos] =
+    useState(true)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState('')
+
+  useEffect(() => {
+    let mounted = true
+
+    async function loadConfiguredDocuments() {
+      const { data, error } = await supabase
+        .from('documentos_configuracao')
+        .select('codigo, nome, descricao, padrao')
+        .eq('active', true)
+        .order('ordem')
+
+      if (!mounted) {
+        return
+      }
+
+      if (error) {
+        console.error(
+          'Erro ao carregar documentos configurados:',
+          error.message,
+        )
+        setCarregandoDocumentos(false)
+        return
+      }
+
+      const allowedCodes = new Set<DocumentType>([
+        'rg',
+        'cpf',
+        'carteira_trabalho',
+        'certidao_nascimento',
+      ])
+
+      const configured = (data ?? [])
+        .filter((item) =>
+          allowedCodes.has(item.codigo as DocumentType),
+        )
+        .map((item) => ({
+          id: item.codigo as DocumentType,
+          label: item.nome,
+          description:
+            item.descricao ?? 'Documento admissional.',
+          defaultSelected: item.padrao,
+        }))
+
+      if (configured.length > 0) {
+        setDocumentOptions(configured)
+        setDocumentos(
+          configured
+            .filter((item) => item.defaultSelected)
+            .map((item) => item.id),
+        )
+      }
+
+      setCarregandoDocumentos(false)
+    }
+
+    loadConfiguredDocuments()
+
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   const canSubmit = useMemo(
     () =>
@@ -340,7 +413,12 @@ function ContratacaoModal({
               <strong>{documentos.length} selecionado(s)</strong>
             </div>
 
-            <div className="hire-documents-grid">
+            {carregandoDocumentos ? (
+              <div className="hire-documents-loading">
+                Carregando documentos configurados...
+              </div>
+            ) : (
+              <div className="hire-documents-grid">
               {documentOptions.map((document) => {
                 const checked = documentos.includes(document.id)
 
@@ -371,7 +449,8 @@ function ContratacaoModal({
                   </label>
                 )
               })}
-            </div>
+              </div>
+            )}
           </section>
 
           {erro && (
@@ -395,7 +474,11 @@ function ContratacaoModal({
             className="primary"
             type="button"
             onClick={confirmHiring}
-            disabled={salvando || !canSubmit}
+            disabled={
+              salvando ||
+              carregandoDocumentos ||
+              !canSubmit
+            }
           >
             {salvando
               ? 'Criando pasta e enviando e-mail...'

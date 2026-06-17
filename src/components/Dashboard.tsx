@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import Usuarios from './Usuarios'
 import Vagas from './Vagas'
@@ -7,6 +7,10 @@ import Pipeline from './Pipeline'
 import Agenda from './Agenda'
 import Onboarding from './Onboarding'
 import DashboardHome from './DashboardHome'
+import EmpresasFiliais from './EmpresasFiliais'
+import DocumentosConfiguracao from './DocumentosConfiguracao'
+import Contratos from './Contratos'
+import AppIcon, { type AppIconName } from './AppIcon'
 import './Dashboard.css'
 
 type PageId =
@@ -16,7 +20,10 @@ type PageId =
   | 'vagas'
   | 'agenda'
   | 'onboarding'
-  | 'configuracoes'
+  | 'contratos'
+  | 'usuarios'
+  | 'empresas-filiais'
+  | 'documentacao-config'
 
 type UserRole = 'admin' | 'rh' | 'gestor' | 'consulta'
 
@@ -33,6 +40,12 @@ type DashboardProps = {
   onLogout: () => Promise<void>
 }
 
+type MenuItem = {
+  id: PageId
+  label: string
+  icon: AppIconName
+}
+
 const roleLabels: Record<UserRole, string> = {
   admin: 'Administrador',
   rh: 'Recursos Humanos',
@@ -40,18 +53,61 @@ const roleLabels: Record<UserRole, string> = {
   consulta: 'Consulta',
 }
 
-const menuItems: Array<{
-  id: PageId
-  label: string
-  icon: string
-}> = [
-  { id: 'dashboard', label: 'Dashboard', icon: '▦' },
-  { id: 'pipeline', label: 'Pipeline', icon: '⇄' },
-  { id: 'candidatos', label: 'Candidatos', icon: '♙' },
-  { id: 'vagas', label: 'Vagas', icon: '▣' },
-  { id: 'agenda', label: 'Agenda', icon: '□' },
-  { id: 'onboarding', label: 'Onboarding', icon: '✓' },
-  { id: 'configuracoes', label: 'Configurações', icon: '⚙' },
+const mainMenuItems: MenuItem[] = [
+  {
+    id: 'dashboard',
+    label: 'Dashboard',
+    icon: 'dashboard',
+  },
+  {
+    id: 'pipeline',
+    label: 'Pipeline',
+    icon: 'pipeline',
+  },
+  {
+    id: 'candidatos',
+    label: 'Candidatos',
+    icon: 'candidates',
+  },
+  {
+    id: 'vagas',
+    label: 'Vagas',
+    icon: 'vacancies',
+  },
+  {
+    id: 'agenda',
+    label: 'Agenda',
+    icon: 'calendar',
+  },
+  {
+    id: 'onboarding',
+    label: 'Onboarding',
+    icon: 'onboarding',
+  },
+]
+
+const contractsMenuItem: MenuItem = {
+  id: 'contratos',
+  label: 'Contratos',
+  icon: 'contracts',
+}
+
+const settingsMenuItems: MenuItem[] = [
+  {
+    id: 'usuarios',
+    label: 'Usuários',
+    icon: 'users',
+  },
+  {
+    id: 'empresas-filiais',
+    label: 'Empresas e filiais',
+    icon: 'companies',
+  },
+  {
+    id: 'documentacao-config',
+    label: 'Documentação',
+    icon: 'documents',
+  },
 ]
 
 function formatUserName(email: string) {
@@ -60,7 +116,10 @@ function formatUserName(email: string) {
   return name
     .split(/[._-]/)
     .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .map(
+      (part) =>
+        part.charAt(0).toUpperCase() + part.slice(1),
+    )
     .join(' ')
 }
 
@@ -72,11 +131,10 @@ function Dashboard({
 }: DashboardProps) {
   const [activePage, setActivePage] =
     useState<PageId>('dashboard')
-
   const [profile, setProfile] =
     useState<UserProfile | null>(null)
-
   const [profileError, setProfileError] = useState('')
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   useEffect(() => {
     let componentMounted = true
@@ -95,12 +153,13 @@ function Dashboard({
       }
 
       if (error) {
-        console.error('Erro ao buscar perfil:', error.message)
-
+        console.error(
+          'Erro ao buscar perfil:',
+          error.message,
+        )
         setProfileError(
           'Não foi possível carregar seu perfil de usuário.',
         )
-
         return
       }
 
@@ -108,7 +167,6 @@ function Dashboard({
         setProfileError(
           'Este usuário está inativo. Entre em contato com o administrador.',
         )
-
         return
       }
 
@@ -122,52 +180,85 @@ function Dashboard({
     }
   }, [userId])
 
-  const activeMenuItem = menuItems.find(
+  const canManageHrSettings =
+    profile?.role === 'admin' || profile?.role === 'rh'
+  const canManageUsers = profile?.role === 'admin'
+
+  const visibleMainItems = useMemo(() => {
+    if (!canManageHrSettings) {
+      return mainMenuItems
+    }
+
+    return [...mainMenuItems, contractsMenuItem]
+  }, [canManageHrSettings])
+
+  const visibleSettingsItems = useMemo(
+    () =>
+      settingsMenuItems.filter((item) => {
+        if (item.id === 'usuarios') {
+          return canManageUsers
+        }
+
+        return canManageHrSettings
+      }),
+    [canManageHrSettings, canManageUsers],
+  )
+
+  const allVisibleItems = useMemo(
+    () => [...visibleMainItems, ...visibleSettingsItems],
+    [visibleMainItems, visibleSettingsItems],
+  )
+
+  const activeMenuItem = allVisibleItems.find(
     (item) => item.id === activePage,
   )
 
   const userName =
     profile?.full_name || formatUserName(userEmail)
-
   const roleName = profile
     ? roleLabels[profile.role]
     : 'Carregando...'
 
+  const isSettingsPage = visibleSettingsItems.some(
+    (item) => item.id === activePage,
+  )
+
+  useEffect(() => {
+    if (isSettingsPage) {
+      setSettingsOpen(true)
+    }
+  }, [isSettingsPage])
+
+  function navigate(page: PageId) {
+    setActivePage(page)
+  }
+
   if (!profile && !profileError) {
     return (
-      <main className="loading-page">
-        <div className="loading-box">
-          <div className="loading-logo">RH</div>
-          <p>Carregando perfil...</p>
-        </div>
-      </main>
+      <section className="profile-state">
+        <div className="profile-state-logo">RH</div>
+        <strong>Carregando perfil...</strong>
+      </section>
     )
   }
 
   if (profileError) {
     return (
-      <main className="authenticated-page">
-        <section className="authenticated-card">
-          <div className="authenticated-logo">RH</div>
-
-          <span className="login-label">
-            Acesso não autorizado
-          </span>
-
-          <h1>Não foi possível acessar o sistema</h1>
-
-          <p>{profileError}</p>
-
-          <button
-            className="logout-button"
-            type="button"
-            onClick={onLogout}
-            disabled={loading}
-          >
-            {loading ? 'Saindo...' : 'Voltar para o login'}
-          </button>
-        </section>
-      </main>
+      <section className="profile-state">
+        <div className="profile-state-logo">RH</div>
+        <span>Acesso não autorizado</span>
+        <h1>Não foi possível acessar o sistema</h1>
+        <p>{profileError}</p>
+        <button
+          type="button"
+          onClick={onLogout}
+          disabled={loading}
+        >
+          {loading
+            ? 'Saindo...'
+            : 'Voltar para o login'}
+        </button>
+      </section>
     )
   }
 
@@ -188,22 +279,91 @@ function Dashboard({
             Menu principal
           </span>
 
-          {menuItems.map((item) => (
-            <button
-              key={item.id}
-              className={
-                activePage === item.id
-                  ? 'sidebar-menu-item active'
-                  : 'sidebar-menu-item'
-              }
-              type="button"
-              onClick={() => setActivePage(item.id)}
-              aria-pressed={activePage === item.id}
-            >
-              <span className="menu-icon">{item.icon}</span>
-              {item.label}
-            </button>
-          ))}
+          <div className="sidebar-main-menu">
+            {visibleMainItems.map((item) => (
+              <button
+                className={
+                  activePage === item.id
+                    ? 'sidebar-menu-item active'
+                    : 'sidebar-menu-item'
+                }
+                type="button"
+                key={item.id}
+                onClick={() => navigate(item.id)}
+                aria-pressed={activePage === item.id}
+              >
+                <span className="menu-icon">
+                  <AppIcon name={item.icon} />
+                </span>
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {visibleSettingsItems.length > 0 && (
+            <div className="sidebar-settings-group">
+              <button
+                className={
+                  isSettingsPage
+                    ? 'sidebar-menu-item settings-parent active'
+                    : 'sidebar-menu-item settings-parent'
+                }
+                type="button"
+                onClick={() =>
+                  setSettingsOpen((current) => !current)
+                }
+                aria-expanded={settingsOpen}
+              >
+                <span className="menu-icon">
+                  <AppIcon name="settings" />
+                </span>
+
+                <span>Configurações</span>
+
+                <span
+                  className={
+                    settingsOpen
+                      ? 'settings-chevron open'
+                      : 'settings-chevron'
+                  }
+                >
+                  <AppIcon name="chevron" width={16} height={16} />
+                </span>
+              </button>
+
+              <div
+                className={
+                  settingsOpen
+                    ? 'sidebar-submenu open'
+                    : 'sidebar-submenu'
+                }
+              >
+                {visibleSettingsItems.map((item) => (
+                  <button
+                    className={
+                      activePage === item.id
+                        ? 'sidebar-submenu-item active'
+                        : 'sidebar-submenu-item'
+                    }
+                    type="button"
+                    key={item.id}
+                    onClick={() => navigate(item.id)}
+                    aria-pressed={activePage === item.id}
+                  >
+                    <span className="submenu-line" />
+                    <span className="menu-icon">
+                      <AppIcon
+                        name={item.icon}
+                        width={17}
+                        height={17}
+                      />
+                    </span>
+                    <span>{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </nav>
 
         <div className="sidebar-user">
@@ -221,10 +381,10 @@ function Dashboard({
             type="button"
             onClick={onLogout}
             disabled={loading}
-            title="Sair do sistema"
             aria-label="Sair do sistema"
+            title="Sair do sistema"
           >
-            ↪
+            <AppIcon name="logout" width={18} height={18} />
           </button>
         </div>
       </aside>
@@ -235,8 +395,7 @@ function Dashboard({
             <span className="header-eyebrow">
               Sistema de Recursos Humanos
             </span>
-
-            <h1>{activeMenuItem?.label}</h1>
+            <h1>{activeMenuItem?.label ?? 'Dashboard'}</h1>
           </div>
 
           <div className="header-actions">
@@ -245,7 +404,7 @@ function Dashboard({
               type="button"
               aria-label="Notificações"
             >
-              ♢
+              <AppIcon name="bell" width={18} height={18} />
               <span className="notification-dot" />
             </button>
 
@@ -262,62 +421,43 @@ function Dashboard({
           </div>
         </header>
 
-      <div className="system-content">
-        {activePage === 'dashboard' && (
-         <DashboardHome
-          userName={userName}
-          onNavigate={(page) => setActivePage(page)}
-        />
-        )}
-
-        {activePage === 'pipeline' && <Pipeline />}
-
-        {activePage === 'candidatos' && <Candidatos />}
-
-        {activePage === 'vagas' && <Vagas />}
-
-        {activePage === 'agenda' && <Agenda />}
-
-        {activePage === 'onboarding' && <Onboarding />}
-
-        {activePage === 'configuracoes' && (
-          <Usuarios currentUserId={userId} />
-        )}
-
-        {activePage !== 'dashboard' &&
-          activePage !== 'pipeline' &&
-          activePage !== 'candidatos' &&
-          activePage !== 'vagas' &&
-          activePage !== 'agenda' &&
-          activePage !== 'onboarding' &&
-          activePage !== 'configuracoes' && (
-            <ModulePlaceholder
-              title={activeMenuItem?.label ?? ''}
+        <div className="system-content">
+          {activePage === 'dashboard' && (
+            <DashboardHome
+              userName={userName}
+              onNavigate={(page) =>
+                setActivePage(page as PageId)
+              }
             />
           )}
-      </div>
+
+          {activePage === 'pipeline' && <Pipeline />}
+
+          {activePage === 'candidatos' && <Candidatos />}
+
+          {activePage === 'vagas' && <Vagas />}
+
+          {activePage === 'agenda' && <Agenda />}
+
+          {activePage === 'onboarding' && <Onboarding />}
+
+          {activePage === 'contratos' &&
+            canManageHrSettings && <Contratos />}
+
+          {activePage === 'usuarios' && canManageUsers && (
+            <Usuarios currentUserId={userId} />
+          )}
+
+          {activePage === 'empresas-filiais' &&
+            canManageHrSettings && <EmpresasFiliais />}
+
+          {activePage === 'documentacao-config' &&
+            canManageHrSettings && (
+              <DocumentosConfiguracao />
+            )}
+        </div>
       </main>
     </div>
-  )
-}
-
-
-function ModulePlaceholder({
-  title,
-}: {
-  title: string
-}) {
-  return (
-    <section className="module-placeholder">
-      <div className="module-placeholder-icon">RH</div>
-
-      <h2>Módulo de {title}</h2>
-
-      <p>
-        A estrutura principal está pronta. Este será o próximo
-        módulo conectado ao banco de dados.
-      </p>
-    </section>
   )
 }
 

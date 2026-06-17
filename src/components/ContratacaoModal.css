@@ -327,3 +327,15 @@
     width: 100%;
   }
 }
+
+
+.hire-documents-loading {
+  min-height: 100px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed #cfd8e3;
+  border-radius: 10px;
+  color: #667085;
+  background: #f8fafc;
+  font-size: 10px;
+}
