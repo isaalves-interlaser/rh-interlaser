@@ -225,6 +225,10 @@ function Candidatos() {
     useState(false)
   const [modalCandidaturaAberto, setModalCandidaturaAberto] =
     useState(false)
+  const [modalDetalhesAberto, setModalDetalhesAberto] =
+    useState(false)
+  const [candidatoSelecionadoId, setCandidatoSelecionadoId] =
+    useState<string | null>(null)
   const [candidatoEditandoId, setCandidatoEditandoId] =
     useState<string | null>(null)
   const [form, setForm] =
@@ -377,6 +381,32 @@ function Candidatos() {
     pesquisa,
   ])
 
+  const candidatoSelecionado = useMemo(
+    () =>
+      candidatos.find(
+        (candidato) => candidato.id === candidatoSelecionadoId,
+      ) ?? null,
+    [candidatoSelecionadoId, candidatos],
+  )
+
+  const candidaturasSelecionadas = useMemo(
+    () =>
+      candidatoSelecionado
+        ? candidaturasPorCandidato.get(candidatoSelecionado.id) ?? []
+        : [],
+    [candidatoSelecionado, candidaturasPorCandidato],
+  )
+
+  function escolherCandidaturaPrincipal(
+    applications: Candidatura[],
+  ) {
+    return (
+      applications.find(
+        (application) => application.status === 'ativo',
+      ) ?? applications[0] ?? null
+    )
+  }
+
   function abrirNovoCandidato() {
     setForm(initialCandidateForm)
     setCandidatoEditandoId(null)
@@ -430,6 +460,29 @@ function Candidatos() {
     setErro('')
     setMensagem('')
     setModalCandidaturaAberto(true)
+  }
+
+  function abrirDetalhes(candidato: Candidato) {
+    setCandidatoSelecionadoId(candidato.id)
+    setErro('')
+    setMensagem('')
+    setModalDetalhesAberto(true)
+  }
+
+  function fecharDetalhes() {
+    setModalDetalhesAberto(false)
+    setCandidatoSelecionadoId(null)
+    setErro('')
+  }
+
+  function editarPelosDetalhes(candidato: Candidato) {
+    setModalDetalhesAberto(false)
+    abrirEdicao(candidato)
+  }
+
+  function novaCandidaturaPelosDetalhes(candidato: Candidato) {
+    setModalDetalhesAberto(false)
+    abrirNovaCandidatura(candidato)
   }
 
   function fecharModalCandidatura() {
@@ -762,10 +815,18 @@ function Candidatos() {
           {candidatosFiltrados.map((candidato) => {
             const applications =
               candidaturasPorCandidato.get(candidato.id) ?? []
+            const candidaturaPrincipal =
+              escolherCandidaturaPrincipal(applications)
+            const vagaPrincipal = candidaturaPrincipal
+              ? vagas.find(
+                  (vaga) =>
+                    vaga.id === candidaturaPrincipal.vaga_id,
+                )
+              : null
 
             return (
               <article
-                className="candidate-card"
+                className="candidate-card candidate-card-compact"
                 key={candidato.id}
               >
                 <div className="candidate-avatar">
@@ -798,131 +859,77 @@ function Candidatos() {
                     </span>
                   </div>
 
-                  <div className="candidate-contact">
-                    <span>
-                      {candidato.email ?? 'E-mail não informado'}
-                    </span>
-                    <span>
-                      {formatPhone(
-                        candidato.whatsapp ??
-                          candidato.telefone,
-                      )}
-                    </span>
-                    <span>
-                      {[candidato.cidade, candidato.uf]
-                        .filter(Boolean)
-                        .join(' / ') || 'Cidade não informada'}
-                    </span>
-                  </div>
-
-                  <div className="candidate-details">
-                    <span>
-                      Origem:{' '}
-                      <strong>
-                        {origemLabels[candidato.origem]}
-                      </strong>
-                    </span>
-                    <span>
-                      Pretensão:{' '}
-                      <strong>
-                        {formatCurrency(
-                          candidato.pretensao_salarial,
-                        )}
-                      </strong>
-                    </span>
-                    <span>
-                      LGPD:{' '}
-                      <strong>
-                        {candidato.consentimento_lgpd
-                          ? 'Autorizado'
-                          : 'Pendente'}
-                      </strong>
-                    </span>
-                  </div>
-
-                  <div className="candidate-applications">
-                    <span className="candidate-section-label">
-                      Processos seletivos
-                    </span>
-
-                    {applications.length > 0 ? (
-                      <div className="candidate-application-list">
-                        {applications.map((application) => {
-                          const vaga = vagas.find(
-                            (item) =>
-                              item.id === application.vaga_id,
-                          )
-
-                          return (
-                            <div
-                              className="candidate-application"
-                              key={application.id}
-                            >
-                              <div>
-                                <strong>
-                                  {vaga
-                                    ? `VAG-${String(
-                                        vaga.numero,
-                                      ).padStart(6, '0')} — ${
-                                        vaga.cargo
-                                      }`
-                                    : 'Vaga não encontrada'}
-                                </strong>
-                                <span>
-                                  {vaga?.setor ??
-                                    'Setor não informado'}
-                                </span>
-                              </div>
-
-                              <div className="candidate-badges">
-                                <span
-                                  className={`candidate-stage stage-${application.etapa}`}
-                                >
-                                  {
-                                    etapaLabels[
-                                      application.etapa
-                                    ]
-                                  }
-                                </span>
-
-                                <span
-                                  className={`candidate-status application-${application.status}`}
-                                >
-                                  {
-                                    statusLabels[
-                                      application.status
-                                    ]
-                                  }
-                                </span>
-                              </div>
-                            </div>
-                          )
-                        })}
+                  {candidaturaPrincipal ? (
+                    <div className="candidate-main-vacancy">
+                      <div>
+                        <span className="candidate-section-label">
+                          Vaga atual
+                        </span>
+                        <strong>
+                          {vagaPrincipal
+                            ? `VAG-${String(
+                                vagaPrincipal.numero,
+                              ).padStart(6, '0')} — ${
+                                vagaPrincipal.cargo
+                              }`
+                            : 'Vaga não encontrada'}
+                        </strong>
+                        <small>
+                          {vagaPrincipal?.setor ??
+                            'Setor não informado'}
+                        </small>
                       </div>
-                    ) : (
-                      <p className="candidate-no-application">
-                        Nenhuma candidatura vinculada.
-                      </p>
-                    )}
-                  </div>
+
+                      <div className="candidate-badges">
+                        <span
+                          className={`candidate-stage stage-${candidaturaPrincipal.etapa}`}
+                        >
+                          {
+                            etapaLabels[
+                              candidaturaPrincipal.etapa
+                            ]
+                          }
+                        </span>
+
+                        <span
+                          className={`candidate-status application-${candidaturaPrincipal.status}`}
+                        >
+                          {
+                            statusLabels[
+                              candidaturaPrincipal.status
+                            ]
+                          }
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="candidate-main-vacancy empty">
+                      <div>
+                        <span className="candidate-section-label">
+                          Vaga atual
+                        </span>
+                        <strong>
+                          Nenhuma candidatura vinculada
+                        </strong>
+                      </div>
+                    </div>
+                  )}
+
+                  {applications.length > 1 && (
+                    <span className="candidate-more-processes">
+                      + {applications.length - 1} processo(s) em
+                      detalhes
+                    </span>
+                  )}
                 </div>
 
                 <div className="candidate-actions">
                   <button
-                    type="button"
-                    onClick={() => abrirEdicao(candidato)}
-                  >
-                    Editar
-                  </button>
-
-                  <button
                     className="primary"
                     type="button"
-                    onClick={() =>
-                      abrirNovaCandidatura(candidato)
-                    }
+                    onClick={() => abrirDetalhes(candidato)}
                   >
-                    Nova candidatura
+                    Ver detalhes
                   </button>
                 </div>
               </article>
@@ -940,6 +947,265 @@ function Candidatos() {
           )}
         </div>
       </section>
+
+      {modalDetalhesAberto && candidatoSelecionado && (
+        <div
+          className="candidates-modal-overlay"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              fecharDetalhes()
+            }
+          }}
+        >
+          <section
+            className="candidates-modal candidate-details-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="titulo-detalhes-candidato"
+          >
+            <header className="candidates-modal-header">
+              <div className="candidate-details-heading">
+                <div className="candidate-avatar large">
+                  {candidatoSelecionado.nome_completo
+                    .charAt(0)
+                    .toUpperCase()}
+                </div>
+
+                <div>
+                  <span className="candidates-eyebrow">
+                    CAN-
+                    {String(
+                      candidatoSelecionado.numero,
+                    ).padStart(6, '0')}
+                  </span>
+                  <h2 id="titulo-detalhes-candidato">
+                    {candidatoSelecionado.nome_completo}
+                  </h2>
+                  <span
+                    className={
+                      candidatoSelecionado.active
+                        ? 'candidate-active'
+                        : 'candidate-inactive'
+                    }
+                  >
+                    {candidatoSelecionado.active
+                      ? 'Ativo'
+                      : 'Inativo'}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                className="candidates-close-button"
+                type="button"
+                onClick={fecharDetalhes}
+                aria-label="Fechar"
+              >
+                ×
+              </button>
+            </header>
+
+            <div className="candidate-details-body">
+              <section className="candidate-details-section">
+                <div className="candidate-details-section-header">
+                  <div>
+                    <h3>Dados do candidato</h3>
+                    <p>
+                      Informações pessoais e dados do processo
+                      seletivo.
+                    </p>
+                  </div>
+
+                  <button
+                    className="candidate-details-edit-button"
+                    type="button"
+                    onClick={() =>
+                      editarPelosDetalhes(candidatoSelecionado)
+                    }
+                  >
+                    Editar dados
+                  </button>
+                </div>
+
+                <div className="candidate-details-grid">
+                  <div>
+                    <span>E-mail</span>
+                    <strong>
+                      {candidatoSelecionado.email ??
+                        'Não informado'}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Telefone</span>
+                    <strong>
+                      {formatPhone(
+                        candidatoSelecionado.telefone,
+                      )}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>WhatsApp</span>
+                    <strong>
+                      {formatPhone(
+                        candidatoSelecionado.whatsapp,
+                      )}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Cidade / UF</span>
+                    <strong>
+                      {[
+                        candidatoSelecionado.cidade,
+                        candidatoSelecionado.uf,
+                      ]
+                        .filter(Boolean)
+                        .join(' / ') || 'Não informado'}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Origem</span>
+                    <strong>
+                      {
+                        origemLabels[
+                          candidatoSelecionado.origem
+                        ]
+                      }
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Detalhe da origem</span>
+                    <strong>
+                      {candidatoSelecionado.detalhe_origem ??
+                        'Não informado'}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Pretensão salarial</span>
+                    <strong>
+                      {formatCurrency(
+                        candidatoSelecionado.pretensao_salarial,
+                      )}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Disponibilidade</span>
+                    <strong>
+                      {candidatoSelecionado.disponibilidade ??
+                        'Não informada'}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>LGPD</span>
+                    <strong>
+                      {candidatoSelecionado.consentimento_lgpd
+                        ? 'Autorizado'
+                        : 'Pendente'}
+                    </strong>
+                  </div>
+                </div>
+
+                {candidatoSelecionado.observacoes && (
+                  <div className="candidate-details-notes">
+                    <span>Observações</span>
+                    <p>{candidatoSelecionado.observacoes}</p>
+                  </div>
+                )}
+              </section>
+
+              <section className="candidate-details-section">
+                <div className="candidate-details-section-header">
+                  <div>
+                    <h3>Vagas e candidaturas</h3>
+                    <p>
+                      Histórico dos processos seletivos desse
+                      candidato.
+                    </p>
+                  </div>
+
+                  <button
+                    className="candidate-details-new-application"
+                    type="button"
+                    onClick={() =>
+                      novaCandidaturaPelosDetalhes(
+                        candidatoSelecionado,
+                      )
+                    }
+                  >
+                    + Nova candidatura
+                  </button>
+                </div>
+
+                {candidaturasSelecionadas.length > 0 ? (
+                  <div className="candidate-details-application-list">
+                    {candidaturasSelecionadas.map(
+                      (application) => {
+                        const vaga = vagas.find(
+                          (item) =>
+                            item.id === application.vaga_id,
+                        )
+
+                        return (
+                          <article
+                            className="candidate-details-application"
+                            key={application.id}
+                          >
+                            <div>
+                              <strong>
+                                {vaga
+                                  ? `VAG-${String(
+                                      vaga.numero,
+                                    ).padStart(6, '0')} — ${
+                                      vaga.cargo
+                                    }`
+                                  : 'Vaga não encontrada'}
+                              </strong>
+                              <span>
+                                {vaga?.setor ??
+                                  'Setor não informado'}
+                              </span>
+                            </div>
+
+                            <div className="candidate-badges">
+                              <span
+                                className={`candidate-stage stage-${application.etapa}`}
+                              >
+                                {etapaLabels[application.etapa]}
+                              </span>
+
+                              <span
+                                className={`candidate-status application-${application.status}`}
+                              >
+                                {statusLabels[application.status]}
+                              </span>
+                            </div>
+                          </article>
+                        )
+                      },
+                    )}
+                  </div>
+                ) : (
+                  <div className="candidate-details-no-application">
+                    <strong>Nenhuma vaga vinculada</strong>
+                    <p>
+                      Crie uma candidatura para iniciar o
+                      acompanhamento no Pipeline.
+                    </p>
+                  </div>
+                )}
+              </section>
+            </div>
+          </section>
+        </div>
+      )}
 
       {modalCandidatoAberto && (
         <div
