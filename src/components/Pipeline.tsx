@@ -5,6 +5,9 @@ import {
   useState,
 } from 'react'
 import { supabase } from '../lib/supabase'
+import ContratacaoModal, {
+  type UpdatedApplication,
+} from './ContratacaoModal'
 import './Pipeline.css'
 
 type CandidaturaEtapa =
@@ -84,6 +87,7 @@ type EntrevistaModalidade =
 type Perfil = {
   id: string
   full_name: string
+  role: 'admin' | 'rh' | 'gestor' | 'consulta'
 }
 
 type InterviewStage =
@@ -260,6 +264,8 @@ function Pipeline() {
   const [salvandoStatus, setSalvandoStatus] = useState(false)
   const [entrevistaModal, setEntrevistaModal] =
     useState<InterviewModalData | null>(null)
+  const [contratacaoCard, setContratacaoCard] =
+    useState<CardData | null>(null)
   const [salvandoEntrevista, setSalvandoEntrevista] =
     useState(false)
   const [modoVisualizacao, setModoVisualizacao] = useState<
@@ -312,7 +318,7 @@ function Pipeline() {
 
         supabase
           .from('profiles')
-          .select('id, full_name')
+          .select('id, full_name, role')
           .eq('active', true)
           .order('full_name'),
       ])
@@ -696,6 +702,24 @@ function Pipeline() {
       return
     }
 
+    if (novaEtapa === 'contratado') {
+      const card = cards.find(
+        (item) => item.candidatura.id === candidaturaId,
+      )
+
+      if (!card) {
+        setErro('Não foi possível localizar o candidato.')
+        setDraggedId(null)
+        return
+      }
+
+      setContratacaoCard(card)
+      setDraggedId(null)
+      setErro('')
+      setMensagem('')
+      return
+    }
+
     if (
       novaEtapa === 'entrevista_rh' ||
       novaEtapa === 'entrevista_gestor'
@@ -712,11 +736,9 @@ function Pipeline() {
     setMensagem('')
 
     const novoStatus: CandidaturaStatus =
-      novaEtapa === 'contratado'
-        ? 'contratado'
-        : candidatura.status === 'contratado'
-          ? 'ativo'
-          : candidatura.status
+      candidatura.status === 'contratado'
+        ? 'ativo'
+        : candidatura.status
 
     const { data, error } = await supabase
       .from('candidaturas')
@@ -773,6 +795,13 @@ function Pipeline() {
     card: CardData,
     status: CandidaturaStatus,
   ) {
+    if (status === 'contratado') {
+      setContratacaoCard(card)
+      setErro('')
+      setMensagem('')
+      return
+    }
+
     setStatusObservacao(
       status === 'reprovado'
         ? card.candidatura.motivo_reprovacao ?? ''
@@ -831,10 +860,6 @@ function Pipeline() {
       payload.motivo_reprovacao = observacao
     } else {
       payload.motivo_reprovacao = null
-    }
-
-    if (statusModal.status === 'contratado') {
-      payload.etapa = 'contratado'
     }
 
     const { data, error } = await supabase
@@ -1252,6 +1277,44 @@ function Pipeline() {
           </div>
         </div>
       </section>
+
+      {contratacaoCard && (
+        <ContratacaoModal
+          candidaturaId={contratacaoCard.candidatura.id}
+          candidato={{
+            numero: contratacaoCard.candidato.numero,
+            nome: contratacaoCard.candidato.nome_completo,
+            email: contratacaoCard.candidato.email,
+          }}
+          vaga={{
+            numero: contratacaoCard.vaga.numero,
+            cargo: contratacaoCard.vaga.cargo,
+            setor: contratacaoCard.vaga.setor,
+          }}
+          responsaveisRh={perfis
+            .filter((profile) => profile.role === 'rh')
+            .map((profile) => ({
+              id: profile.id,
+              full_name: profile.full_name,
+            }))}
+          onClose={() => setContratacaoCard(null)}
+          onSuccess={(
+            updated: UpdatedApplication,
+            successMessage: string,
+          ) => {
+            setCandidaturas((current) =>
+              current.map((item) =>
+                item.id === updated.id
+                  ? (updated as Candidatura)
+                  : item,
+              ),
+            )
+            setContratacaoCard(null)
+            setMensagem(successMessage)
+            setErro('')
+          }}
+        />
+      )}
 
       {entrevistaModal && (
         <div

@@ -6,6 +6,7 @@ import {
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
 import Dashboard from './components/Dashboard'
+import EnvioDocumentos from './components/EnvioDocumentos'
 import './App.css'
 
 type AuthView = 'login' | 'forgot-password' | 'update-password'
@@ -18,6 +19,10 @@ function hasRecoveryUrl() {
 }
 
 function App() {
+  const documentToken = new URLSearchParams(
+    window.location.search,
+  ).get('documentos')
+
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [novaSenha, setNovaSenha] = useState('')
@@ -272,6 +277,10 @@ function App() {
       setMensagem('Não foi possível encerrar a sessão.')
       setMensagemTipo('error')
     }
+  }
+
+  if (documentToken) {
+    return <EnvioDocumentos token={documentToken} />
   }
 
   if (verificandoSessao) {

@@ -6,6 +6,7 @@ import {
   type FormEvent,
 } from 'react'
 import { supabase } from '../lib/supabase'
+import DocumentacaoAdmissional from './DocumentacaoAdmissional'
 import './Onboarding.css'
 
 type OnboardingStatus =
@@ -1799,6 +1800,10 @@ function OnboardingDetails({
         )}
       </section>
 
+      <DocumentacaoAdmissional
+        candidaturaId={view.candidatura.id}
+      />
+
       <section className="onboarding-checklist v2">
         <header className="onboarding-checklist-header">
           <div>
@@ -1882,6 +1887,11 @@ function OnboardingDetails({
               <div className="onboarding-task-list v2">
                 {group.tasks.map((task) => {
                   const overdue = isTaskOverdue(task)
+                  const automatedDocumentTask =
+                    task.categoria === 'documentacao' &&
+                    task.titulo
+                      .toLowerCase()
+                      .includes('documentos admissionais')
 
                   return (
                     <article
@@ -1905,7 +1915,10 @@ function OnboardingDetails({
                               : 'concluida',
                           )
                         }
-                        disabled={updatingTaskId === task.id}
+                        disabled={
+                          updatingTaskId === task.id ||
+                          automatedDocumentTask
+                        }
                         aria-label={
                           task.status === 'concluida'
                             ? 'Reabrir tarefa'
@@ -1926,6 +1939,12 @@ function OnboardingDetails({
                               {task.obrigatoria && (
                                 <span className="required">
                                   Obrigatória
+                                </span>
+                              )}
+
+                              {automatedDocumentTask && (
+                                <span className="automatic">
+                                  Atualização automática
                                 </span>
                               )}
 
@@ -1970,7 +1989,10 @@ function OnboardingDetails({
                               event.target.value as TaskStatus,
                             )
                           }
-                          disabled={updatingTaskId === task.id}
+                          disabled={
+                            updatingTaskId === task.id ||
+                            automatedDocumentTask
+                          }
                           aria-label={`Situação da tarefa ${task.titulo}`}
                         >
                           {Object.entries(
@@ -1982,16 +2004,18 @@ function OnboardingDetails({
                           ))}
                         </select>
 
-                        <button
-                          className="danger"
-                          type="button"
-                          onClick={() => onDeleteTask(task)}
-                          disabled={deletingTaskId === task.id}
-                        >
-                          {deletingTaskId === task.id
-                            ? 'Excluindo...'
-                            : 'Excluir'}
-                        </button>
+                        {!automatedDocumentTask && (
+                          <button
+                            className="danger"
+                            type="button"
+                            onClick={() => onDeleteTask(task)}
+                            disabled={deletingTaskId === task.id}
+                          >
+                            {deletingTaskId === task.id
+                              ? 'Excluindo...'
+                              : 'Excluir'}
+                          </button>
+                        )}
                       </div>
                     </article>
                   )

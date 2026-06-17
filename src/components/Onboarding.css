@@ -1712,3 +1712,8 @@
     width: 100%;
   }
 }
+
+.onboarding-task-badges .automatic {
+  color: #0c447c;
+  background: #e6f1fb;
+}

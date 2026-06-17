@@ -1,0 +1,494 @@
+.admission-documents {
+  margin-top: 20px;
+  overflow: hidden;
+  border: 1px solid #dce5ee;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.admission-documents.loading,
+.admission-documents.empty {
+  min-height: 150px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: #667085;
+}
+
+.admission-documents.empty {
+  border-style: dashed;
+  background: #f8fafc;
+}
+
+.admission-documents-empty-icon {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: #185fa5;
+  background: #e6f1fb;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.admission-documents-eyebrow {
+  display: block;
+  color: #185fa5;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.admission-documents.empty h4 {
+  margin: 5px 0 0;
+  color: #344054;
+  font-size: 13px;
+}
+
+.admission-documents.empty p {
+  margin: 5px 0 0;
+  color: #98a2b3;
+  font-size: 9px;
+}
+
+.admission-documents-header {
+  padding: 18px 20px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid #e8edf3;
+}
+
+.admission-documents-header h4 {
+  margin: 5px 0 0;
+  color: #172033;
+  font-size: 15px;
+}
+
+.admission-documents-header p {
+  margin: 5px 0 0;
+  max-width: 580px;
+  color: #667085;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.admission-documents-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admission-request-status {
+  padding: 5px 9px;
+  border-radius: 20px;
+  color: #0c447c;
+  background: #e6f1fb;
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.admission-request-status.status-concluida {
+  color: #126437;
+  background: #eaf8f0;
+}
+
+.admission-request-status.status-cancelada,
+.admission-request-status.status-expirada {
+  color: #8a1c13;
+  background: #fff0ef;
+}
+
+.admission-documents-actions a,
+.admission-document-actions a,
+.admission-document-actions button,
+.admission-documents-footer button {
+  min-height: 32px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #cfd7e2;
+  border-radius: 8px;
+  color: #344054;
+  background: #ffffff;
+  font-size: 8px;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.admission-documents-actions a {
+  border-color: #9fc3e5;
+  color: #185fa5;
+  background: #edf6ff;
+}
+
+.admission-documents-overview {
+  padding: 14px 18px;
+  display: grid;
+  grid-template-columns: 1.3fr repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  background: #f8fafc;
+}
+
+.admission-documents-overview article {
+  min-width: 0;
+  padding: 11px 12px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #dfe6ee;
+  border-radius: 9px;
+  background: #ffffff;
+}
+
+.admission-documents-overview article.attention {
+  border-color: #f1b8b4;
+  background: #fff8f7;
+}
+
+.admission-documents-overview span {
+  color: #667085;
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.admission-documents-overview strong {
+  margin-top: 4px;
+  overflow: hidden;
+  color: #172033;
+  font-size: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admission-documents-overview small {
+  margin-top: 3px;
+  overflow: hidden;
+  color: #98a2b3;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admission-documents-overview article > div {
+  height: 6px;
+  margin-top: 8px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #e4eaf0;
+}
+
+.admission-documents-overview article > div i {
+  height: 100%;
+  display: block;
+  border-radius: 10px;
+  background: #185fa5;
+}
+
+.admission-documents-message {
+  margin: 12px 18px 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.admission-documents-message.success {
+  border: 1px solid #a9dfc0;
+  color: #126437;
+  background: #effbf4;
+}
+
+.admission-documents-message.error {
+  border: 1px solid #f3b7b3;
+  color: #8a1c13;
+  background: #fff2f1;
+}
+
+.admission-documents-list {
+  padding: 14px 18px 18px;
+  display: grid;
+  gap: 8px;
+}
+
+.admission-document-row {
+  padding: 11px 12px;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #e1e7ee;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.admission-document-row.status-recebido {
+  border-color: #b7dec8;
+  background: #f7fcf9;
+}
+
+.admission-document-row.status-recusado {
+  border-color: #f1b8b4;
+  background: #fff8f7;
+}
+
+.admission-document-state {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #cfd7e2;
+  border-radius: 8px;
+  color: #ffffff;
+  background: #ffffff;
+  font-weight: 800;
+}
+
+.status-recebido .admission-document-state {
+  border-color: #1d9e75;
+  background: #1d9e75;
+}
+
+.status-recusado .admission-document-state {
+  border-color: #d94b4b;
+  background: #d94b4b;
+}
+
+.admission-document-main {
+  min-width: 0;
+}
+
+.admission-document-main > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.admission-document-main strong {
+  color: #344054;
+  font-size: 10px;
+}
+
+.admission-document-main span {
+  margin-top: 3px;
+  color: #98a2b3;
+  font-size: 8px;
+}
+
+.admission-document-main p {
+  margin: 6px 0 0;
+  color: #8a1c13;
+  font-size: 8px;
+}
+
+.admission-document-badge {
+  padding: 4px 8px;
+  border-radius: 20px;
+  color: #475467;
+  background: #f1f3f5;
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.admission-document-badge.recebido {
+  color: #126437;
+  background: #eaf8f0;
+}
+
+.admission-document-badge.recusado {
+  color: #8a1c13;
+  background: #fff0ef;
+}
+
+.admission-document-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.admission-document-actions .danger {
+  color: #8a1c13;
+}
+
+.admission-documents-footer {
+  padding: 11px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-top: 1px solid #e8edf3;
+  color: #98a2b3;
+  background: #f8fafc;
+  font-size: 8px;
+}
+
+.admission-documents-footer button {
+  margin-left: auto;
+}
+
+.document-refusal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 210;
+  padding: 20px;
+  display: grid;
+  place-items: center;
+  background: rgba(16, 24, 40, 0.58);
+}
+
+.document-refusal-modal {
+  width: min(500px, 100%);
+  overflow: hidden;
+  border-radius: 15px;
+  background: #ffffff;
+  box-shadow: 0 24px 70px rgba(16, 24, 40, 0.28);
+}
+
+.document-refusal-modal > header {
+  padding: 19px 21px;
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  border-bottom: 1px solid #e8edf3;
+}
+
+.document-refusal-modal > header span {
+  color: #b42318;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.document-refusal-modal > header h3 {
+  margin: 5px 0 0;
+  color: #172033;
+  font-size: 17px;
+}
+
+.document-refusal-modal > header button {
+  width: 33px;
+  height: 33px;
+  border: 1px solid #dfe6ee;
+  border-radius: 8px;
+  color: #667085;
+  background: #ffffff;
+  font-size: 19px;
+  cursor: pointer;
+}
+
+.document-refusal-body {
+  padding: 20px 21px;
+}
+
+.document-refusal-body > p {
+  margin: 0 0 15px;
+  color: #667085;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.document-refusal-body label {
+  display: block;
+  margin-bottom: 7px;
+  color: #344054;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.document-refusal-body textarea {
+  width: 100%;
+  padding: 11px;
+  border: 1px solid #cfd7e2;
+  border-radius: 9px;
+  outline: none;
+  resize: vertical;
+  font: inherit;
+  font-size: 10px;
+}
+
+.document-refusal-body textarea:focus {
+  border-color: #185fa5;
+  box-shadow: 0 0 0 3px rgba(24, 95, 165, 0.1);
+}
+
+.document-refusal-modal > footer {
+  padding: 16px 21px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  border-top: 1px solid #e8edf3;
+}
+
+.document-refusal-modal > footer button {
+  min-height: 38px;
+  padding: 0 13px;
+  border-radius: 8px;
+  font-size: 9px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.document-refusal-modal > footer .secondary {
+  border: 1px solid #cfd7e2;
+  color: #344054;
+  background: #ffffff;
+}
+
+.document-refusal-modal > footer .danger {
+  border: 1px solid #b42318;
+  color: #ffffff;
+  background: #b42318;
+}
+
+@media (max-width: 900px) {
+  .admission-documents-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admission-document-row {
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+  }
+
+  .admission-document-actions {
+    grid-column: 2 / -1;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 650px) {
+  .admission-documents-header,
+  .admission-documents-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admission-documents-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .admission-documents-overview {
+    grid-template-columns: 1fr;
+  }
+
+  .admission-document-row {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+
+  .admission-document-badge {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .admission-document-actions {
+    grid-column: 1 / -1;
+  }
+
+  .admission-documents-footer button {
+    margin-left: 0;
+  }
+}
