@@ -32,6 +32,12 @@ type TaskStatus =
   | 'nao_aplicavel'
   | 'bloqueada'
 
+type TaskViewFilter =
+  | 'todas'
+  | 'pendentes'
+  | 'atrasadas'
+  | 'concluidas'
+
 type OnboardingRecord = {
   id: string
   candidatura_id: string
@@ -163,6 +169,25 @@ const categoryLabels: Record<TaskCategory, string> = {
   outro: 'Outro',
 }
 
+
+const categoryOrder: TaskCategory[] = [
+  'documentacao',
+  'exame',
+  'acesso',
+  'equipamento',
+  'integracao',
+  'treinamento',
+  'beneficios',
+  'outro',
+]
+
+const taskViewFilterLabels: Record<TaskViewFilter, string> = {
+  todas: 'Todas',
+  pendentes: 'Pendentes',
+  atrasadas: 'Atrasadas',
+  concluidas: 'Concluídas',
+}
+
 function nullableText(value: string) {
   const normalized = value.trim()
   return normalized || null
@@ -212,6 +237,62 @@ function progressForTasks(tasks: OnboardingTask[]) {
   ).length
 
   return Math.round((completed / relevant.length) * 100)
+}
+
+
+function isTaskOverdue(task: OnboardingTask) {
+  if (
+    !task.prazo ||
+    task.status === 'concluida' ||
+    task.status === 'nao_aplicavel'
+  ) {
+    return false
+  }
+
+  const deadline = new Date(`${task.prazo}T23:59:59`)
+  return deadline.getTime() < Date.now()
+}
+
+function taskDeadlineText(task: OnboardingTask) {
+  if (!task.prazo) {
+    return 'Sem prazo definido'
+  }
+
+  const deadline = new Date(`${task.prazo}T23:59:59`)
+  const today = new Date()
+  const todayStart = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate(),
+  )
+  const deadlineStart = new Date(
+    deadline.getFullYear(),
+    deadline.getMonth(),
+    deadline.getDate(),
+  )
+  const difference = Math.round(
+    (deadlineStart.getTime() - todayStart.getTime()) /
+      86_400_000,
+  )
+
+  if (task.status === 'concluida') {
+    return `Concluída · prazo ${formatDate(task.prazo)}`
+  }
+
+  if (difference < 0) {
+    const days = Math.abs(difference)
+    return `Atrasada há ${days} dia${days === 1 ? '' : 's'}`
+  }
+
+  if (difference === 0) {
+    return 'Vence hoje'
+  }
+
+  if (difference === 1) {
+    return 'Vence amanhã'
+  }
+
+  return `Vence em ${difference} dias`
 }
 
 function Onboarding() {
@@ -844,6 +925,17 @@ function Onboarding() {
               }
             </strong>
           </div>
+
+          <div className="onboarding-summary overdue">
+            <span>Com atraso</span>
+            <strong>
+              {
+                views.filter((view) =>
+                  view.tasks.some(isTaskOverdue),
+                ).length
+              }
+            </strong>
+          </div>
         </div>
 
         {error && (
@@ -863,9 +955,21 @@ function Onboarding() {
 
         <div className="onboarding-layout">
           <div className="onboarding-list-panel">
+            <header className="onboarding-list-panel-header">
+              <div>
+                <span>Colaboradores</span>
+                <strong>Processos de integração</strong>
+              </div>
+
+              <small>{filteredViews.length}</small>
+            </header>
+
             <div className="onboarding-list">
               {filteredViews.map((view) => {
                 const progress = progressForTasks(view.tasks)
+                const overdueCount = view.tasks.filter(
+                  isTaskOverdue,
+                ).length
 
                 return (
                   <button
@@ -921,13 +1025,22 @@ function Onboarding() {
                         <small>{progress}%</small>
                       </div>
 
-                      <small>
-                        Início:{' '}
-                        {formatDate(
-                          view.onboarding
-                            .data_prevista_inicio,
+                      <div className="onboarding-list-footer">
+                        <small>
+                          Início:{' '}
+                          {formatDate(
+                            view.onboarding
+                              .data_prevista_inicio,
+                          )}
+                        </small>
+
+                        {overdueCount > 0 && (
+                          <span>
+                            {overdueCount} atrasada
+                            {overdueCount === 1 ? '' : 's'}
+                          </span>
                         )}
-                      </small>
+                      </div>
                     </div>
                   </button>
                 )
@@ -1491,7 +1604,49 @@ function OnboardingDetails({
   onUpdateTaskStatus,
   onDeleteTask,
 }: OnboardingDetailsProps) {
+  const [taskFilter, setTaskFilter] =
+    useState<TaskViewFilter>('todas')
+
   const progress = progressForTasks(view.tasks)
+  const completedCount = view.tasks.filter(
+    (task) => task.status === 'concluida',
+  ).length
+  const overdueCount = view.tasks.filter(isTaskOverdue).length
+  const pendingCount = view.tasks.filter(
+    (task) =>
+      task.status === 'pendente' ||
+      task.status === 'em_andamento' ||
+      task.status === 'bloqueada',
+  ).length
+
+  const visibleTasks = view.tasks.filter((task) => {
+    if (taskFilter === 'pendentes') {
+      return (
+        task.status === 'pendente' ||
+        task.status === 'em_andamento' ||
+        task.status === 'bloqueada'
+      )
+    }
+
+    if (taskFilter === 'atrasadas') {
+      return isTaskOverdue(task)
+    }
+
+    if (taskFilter === 'concluidas') {
+      return task.status === 'concluida'
+    }
+
+    return true
+  })
+
+  const groupedTasks = categoryOrder
+    .map((category) => ({
+      category,
+      tasks: visibleTasks.filter(
+        (task) => task.categoria === category,
+      ),
+    }))
+    .filter((group) => group.tasks.length > 0)
 
   const profileName = (id: string | null) =>
     profiles.find((profile) => profile.id === id)
@@ -1499,114 +1654,155 @@ function OnboardingDetails({
 
   return (
     <>
-      <header className="onboarding-detail-header">
-        <div>
-          <span className="onboarding-eyebrow">
-            CAN-
-            {String(view.candidato.numero).padStart(6, '0')}
-          </span>
-          <h3>{view.candidato.nome_completo}</h3>
-          <p>
-            VAG-{String(view.vaga.numero).padStart(6, '0')} —
-            {' '}
-            {view.vaga.cargo} · {view.vaga.setor}
-          </p>
-        </div>
-
-        <div className="onboarding-detail-actions">
-          <button type="button" onClick={onEdit}>
-            Editar
-          </button>
-
-          <button
-            className="danger"
-            type="button"
-            onClick={onDelete}
-          >
-            Excluir
-          </button>
-        </div>
-      </header>
-
-      <div className="onboarding-progress-card">
-        <div className="onboarding-progress-top">
-          <div>
-            <span>Progresso do onboarding</span>
-            <strong>{progress}%</strong>
+      <section className="onboarding-detail-hero">
+        <div className="onboarding-detail-identity">
+          <div className="onboarding-detail-avatar">
+            {view.candidato.nome_completo
+              .charAt(0)
+              .toUpperCase()}
           </div>
 
+          <div>
+            <span className="onboarding-eyebrow">
+              CAN-
+              {String(view.candidato.numero).padStart(6, '0')}
+            </span>
+            <h3>{view.candidato.nome_completo}</h3>
+            <p>
+              VAG-
+              {String(view.vaga.numero).padStart(6, '0')} —{' '}
+              {view.vaga.cargo}
+              <span>•</span>
+              {view.vaga.setor}
+            </p>
+          </div>
+        </div>
+
+        <div className="onboarding-detail-hero-actions">
           <span
             className={`onboarding-status status-${view.onboarding.status}`}
           >
             {onboardingStatusLabels[view.onboarding.status]}
           </span>
-        </div>
 
-        <div className="onboarding-progress-bar">
-          <span style={{ width: `${progress}%` }} />
-        </div>
-
-        <div className="onboarding-progress-meta">
-          <span>
-            {
-              view.tasks.filter(
-                (task) => task.status === 'concluida',
-              ).length
-            }{' '}
-            concluída(s)
-          </span>
-          <span>{view.tasks.length} tarefa(s)</span>
-        </div>
-      </div>
-
-      <div className="onboarding-info-grid">
-        <div>
-          <span>Responsável</span>
-          <strong>
-            {view.responsavel?.full_name ?? 'Não definido'}
-          </strong>
-        </div>
-
-        <div>
-          <span>Início previsto</span>
-          <strong>
-            {formatDate(
-              view.onboarding.data_prevista_inicio,
-            )}
-          </strong>
-        </div>
-
-        <div>
-          <span>Admissão</span>
-          <strong>
-            {formatDate(view.onboarding.data_admissao)}
-          </strong>
-        </div>
-
-        <div>
-          <span>Contato</span>
-          <strong>
-            {formatPhone(
-              view.candidato.whatsapp ??
-                view.candidato.telefone,
-            )}
-          </strong>
-        </div>
-      </div>
-
-      {view.onboarding.observacoes && (
-        <div className="onboarding-notes">
-          <span>Observações</span>
-          <p>{view.onboarding.observacoes}</p>
-        </div>
-      )}
-
-      <section className="onboarding-checklist">
-        <header>
           <div>
+            <button type="button" onClick={onEdit}>
+              Editar onboarding
+            </button>
+
+            <button
+              className="danger"
+              type="button"
+              onClick={onDelete}
+            >
+              Excluir
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section className="onboarding-overview-grid">
+        <article className="onboarding-progress-card v2">
+          <div className="onboarding-progress-top">
+            <div>
+              <span>Progresso geral</span>
+              <strong>{progress}%</strong>
+            </div>
+
+            <small>
+              {completedCount} de {view.tasks.length} tarefas
+            </small>
+          </div>
+
+          <div className="onboarding-progress-bar">
+            <span style={{ width: `${progress}%` }} />
+          </div>
+
+          <p>
+            {progress === 100
+              ? 'Checklist concluído. O processo está pronto para finalização.'
+              : `${pendingCount} tarefa${pendingCount === 1 ? '' : 's'} ainda precisa${pendingCount === 1 ? '' : 'm'} de acompanhamento.`}
+          </p>
+        </article>
+
+        <div className="onboarding-kpi-grid">
+          <article>
+            <span>Total de tarefas</span>
+            <strong>{view.tasks.length}</strong>
+            <small>Checklist completo</small>
+          </article>
+
+          <article className="completed">
+            <span>Concluídas</span>
+            <strong>{completedCount}</strong>
+            <small>Itens finalizados</small>
+          </article>
+
+          <article className={overdueCount > 0 ? 'overdue' : ''}>
+            <span>Atrasadas</span>
+            <strong>{overdueCount}</strong>
+            <small>Precisam de atenção</small>
+          </article>
+        </div>
+      </section>
+
+      <section className="onboarding-info-section">
+        <div className="onboarding-info-grid v2">
+          <article>
+            <span>Responsável pelo onboarding</span>
+            <strong>
+              {view.responsavel?.full_name ?? 'Não definido'}
+            </strong>
+          </article>
+
+          <article>
+            <span>Início previsto</span>
+            <strong>
+              {formatDate(
+                view.onboarding.data_prevista_inicio,
+              )}
+            </strong>
+          </article>
+
+          <article>
+            <span>Data de admissão</span>
+            <strong>
+              {formatDate(view.onboarding.data_admissao)}
+            </strong>
+          </article>
+
+          <article>
+            <span>Contato do colaborador</span>
+            <strong>
+              {formatPhone(
+                view.candidato.whatsapp ??
+                  view.candidato.telefone,
+              )}
+            </strong>
+          </article>
+        </div>
+
+        {view.onboarding.observacoes && (
+          <div className="onboarding-notes v2">
+            <div>i</div>
+            <div>
+              <span>Observações do processo</span>
+              <p>{view.onboarding.observacoes}</p>
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section className="onboarding-checklist v2">
+        <header className="onboarding-checklist-header">
+          <div>
+            <span className="onboarding-eyebrow">
+              Plano de integração
+            </span>
             <h4>Checklist de admissão</h4>
             <p>
-              Atualize a situação de cada tarefa do processo.
+              Organize as pendências por categoria, responsável e
+              prazo.
             </p>
           </div>
 
@@ -1619,103 +1815,192 @@ function OnboardingDetails({
           </button>
         </header>
 
-        <div className="onboarding-task-list">
-          {view.tasks.map((task) => (
-            <article
-              className={`onboarding-task task-${task.status}`}
-              key={task.id}
-            >
-              <button
-                className="onboarding-task-check"
-                type="button"
-                onClick={() =>
-                  onUpdateTaskStatus(
-                    task,
-                    task.status === 'concluida'
-                      ? 'pendente'
-                      : 'concluida',
-                  )
-                }
-                disabled={updatingTaskId === task.id}
-                aria-label={
-                  task.status === 'concluida'
-                    ? 'Reabrir tarefa'
-                    : 'Concluir tarefa'
-                }
-              >
-                {task.status === 'concluida' ? '✓' : ''}
-              </button>
+        <nav
+          className="onboarding-task-filters"
+          aria-label="Filtrar tarefas do onboarding"
+        >
+          {(Object.keys(
+            taskViewFilterLabels,
+          ) as TaskViewFilter[]).map((filter) => {
+            const count =
+              filter === 'todas'
+                ? view.tasks.length
+                : filter === 'pendentes'
+                  ? pendingCount
+                  : filter === 'atrasadas'
+                    ? overdueCount
+                    : completedCount
 
-              <div className="onboarding-task-content">
-                <div className="onboarding-task-title">
-                  <strong>{task.titulo}</strong>
+            return (
+              <button
+                className={
+                  taskFilter === filter ? 'active' : ''
+                }
+                type="button"
+                key={filter}
+                onClick={() => setTaskFilter(filter)}
+              >
+                <span>{taskViewFilterLabels[filter]}</span>
+                <small>{count}</small>
+              </button>
+            )
+          })}
+        </nav>
+
+        <div className="onboarding-task-groups">
+          {groupedTasks.map((group) => (
+            <section
+              className="onboarding-task-group"
+              key={group.category}
+            >
+              <header>
+                <div>
+                  <span
+                    className={`onboarding-category-icon category-${group.category}`}
+                  >
+                    {categoryLabels[group.category]
+                      .charAt(0)
+                      .toUpperCase()}
+                  </span>
 
                   <div>
-                    <span className="onboarding-task-category">
-                      {categoryLabels[task.categoria]}
-                    </span>
-
-                    {task.obrigatoria && (
-                      <span className="onboarding-task-required">
-                        Obrigatória
-                      </span>
-                    )}
+                    <h5>{categoryLabels[group.category]}</h5>
+                    <p>
+                      {group.tasks.length} tarefa
+                      {group.tasks.length === 1 ? '' : 's'}
+                    </p>
                   </div>
                 </div>
+              </header>
 
-                <div className="onboarding-task-meta">
-                  <span>
-                    Responsável:{' '}
-                    {profileName(task.responsavel_id)}
-                  </span>
-                  <span>
-                    Prazo: {formatDate(task.prazo)}
-                  </span>
-                </div>
+              <div className="onboarding-task-list v2">
+                {group.tasks.map((task) => {
+                  const overdue = isTaskOverdue(task)
 
-                {task.observacoes && (
-                  <p>{task.observacoes}</p>
-                )}
+                  return (
+                    <article
+                      className={[
+                        'onboarding-task-card',
+                        `task-${task.status}`,
+                        overdue ? 'overdue' : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                      key={task.id}
+                    >
+                      <button
+                        className="onboarding-task-check v2"
+                        type="button"
+                        onClick={() =>
+                          onUpdateTaskStatus(
+                            task,
+                            task.status === 'concluida'
+                              ? 'pendente'
+                              : 'concluida',
+                          )
+                        }
+                        disabled={updatingTaskId === task.id}
+                        aria-label={
+                          task.status === 'concluida'
+                            ? 'Reabrir tarefa'
+                            : 'Concluir tarefa'
+                        }
+                      >
+                        {task.status === 'concluida'
+                          ? '✓'
+                          : ''}
+                      </button>
+
+                      <div className="onboarding-task-main">
+                        <div className="onboarding-task-heading">
+                          <div>
+                            <strong>{task.titulo}</strong>
+
+                            <div className="onboarding-task-badges">
+                              {task.obrigatoria && (
+                                <span className="required">
+                                  Obrigatória
+                                </span>
+                              )}
+
+                              {overdue && (
+                                <span className="late">
+                                  Em atraso
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <span
+                            className={`onboarding-task-status status-${task.status}`}
+                          >
+                            {taskStatusLabels[task.status]}
+                          </span>
+                        </div>
+
+                        <div className="onboarding-task-details">
+                          <span>
+                            <strong>Responsável:</strong>{' '}
+                            {profileName(task.responsavel_id)}
+                          </span>
+
+                          <span className={overdue ? 'late' : ''}>
+                            <strong>Prazo:</strong>{' '}
+                            {taskDeadlineText(task)}
+                          </span>
+                        </div>
+
+                        {task.observacoes && (
+                          <p>{task.observacoes}</p>
+                        )}
+                      </div>
+
+                      <div className="onboarding-task-actions v2">
+                        <select
+                          value={task.status}
+                          onChange={(event) =>
+                            onUpdateTaskStatus(
+                              task,
+                              event.target.value as TaskStatus,
+                            )
+                          }
+                          disabled={updatingTaskId === task.id}
+                          aria-label={`Situação da tarefa ${task.titulo}`}
+                        >
+                          {Object.entries(
+                            taskStatusLabels,
+                          ).map(([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+
+                        <button
+                          className="danger"
+                          type="button"
+                          onClick={() => onDeleteTask(task)}
+                          disabled={deletingTaskId === task.id}
+                        >
+                          {deletingTaskId === task.id
+                            ? 'Excluindo...'
+                            : 'Excluir'}
+                        </button>
+                      </div>
+                    </article>
+                  )
+                })}
               </div>
-
-              <div className="onboarding-task-actions">
-                <select
-                  value={task.status}
-                  onChange={(event) =>
-                    onUpdateTaskStatus(
-                      task,
-                      event.target.value as TaskStatus,
-                    )
-                  }
-                  disabled={updatingTaskId === task.id}
-                >
-                  {Object.entries(taskStatusLabels).map(
-                    ([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ),
-                  )}
-                </select>
-
-                <button
-                  className="danger"
-                  type="button"
-                  onClick={() => onDeleteTask(task)}
-                  disabled={deletingTaskId === task.id}
-                >
-                  {deletingTaskId === task.id
-                    ? 'Excluindo...'
-                    : 'Excluir'}
-                </button>
-              </div>
-            </article>
+            </section>
           ))}
 
-          {view.tasks.length === 0 && (
-            <div className="onboarding-empty-tasks">
-              <strong>Nenhuma tarefa cadastrada</strong>
-              <p>Adicione uma tarefa ao checklist.</p>
+          {visibleTasks.length === 0 && (
+            <div className="onboarding-empty-tasks v2">
+              <div>✓</div>
+              <strong>Nenhuma tarefa neste filtro</strong>
+              <p>
+                Selecione outro filtro ou crie uma nova tarefa.
+              </p>
             </div>
           )}
         </div>
