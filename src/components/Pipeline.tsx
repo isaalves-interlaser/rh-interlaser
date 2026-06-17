@@ -9,7 +9,7 @@ import './Pipeline.css'
 
 type CandidaturaEtapa =
   | 'recebido'
-  | 'triagem'
+  | 'em_analise'
   | 'entrevista_rh'
   | 'entrevista_gestor'
   | 'teste_pratico'
@@ -73,13 +73,49 @@ type StatusModalData = {
   status: CandidaturaStatus
 }
 
+type EntrevistaModalidade =
+  | 'presencial'
+  | 'google_meet'
+  | 'teams'
+  | 'zoom'
+  | 'telefone'
+  | 'outro'
+
+type Perfil = {
+  id: string
+  full_name: string
+}
+
+type InterviewStage =
+  | 'entrevista_rh'
+  | 'entrevista_gestor'
+
+type InterviewModalData = {
+  candidaturaId: string
+  candidatoNome: string
+  vagaLabel: string
+  novaEtapa: InterviewStage
+  tipo: 'rh' | 'gestor'
+  modalidade: EntrevistaModalidade
+  inicio: string
+  fim: string
+  entrevistadorId: string
+  local: string
+  linkReuniao: string
+  observacoes: string
+}
+
 const etapas: Array<{
   id: CandidaturaEtapa
   label: string
   shortLabel: string
 }> = [
   { id: 'recebido', label: 'Recebido', shortLabel: 'Recebido' },
-  { id: 'triagem', label: 'Triagem', shortLabel: 'Triagem' },
+  {
+    id: 'em_analise',
+    label: 'Em análise',
+    shortLabel: 'Em análise',
+  },
   {
     id: 'entrevista_rh',
     label: 'Entrevista RH',
@@ -121,6 +157,18 @@ const statusLabels: Record<CandidaturaStatus, string> = {
   contratado: 'Contratado',
 }
 
+const modalidadeLabels: Record<
+  EntrevistaModalidade,
+  string
+> = {
+  presencial: 'Presencial',
+  google_meet: 'Google Meet',
+  teams: 'Microsoft Teams',
+  zoom: 'Zoom',
+  telefone: 'Telefone',
+  outro: 'Outro',
+}
+
 function formatPhone(value: string | null) {
   if (!value) {
     return 'Sem telefone'
@@ -160,10 +208,43 @@ function daysSince(value: string) {
   return Math.floor(difference / 86_400_000)
 }
 
+function toLocalInput(value: string) {
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return ''
+  }
+
+  const local = new Date(
+    date.getTime() - date.getTimezoneOffset() * 60_000,
+  )
+
+  return local.toISOString().slice(0, 16)
+}
+
+function nullableText(value: string) {
+  const normalized = value.trim()
+  return normalized || null
+}
+
+function defaultInterviewPeriod() {
+  const start = new Date()
+  start.setSeconds(0, 0)
+  start.setMinutes(Math.ceil(start.getMinutes() / 30) * 30)
+
+  const end = new Date(start.getTime() + 60 * 60 * 1000)
+
+  return {
+    inicio: toLocalInput(start.toISOString()),
+    fim: toLocalInput(end.toISOString()),
+  }
+}
+
 function Pipeline() {
   const [candidatos, setCandidatos] = useState<Candidato[]>([])
   const [vagas, setVagas] = useState<Vaga[]>([])
   const [candidaturas, setCandidaturas] = useState<Candidatura[]>([])
+  const [perfis, setPerfis] = useState<Perfil[]>([])
   const [vagaSelecionada, setVagaSelecionada] = useState('todas')
   const [statusSelecionado, setStatusSelecionado] =
     useState<'todos' | CandidaturaStatus>('ativo')
@@ -177,6 +258,10 @@ function Pipeline() {
     useState<StatusModalData | null>(null)
   const [statusObservacao, setStatusObservacao] = useState('')
   const [salvandoStatus, setSalvandoStatus] = useState(false)
+  const [entrevistaModal, setEntrevistaModal] =
+    useState<InterviewModalData | null>(null)
+  const [salvandoEntrevista, setSalvandoEntrevista] =
+    useState(false)
   const [modoVisualizacao, setModoVisualizacao] = useState<
     'confortavel' | 'compacta'
   >('confortavel')
@@ -185,8 +270,12 @@ function Pipeline() {
     setCarregando(true)
     setErro('')
 
-    const [candidatosResult, vagasResult, candidaturasResult] =
-      await Promise.all([
+    const [
+      candidatosResult,
+      vagasResult,
+      candidaturasResult,
+      perfisResult,
+    ] = await Promise.all([
         supabase
           .from('candidatos')
           .select(
@@ -220,6 +309,12 @@ function Pipeline() {
             `,
           )
           .order('updated_at', { ascending: false }),
+
+        supabase
+          .from('profiles')
+          .select('id, full_name')
+          .eq('active', true)
+          .order('full_name'),
       ])
 
     if (candidatosResult.error) {
@@ -252,11 +347,24 @@ function Pipeline() {
       return
     }
 
+    if (perfisResult.error) {
+      console.error(
+        'Erro ao carregar entrevistadores:',
+        perfisResult.error.message,
+      )
+      setErro(
+        'Não foi possível carregar os entrevistadores disponíveis.',
+      )
+      setCarregando(false)
+      return
+    }
+
     setCandidatos((candidatosResult.data ?? []) as Candidato[])
     setVagas((vagasResult.data ?? []) as Vaga[])
     setCandidaturas(
       (candidaturasResult.data ?? []) as Candidatura[],
     )
+    setPerfis((perfisResult.data ?? []) as Perfil[])
     setCarregando(false)
   }, [])
 
@@ -330,7 +438,7 @@ function Pipeline() {
       },
       {
         recebido: 0,
-        triagem: 0,
+        em_analise: 0,
         entrevista_rh: 0,
         entrevista_gestor: 0,
         teste_pratico: 0,
@@ -340,6 +448,240 @@ function Pipeline() {
       },
     )
   }, [cardsFiltrados])
+
+  function abrirAgendamentoEntrevista(
+    candidaturaId: string,
+    novaEtapa: InterviewStage,
+  ) {
+    const card = cards.find(
+      (item) => item.candidatura.id === candidaturaId,
+    )
+
+    if (!card) {
+      setErro('Não foi possível localizar a candidatura.')
+      setDraggedId(null)
+      return
+    }
+
+    const period = defaultInterviewPeriod()
+
+    setEntrevistaModal({
+      candidaturaId,
+      candidatoNome: card.candidato.nome_completo,
+      vagaLabel: `VAG-${String(card.vaga.numero).padStart(
+        6,
+        '0',
+      )} — ${card.vaga.cargo}`,
+      novaEtapa,
+      tipo:
+        novaEtapa === 'entrevista_rh'
+          ? 'rh'
+          : 'gestor',
+      modalidade: 'presencial',
+      inicio: period.inicio,
+      fim: period.fim,
+      entrevistadorId: '',
+      local: '',
+      linkReuniao: '',
+      observacoes: '',
+    })
+
+    setDraggedId(null)
+    setErro('')
+    setMensagem('')
+  }
+
+  function fecharEntrevistaModal() {
+    if (salvandoEntrevista) {
+      return
+    }
+
+    setEntrevistaModal(null)
+    setErro('')
+  }
+
+  async function salvarEntrevista() {
+    if (!entrevistaModal) {
+      return
+    }
+
+    setErro('')
+    setMensagem('')
+
+    if (!entrevistaModal.inicio || !entrevistaModal.fim) {
+      setErro('Informe o início e o término da entrevista.')
+      return
+    }
+
+    const inicio = new Date(entrevistaModal.inicio)
+    const fim = new Date(entrevistaModal.fim)
+
+    if (
+      Number.isNaN(inicio.getTime()) ||
+      Number.isNaN(fim.getTime()) ||
+      fim <= inicio
+    ) {
+      setErro(
+        'O horário final deve ser posterior ao horário inicial.',
+      )
+      return
+    }
+
+    const modalidadeOnline = [
+      'google_meet',
+      'teams',
+      'zoom',
+      'outro',
+    ].includes(entrevistaModal.modalidade)
+
+    if (
+      modalidadeOnline &&
+      !entrevistaModal.linkReuniao.trim()
+    ) {
+      setErro('Informe o link da reunião.')
+      return
+    }
+
+    setSalvandoEntrevista(true)
+
+    const { data: existingInterview, error: existingError } =
+      await supabase
+        .from('entrevistas')
+        .select('id')
+        .eq(
+          'candidatura_id',
+          entrevistaModal.candidaturaId,
+        )
+        .eq('tipo', entrevistaModal.tipo)
+        .in('status', ['agendada', 'confirmada'])
+        .limit(1)
+        .maybeSingle()
+
+    if (existingError) {
+      console.error(
+        'Erro ao validar entrevista existente:',
+        existingError.message,
+      )
+      setSalvandoEntrevista(false)
+      setErro(
+        'Não foi possível verificar a agenda da candidatura.',
+      )
+      return
+    }
+
+    if (existingInterview) {
+      setSalvandoEntrevista(false)
+      setErro(
+        'Já existe uma entrevista deste tipo agendada ou confirmada para esta candidatura.',
+      )
+      return
+    }
+
+    const { data: createdInterview, error: interviewError } =
+      await supabase
+        .from('entrevistas')
+        .insert({
+          candidatura_id:
+            entrevistaModal.candidaturaId,
+          tipo: entrevistaModal.tipo,
+          modalidade: entrevistaModal.modalidade,
+          status: 'agendada',
+          resultado: 'pendente',
+          inicio: inicio.toISOString(),
+          fim: fim.toISOString(),
+          entrevistador_id:
+            entrevistaModal.entrevistadorId || null,
+          local: nullableText(entrevistaModal.local),
+          link_reuniao: nullableText(
+            entrevistaModal.linkReuniao,
+          ),
+          observacoes: nullableText(
+            entrevistaModal.observacoes,
+          ),
+        })
+        .select('id')
+        .single()
+
+    if (interviewError || !createdInterview) {
+      console.error(
+        'Erro ao criar entrevista:',
+        interviewError?.message,
+      )
+      setSalvandoEntrevista(false)
+      setErro(
+        'Não foi possível criar a entrevista na agenda.',
+      )
+      return
+    }
+
+    const label =
+      entrevistaModal.novaEtapa === 'entrevista_rh'
+        ? 'Entrevista RH'
+        : 'Entrevista com gestor'
+
+    const { data: updatedApplication, error: applicationError } =
+      await supabase
+        .from('candidaturas')
+        .update({
+          etapa: entrevistaModal.novaEtapa,
+          status: 'ativo',
+          proxima_acao: label,
+          proxima_acao_em: inicio.toISOString(),
+          observacoes: `${label} agendada pela Pipeline.`,
+        })
+        .eq('id', entrevistaModal.candidaturaId)
+        .select(
+          `
+            id,
+            candidato_id,
+            vaga_id,
+            etapa,
+            status,
+            responsavel_id,
+            data_entrada,
+            proxima_acao,
+            proxima_acao_em,
+            motivo_reprovacao,
+            parecer_final,
+            observacoes,
+            created_at,
+            updated_at
+          `,
+        )
+        .single()
+
+    if (applicationError) {
+      console.error(
+        'Erro ao mover candidatura após agendamento:',
+        applicationError.message,
+      )
+
+      await supabase
+        .from('entrevistas')
+        .delete()
+        .eq('id', createdInterview.id)
+
+      setSalvandoEntrevista(false)
+      setErro(
+        'A entrevista não foi salva porque a candidatura não pôde ser movimentada.',
+      )
+      return
+    }
+
+    setCandidaturas((current) =>
+      current.map((item) =>
+        item.id === entrevistaModal.candidaturaId
+          ? (updatedApplication as Candidatura)
+          : item,
+      ),
+    )
+
+    setEntrevistaModal(null)
+    setSalvandoEntrevista(false)
+    setMensagem(
+      `${label} agendada e adicionada à Agenda.`,
+    )
+  }
 
   async function moverCandidatura(
     candidaturaId: string,
@@ -351,6 +693,17 @@ function Pipeline() {
 
     if (!candidatura || candidatura.etapa === novaEtapa) {
       setDraggedId(null)
+      return
+    }
+
+    if (
+      novaEtapa === 'entrevista_rh' ||
+      novaEtapa === 'entrevista_gestor'
+    ) {
+      abrirAgendamentoEntrevista(
+        candidaturaId,
+        novaEtapa,
+      )
       return
     }
 
@@ -899,6 +1252,273 @@ function Pipeline() {
           </div>
         </div>
       </section>
+
+      {entrevistaModal && (
+        <div
+          className="pipeline-modal-overlay"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              fecharEntrevistaModal()
+            }
+          }}
+        >
+          <section
+            className="pipeline-modal pipeline-interview-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pipeline-interview-title"
+          >
+            <header className="pipeline-modal-header">
+              <div>
+                <span className="pipeline-eyebrow">
+                  Agendamento
+                </span>
+                <h2 id="pipeline-interview-title">
+                  {entrevistaModal.tipo === 'rh'
+                    ? 'Entrevista RH'
+                    : 'Entrevista com gestor'}
+                </h2>
+              </div>
+
+              <button
+                type="button"
+                onClick={fecharEntrevistaModal}
+                disabled={salvandoEntrevista}
+                aria-label="Fechar"
+              >
+                ×
+              </button>
+            </header>
+
+            <div className="pipeline-modal-body">
+              <div className="pipeline-interview-summary">
+                <div>
+                  <span>Candidato</span>
+                  <strong>
+                    {entrevistaModal.candidatoNome}
+                  </strong>
+                </div>
+
+                <div>
+                  <span>Vaga</span>
+                  <strong>{entrevistaModal.vagaLabel}</strong>
+                </div>
+              </div>
+
+              <div className="pipeline-form-grid">
+                <div className="pipeline-field">
+                  <label htmlFor="pipeline-interview-start">
+                    Início *
+                  </label>
+                  <input
+                    id="pipeline-interview-start"
+                    type="datetime-local"
+                    value={entrevistaModal.inicio}
+                    onChange={(event) =>
+                      setEntrevistaModal((current) =>
+                        current
+                          ? {
+                              ...current,
+                              inicio: event.target.value,
+                            }
+                          : current,
+                      )
+                    }
+                    disabled={salvandoEntrevista}
+                  />
+                </div>
+
+                <div className="pipeline-field">
+                  <label htmlFor="pipeline-interview-end">
+                    Término *
+                  </label>
+                  <input
+                    id="pipeline-interview-end"
+                    type="datetime-local"
+                    value={entrevistaModal.fim}
+                    onChange={(event) =>
+                      setEntrevistaModal((current) =>
+                        current
+                          ? {
+                              ...current,
+                              fim: event.target.value,
+                            }
+                          : current,
+                      )
+                    }
+                    disabled={salvandoEntrevista}
+                  />
+                </div>
+
+                <div className="pipeline-field">
+                  <label htmlFor="pipeline-interview-modality">
+                    Modalidade *
+                  </label>
+                  <select
+                    id="pipeline-interview-modality"
+                    value={entrevistaModal.modalidade}
+                    onChange={(event) =>
+                      setEntrevistaModal((current) =>
+                        current
+                          ? {
+                              ...current,
+                              modalidade:
+                                event.target
+                                  .value as EntrevistaModalidade,
+                            }
+                          : current,
+                      )
+                    }
+                    disabled={salvandoEntrevista}
+                  >
+                    {Object.entries(modalidadeLabels).map(
+                      ([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ),
+                    )}
+                  </select>
+                </div>
+
+                <div className="pipeline-field">
+                  <label htmlFor="pipeline-interviewer">
+                    Entrevistador
+                  </label>
+                  <select
+                    id="pipeline-interviewer"
+                    value={
+                      entrevistaModal.entrevistadorId
+                    }
+                    onChange={(event) =>
+                      setEntrevistaModal((current) =>
+                        current
+                          ? {
+                              ...current,
+                              entrevistadorId:
+                                event.target.value,
+                            }
+                          : current,
+                      )
+                    }
+                    disabled={salvandoEntrevista}
+                  >
+                    <option value="">Não definido</option>
+                    {perfis.map((perfil) => (
+                      <option
+                        key={perfil.id}
+                        value={perfil.id}
+                      >
+                        {perfil.full_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="pipeline-field">
+                  <label htmlFor="pipeline-interview-location">
+                    Local
+                  </label>
+                  <input
+                    id="pipeline-interview-location"
+                    type="text"
+                    value={entrevistaModal.local}
+                    onChange={(event) =>
+                      setEntrevistaModal((current) =>
+                        current
+                          ? {
+                              ...current,
+                              local: event.target.value,
+                            }
+                          : current,
+                      )
+                    }
+                    placeholder="Sala, unidade ou endereço"
+                    disabled={salvandoEntrevista}
+                  />
+                </div>
+
+                <div className="pipeline-field">
+                  <label htmlFor="pipeline-interview-link">
+                    Link da reunião
+                  </label>
+                  <input
+                    id="pipeline-interview-link"
+                    type="url"
+                    value={entrevistaModal.linkReuniao}
+                    onChange={(event) =>
+                      setEntrevistaModal((current) =>
+                        current
+                          ? {
+                              ...current,
+                              linkReuniao:
+                                event.target.value,
+                            }
+                          : current,
+                      )
+                    }
+                    placeholder="https://..."
+                    disabled={salvandoEntrevista}
+                  />
+                </div>
+
+                <div className="pipeline-field full">
+                  <label htmlFor="pipeline-interview-notes">
+                    Observações
+                  </label>
+                  <textarea
+                    id="pipeline-interview-notes"
+                    rows={4}
+                    value={entrevistaModal.observacoes}
+                    onChange={(event) =>
+                      setEntrevistaModal((current) =>
+                        current
+                          ? {
+                              ...current,
+                              observacoes:
+                                event.target.value,
+                            }
+                          : current,
+                      )
+                    }
+                    placeholder="Orientações para a entrevista..."
+                    disabled={salvandoEntrevista}
+                  />
+                </div>
+              </div>
+
+              {erro && (
+                <div className="pipeline-message error">
+                  {erro}
+                </div>
+              )}
+            </div>
+
+            <footer className="pipeline-modal-actions">
+              <button
+                className="pipeline-secondary-button"
+                type="button"
+                onClick={fecharEntrevistaModal}
+                disabled={salvandoEntrevista}
+              >
+                Cancelar
+              </button>
+
+              <button
+                className="pipeline-primary-button"
+                type="button"
+                onClick={salvarEntrevista}
+                disabled={salvandoEntrevista}
+              >
+                {salvandoEntrevista
+                  ? 'Agendando...'
+                  : 'Agendar e mover candidato'}
+              </button>
+            </footer>
+          </section>
+        </div>
+      )}
 
       {statusModal && (
         <div

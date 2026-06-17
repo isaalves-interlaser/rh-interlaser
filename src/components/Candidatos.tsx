@@ -21,7 +21,7 @@ type CandidatoOrigem =
 
 type CandidaturaEtapa =
   | 'recebido'
-  | 'triagem'
+  | 'em_analise'
   | 'entrevista_rh'
   | 'entrevista_gestor'
   | 'teste_pratico'
@@ -132,7 +132,7 @@ const origemLabels: Record<CandidatoOrigem, string> = {
 
 const etapaLabels: Record<CandidaturaEtapa, string> = {
   recebido: 'Recebido',
-  triagem: 'Triagem',
+  em_analise: 'Em análise',
   entrevista_rh: 'Entrevista RH',
   entrevista_gestor: 'Entrevista gestor',
   teste_pratico: 'Teste prático',

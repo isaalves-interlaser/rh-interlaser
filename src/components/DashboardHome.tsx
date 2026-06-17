@@ -79,7 +79,7 @@ type UpcomingInterview = {
 
 const stageLabels: Record<string, string> = {
   recebido: 'Recebido',
-  triagem: 'Triagem',
+  em_analise: 'Em análise',
   entrevista_rh: 'Entrevista RH',
   entrevista_gestor: 'Entrevista com gestor',
   teste_pratico: 'Teste prático',

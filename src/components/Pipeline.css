@@ -345,7 +345,7 @@
   background: #888780;
 }
 
-.dot-triagem {
+.dot-em_analise {
   background: #378add;
 }
 
@@ -770,5 +770,72 @@
 
   .pipeline-modal-actions button {
     width: 100%;
+  }
+}
+
+
+/* Agendamento de entrevista diretamente pela Pipeline */
+.pipeline-interview-modal {
+  width: min(760px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+
+.pipeline-interview-summary {
+  margin-bottom: 18px;
+  padding: 13px 14px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  border: 1px solid #dfe6ee;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.pipeline-interview-summary div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.pipeline-interview-summary span {
+  color: #667085;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.pipeline-interview-summary strong {
+  margin-top: 4px;
+  overflow: hidden;
+  color: #172033;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pipeline-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.pipeline-form-grid .pipeline-field.full {
+  grid-column: 1 / -1;
+}
+
+.pipeline-interview-modal .pipeline-modal-body {
+  max-height: calc(100vh - 210px);
+  overflow-y: auto;
+}
+
+@media (max-width: 680px) {
+  .pipeline-interview-summary,
+  .pipeline-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pipeline-form-grid .pipeline-field.full {
+    grid-column: auto;
   }
 }
