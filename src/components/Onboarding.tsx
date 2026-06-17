@@ -95,6 +95,7 @@ type Perfil = {
   id: string
   full_name: string
   active: boolean
+  role: 'rh'
 }
 
 type OnboardingView = {
@@ -398,8 +399,9 @@ function Onboarding() {
 
       supabase
         .from('profiles')
-        .select('id, full_name, active')
+        .select('id, full_name, active, role')
         .eq('active', true)
+        .eq('role', 'rh')
         .order('full_name'),
     ])
 
@@ -1234,7 +1236,9 @@ function Onboarding() {
                       }
                       disabled={saving}
                     >
-                      <option value="">Não definido</option>
+                      <option value="">
+                        Selecione uma pessoa do RH
+                      </option>
                       {perfis.map((profile) => (
                         <option
                           key={profile.id}
@@ -1472,7 +1476,9 @@ function Onboarding() {
                       }
                       disabled={saving}
                     >
-                      <option value="">Não definido</option>
+                      <option value="">
+                        Selecione uma pessoa do RH
+                      </option>
                       {perfis.map((profile) => (
                         <option
                           key={profile.id}
