@@ -37,23 +37,38 @@
   font-size: 11px;
 }
 
-.documents-settings-header > button,
+.documents-settings-header-actions button,
 .documents-settings-modal footer button {
-  min-height: 38px;
-  padding: 0 13px;
+  min-width: 112px;
+  min-height: 40px;
+  padding: 0 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid #d0d7e1;
   border-radius: 9px;
   color: #344054;
   background: #ffffff;
   font-size: 10px;
   font-weight: 700;
+  line-height: 1;
   cursor: pointer;
+  transition:
+    border-color 0.18s,
+    background 0.18s,
+    color 0.18s,
+    transform 0.18s;
 }
 
-.documents-settings-modal footer button.primary {
-  border-color: #185fa5;
-  color: #ffffff;
-  background: #185fa5;
+.documents-settings-header-actions button:hover:not(:disabled),
+.documents-settings-modal footer button:hover:not(:disabled) {
+  border-color: #8eb9de;
+  background: #f5f9fd;
+}
+
+.documents-settings-header-actions button:active:not(:disabled),
+.documents-settings-modal footer button:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .documents-settings-summary {
@@ -432,10 +447,17 @@
   gap: 8px;
 }
 
-.documents-settings-header-actions .primary {
+.documents-settings-header-actions .primary,
+.documents-settings-modal footer button.primary {
   border-color: #185fa5;
   color: #ffffff;
   background: #185fa5;
+}
+
+.documents-settings-header-actions .primary:hover:not(:disabled),
+.documents-settings-modal footer button.primary:hover:not(:disabled) {
+  border-color: #0c4f8c;
+  background: #0c4f8c;
 }
 
 .documents-settings-field small {

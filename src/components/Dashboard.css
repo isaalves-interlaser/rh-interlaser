@@ -333,11 +333,12 @@
 }
 
 .header-user {
-  padding-left: 17px;
+  padding: 5px 8px 5px 5px;
   display: flex;
   align-items: center;
   gap: 10px;
-  border-left: 1px solid #e5e9ef;
+  border: 1px solid transparent;
+  border-radius: 11px;
 }
 
 .header-user-avatar {
@@ -543,10 +544,6 @@
 
   .header-actions {
     gap: 8px;
-  }
-
-  .header-user {
-    padding-left: 8px;
   }
 
   .statistics-grid {
