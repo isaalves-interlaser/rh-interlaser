@@ -5,9 +5,6 @@ import {
   useState,
 } from 'react'
 import { supabase } from '../lib/supabase'
-import ContratacaoModal, {
-  type UpdatedApplication,
-} from './ContratacaoModal'
 import './Pipeline.css'
 
 type CandidaturaEtapa =
@@ -76,18 +73,9 @@ type StatusModalData = {
   status: CandidaturaStatus
 }
 
-type EntrevistaModalidade =
-  | 'presencial'
-  | 'google_meet'
-  | 'teams'
-  | 'zoom'
-  | 'telefone'
-  | 'outro'
-
 type Perfil = {
   id: string
   full_name: string
-  role: 'admin' | 'rh' | 'gestor' | 'consulta'
 }
 
 type InterviewStage =
@@ -100,12 +88,9 @@ type InterviewModalData = {
   vagaLabel: string
   novaEtapa: InterviewStage
   tipo: 'rh' | 'gestor'
-  modalidade: EntrevistaModalidade
   inicio: string
   fim: string
   entrevistadorId: string
-  local: string
-  linkReuniao: string
   observacoes: string
 }
 
@@ -159,18 +144,6 @@ const statusLabels: Record<CandidaturaStatus, string> = {
   suspenso: 'Suspenso',
   banco_talentos: 'Banco de talentos',
   contratado: 'Contratado',
-}
-
-const modalidadeLabels: Record<
-  EntrevistaModalidade,
-  string
-> = {
-  presencial: 'Presencial',
-  google_meet: 'Google Meet',
-  teams: 'Microsoft Teams',
-  zoom: 'Zoom',
-  telefone: 'Telefone',
-  outro: 'Outro',
 }
 
 function formatPhone(value: string | null) {
@@ -264,8 +237,6 @@ function Pipeline() {
   const [salvandoStatus, setSalvandoStatus] = useState(false)
   const [entrevistaModal, setEntrevistaModal] =
     useState<InterviewModalData | null>(null)
-  const [contratacaoCard, setContratacaoCard] =
-    useState<CardData | null>(null)
   const [salvandoEntrevista, setSalvandoEntrevista] =
     useState(false)
   const [modoVisualizacao, setModoVisualizacao] = useState<
@@ -318,7 +289,7 @@ function Pipeline() {
 
         supabase
           .from('profiles')
-          .select('id, full_name, role')
+          .select('id, full_name')
           .eq('active', true)
           .order('full_name'),
       ])
@@ -483,12 +454,9 @@ function Pipeline() {
         novaEtapa === 'entrevista_rh'
           ? 'rh'
           : 'gestor',
-      modalidade: 'presencial',
       inicio: period.inicio,
       fim: period.fim,
       entrevistadorId: '',
-      local: '',
-      linkReuniao: '',
       observacoes: '',
     })
 
@@ -530,21 +498,6 @@ function Pipeline() {
       setErro(
         'O horário final deve ser posterior ao horário inicial.',
       )
-      return
-    }
-
-    const modalidadeOnline = [
-      'google_meet',
-      'teams',
-      'zoom',
-      'outro',
-    ].includes(entrevistaModal.modalidade)
-
-    if (
-      modalidadeOnline &&
-      !entrevistaModal.linkReuniao.trim()
-    ) {
-      setErro('Informe o link da reunião.')
       return
     }
 
@@ -590,17 +543,15 @@ function Pipeline() {
           candidatura_id:
             entrevistaModal.candidaturaId,
           tipo: entrevistaModal.tipo,
-          modalidade: entrevistaModal.modalidade,
+          modalidade: 'google_meet',
           status: 'agendada',
           resultado: 'pendente',
           inicio: inicio.toISOString(),
           fim: fim.toISOString(),
           entrevistador_id:
             entrevistaModal.entrevistadorId || null,
-          local: nullableText(entrevistaModal.local),
-          link_reuniao: nullableText(
-            entrevistaModal.linkReuniao,
-          ),
+          local: null,
+          link_reuniao: null,
           observacoes: nullableText(
             entrevistaModal.observacoes,
           ),
@@ -702,24 +653,6 @@ function Pipeline() {
       return
     }
 
-    if (novaEtapa === 'contratado') {
-      const card = cards.find(
-        (item) => item.candidatura.id === candidaturaId,
-      )
-
-      if (!card) {
-        setErro('Não foi possível localizar o candidato.')
-        setDraggedId(null)
-        return
-      }
-
-      setContratacaoCard(card)
-      setDraggedId(null)
-      setErro('')
-      setMensagem('')
-      return
-    }
-
     if (
       novaEtapa === 'entrevista_rh' ||
       novaEtapa === 'entrevista_gestor'
@@ -736,9 +669,11 @@ function Pipeline() {
     setMensagem('')
 
     const novoStatus: CandidaturaStatus =
-      candidatura.status === 'contratado'
-        ? 'ativo'
-        : candidatura.status
+      novaEtapa === 'contratado'
+        ? 'contratado'
+        : candidatura.status === 'contratado'
+          ? 'ativo'
+          : candidatura.status
 
     const { data, error } = await supabase
       .from('candidaturas')
@@ -795,13 +730,6 @@ function Pipeline() {
     card: CardData,
     status: CandidaturaStatus,
   ) {
-    if (status === 'contratado') {
-      setContratacaoCard(card)
-      setErro('')
-      setMensagem('')
-      return
-    }
-
     setStatusObservacao(
       status === 'reprovado'
         ? card.candidatura.motivo_reprovacao ?? ''
@@ -860,6 +788,10 @@ function Pipeline() {
       payload.motivo_reprovacao = observacao
     } else {
       payload.motivo_reprovacao = null
+    }
+
+    if (statusModal.status === 'contratado') {
+      payload.etapa = 'contratado'
     }
 
     const { data, error } = await supabase
@@ -1278,44 +1210,6 @@ function Pipeline() {
         </div>
       </section>
 
-      {contratacaoCard && (
-        <ContratacaoModal
-          candidaturaId={contratacaoCard.candidatura.id}
-          candidato={{
-            numero: contratacaoCard.candidato.numero,
-            nome: contratacaoCard.candidato.nome_completo,
-            email: contratacaoCard.candidato.email,
-          }}
-          vaga={{
-            numero: contratacaoCard.vaga.numero,
-            cargo: contratacaoCard.vaga.cargo,
-            setor: contratacaoCard.vaga.setor,
-          }}
-          responsaveisRh={perfis
-            .filter((profile) => profile.role === 'rh')
-            .map((profile) => ({
-              id: profile.id,
-              full_name: profile.full_name,
-            }))}
-          onClose={() => setContratacaoCard(null)}
-          onSuccess={(
-            updated: UpdatedApplication,
-            successMessage: string,
-          ) => {
-            setCandidaturas((current) =>
-              current.map((item) =>
-                item.id === updated.id
-                  ? (updated as Candidatura)
-                  : item,
-              ),
-            )
-            setContratacaoCard(null)
-            setMensagem(successMessage)
-            setErro('')
-          }}
-        />
-      )}
-
       {entrevistaModal && (
         <div
           className="pipeline-modal-overlay"
@@ -1369,6 +1263,17 @@ function Pipeline() {
                 </div>
               </div>
 
+              <div className="pipeline-meet-fixed">
+                <div className="pipeline-meet-fixed-icon">M</div>
+                <div>
+                  <strong>Entrevista pelo Google Meet</strong>
+                  <span>
+                    O link será criado automaticamente pela integração
+                    com o Google Agenda.
+                  </span>
+                </div>
+              </div>
+
               <div className="pipeline-form-grid">
                 <div className="pipeline-field">
                   <label htmlFor="pipeline-interview-start">
@@ -1415,37 +1320,6 @@ function Pipeline() {
                 </div>
 
                 <div className="pipeline-field">
-                  <label htmlFor="pipeline-interview-modality">
-                    Modalidade *
-                  </label>
-                  <select
-                    id="pipeline-interview-modality"
-                    value={entrevistaModal.modalidade}
-                    onChange={(event) =>
-                      setEntrevistaModal((current) =>
-                        current
-                          ? {
-                              ...current,
-                              modalidade:
-                                event.target
-                                  .value as EntrevistaModalidade,
-                            }
-                          : current,
-                      )
-                    }
-                    disabled={salvandoEntrevista}
-                  >
-                    {Object.entries(modalidadeLabels).map(
-                      ([value, label]) => (
-                        <option key={value} value={value}>
-                          {label}
-                        </option>
-                      ),
-                    )}
-                  </select>
-                </div>
-
-                <div className="pipeline-field">
                   <label htmlFor="pipeline-interviewer">
                     Entrevistador
                   </label>
@@ -1477,53 +1351,6 @@ function Pipeline() {
                       </option>
                     ))}
                   </select>
-                </div>
-
-                <div className="pipeline-field">
-                  <label htmlFor="pipeline-interview-location">
-                    Local
-                  </label>
-                  <input
-                    id="pipeline-interview-location"
-                    type="text"
-                    value={entrevistaModal.local}
-                    onChange={(event) =>
-                      setEntrevistaModal((current) =>
-                        current
-                          ? {
-                              ...current,
-                              local: event.target.value,
-                            }
-                          : current,
-                      )
-                    }
-                    placeholder="Sala, unidade ou endereço"
-                    disabled={salvandoEntrevista}
-                  />
-                </div>
-
-                <div className="pipeline-field">
-                  <label htmlFor="pipeline-interview-link">
-                    Link da reunião
-                  </label>
-                  <input
-                    id="pipeline-interview-link"
-                    type="url"
-                    value={entrevistaModal.linkReuniao}
-                    onChange={(event) =>
-                      setEntrevistaModal((current) =>
-                        current
-                          ? {
-                              ...current,
-                              linkReuniao:
-                                event.target.value,
-                            }
-                          : current,
-                      )
-                    }
-                    placeholder="https://..."
-                    disabled={salvandoEntrevista}
-                  />
                 </div>
 
                 <div className="pipeline-field full">

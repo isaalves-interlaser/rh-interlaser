@@ -839,3 +839,46 @@
     grid-column: auto;
   }
 }
+
+
+/* Entrevistas são sempre realizadas pelo Google Meet. */
+.pipeline-meet-fixed {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border: 1px solid #b9d7f4;
+  border-radius: 10px;
+  background: #edf6ff;
+}
+
+.pipeline-meet-fixed-icon {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: #ffffff;
+  background: #185fa5;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.pipeline-meet-fixed > div:last-child {
+  display: flex;
+  flex-direction: column;
+}
+
+.pipeline-meet-fixed strong {
+  color: #0c447c;
+  font-size: 10px;
+}
+
+.pipeline-meet-fixed span {
+  margin-top: 3px;
+  color: #475467;
+  font-size: 9px;
+  line-height: 1.45;
+}

@@ -4,7 +4,6 @@ import {
   useMemo,
   useState,
   type FormEvent,
-  type KeyboardEvent,
 } from 'react'
 import { supabase } from '../lib/supabase'
 import './Agenda.css'
@@ -61,6 +60,7 @@ type Candidatura = {
   id: string
   candidato_id: string
   vaga_id: string
+  status: string
 }
 
 type Candidato = {
@@ -78,9 +78,10 @@ type Vaga = {
 type Perfil = {
   id: string
   full_name: string
+  active: boolean
 }
 
-type AgendaItem = {
+type AgendaCard = {
   entrevista: Entrevista
   candidato: Candidato
   vaga: Vaga
@@ -103,10 +104,10 @@ type EntrevistaForm = {
   nota: string
 }
 
-const FORM_INICIAL: EntrevistaForm = {
+const initialForm: EntrevistaForm = {
   candidatura_id: '',
   tipo: 'rh',
-  modalidade: 'presencial',
+  modalidade: 'google_meet',
   status: 'agendada',
   resultado: 'pendente',
   inicio: '',
@@ -119,9 +120,7 @@ const FORM_INICIAL: EntrevistaForm = {
   nota: '',
 }
 
-const DIAS_SEMANA = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
-
-const TIPO_LABELS: Record<EntrevistaTipo, string> = {
+const tipoLabels: Record<EntrevistaTipo, string> = {
   rh: 'Entrevista RH',
   gestor: 'Entrevista com gestor',
   tecnica: 'Entrevista técnica',
@@ -130,16 +129,7 @@ const TIPO_LABELS: Record<EntrevistaTipo, string> = {
   outro: 'Outro',
 }
 
-const MODALIDADE_LABELS: Record<EntrevistaModalidade, string> = {
-  presencial: 'Presencial',
-  google_meet: 'Google Meet',
-  teams: 'Microsoft Teams',
-  zoom: 'Zoom',
-  telefone: 'Telefone',
-  outro: 'Outro',
-}
-
-const STATUS_LABELS: Record<EntrevistaStatus, string> = {
+const statusLabels: Record<EntrevistaStatus, string> = {
   agendada: 'Agendada',
   confirmada: 'Confirmada',
   realizada: 'Realizada',
@@ -147,118 +137,62 @@ const STATUS_LABELS: Record<EntrevistaStatus, string> = {
   nao_compareceu: 'Não compareceu',
 }
 
-const RESULTADO_LABELS: Record<EntrevistaResultado, string> = {
+const resultadoLabels: Record<EntrevistaResultado, string> = {
   pendente: 'Pendente',
   aprovado: 'Aprovado',
   aprovado_ressalvas: 'Aprovado com ressalvas',
   reprovado: 'Reprovado',
 }
 
-function textoOuNull(valor: string) {
-  const texto = valor.trim()
-  return texto || null
+function nullableText(value: string) {
+  const normalized = value.trim()
+  return normalized || null
 }
 
-function chaveData(data: Date) {
-  const ano = data.getFullYear()
-  const mes = String(data.getMonth() + 1).padStart(2, '0')
-  const dia = String(data.getDate()).padStart(2, '0')
-  return `${ano}-${mes}-${dia}`
-}
+function toLocalInput(value: string) {
+  const date = new Date(value)
 
-function chaveDataIso(valor: string) {
-  return chaveData(new Date(valor))
-}
-
-function mesmoDia(a: Date, b: Date) {
-  return chaveData(a) === chaveData(b)
-}
-
-function paraInputLocal(valor: string) {
-  const data = new Date(valor)
-
-  if (Number.isNaN(data.getTime())) {
+  if (Number.isNaN(date.getTime())) {
     return ''
   }
 
   const local = new Date(
-    data.getTime() - data.getTimezoneOffset() * 60_000,
+    date.getTime() - date.getTimezoneOffset() * 60_000,
   )
 
   return local.toISOString().slice(0, 16)
 }
 
-function tituloMes(data: Date) {
-  const texto = new Intl.DateTimeFormat('pt-BR', {
-    month: 'long',
-    year: 'numeric',
-  }).format(data)
-
-  return texto.charAt(0).toUpperCase() + texto.slice(1)
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'full',
+  }).format(new Date(value))
 }
 
-function tituloDia(data: Date) {
-  const texto = new Intl.DateTimeFormat('pt-BR', {
-    weekday: 'long',
-    day: '2-digit',
-    month: 'long',
-  }).format(data)
-
-  return texto.charAt(0).toUpperCase() + texto.slice(1)
-}
-
-function formatarHora(valor: string) {
+function formatTime(value: string) {
   return new Intl.DateTimeFormat('pt-BR', {
     hour: '2-digit',
     minute: '2-digit',
-  }).format(new Date(valor))
-}
-
-function criarDiasDoCalendario(referencia: Date) {
-  const primeiroDia = new Date(
-    referencia.getFullYear(),
-    referencia.getMonth(),
-    1,
-  )
-
-  const diaSemanaComecandoSegunda =
-    (primeiroDia.getDay() + 6) % 7
-
-  const inicio = new Date(primeiroDia)
-  inicio.setDate(primeiroDia.getDate() - diaSemanaComecandoSegunda)
-
-  return Array.from({ length: 42 }, (_, indice) => {
-    const data = new Date(inicio)
-    data.setDate(inicio.getDate() + indice)
-    return data
-  })
+  }).format(new Date(value))
 }
 
 function Agenda() {
-  const hoje = useMemo(() => new Date(), [])
-
   const [entrevistas, setEntrevistas] = useState<Entrevista[]>([])
   const [candidaturas, setCandidaturas] = useState<Candidatura[]>([])
   const [candidatos, setCandidatos] = useState<Candidato[]>([])
   const [vagas, setVagas] = useState<Vaga[]>([])
   const [perfis, setPerfis] = useState<Perfil[]>([])
-
-  const [mesExibido, setMesExibido] = useState(
-    new Date(hoje.getFullYear(), hoje.getMonth(), 1),
-  )
-  const [diaSelecionado, setDiaSelecionado] = useState(hoje)
-  const [pesquisa, setPesquisa] = useState('')
-  const [filtroStatus, setFiltroStatus] = useState<
-    'todos' | EntrevistaStatus
-  >('todos')
-
-  const [form, setForm] = useState<EntrevistaForm>(FORM_INICIAL)
+  const [form, setForm] = useState<EntrevistaForm>(initialForm)
   const [entrevistaEditandoId, setEntrevistaEditandoId] =
     useState<string | null>(null)
   const [modalAberto, setModalAberto] = useState(false)
   const [carregando, setCarregando] = useState(true)
   const [salvando, setSalvando] = useState(false)
   const [excluindoId, setExcluindoId] = useState<string | null>(null)
+  const [pesquisa, setPesquisa] = useState('')
+  const [filtroStatus, setFiltroStatus] = useState<
+    'todos' | EntrevistaStatus
+  >('todos')
   const [erro, setErro] = useState('')
   const [mensagem, setMensagem] = useState('')
 
@@ -299,7 +233,7 @@ function Agenda() {
 
       supabase
         .from('candidaturas')
-        .select('id, candidato_id, vaga_id'),
+        .select('id, candidato_id, vaga_id, status'),
 
       supabase
         .from('candidatos')
@@ -313,20 +247,20 @@ function Agenda() {
 
       supabase
         .from('profiles')
-        .select('id, full_name')
+        .select('id, full_name, active')
         .eq('active', true)
         .order('full_name'),
     ])
 
-    const falha =
+    const error =
       entrevistasResult.error ??
       candidaturasResult.error ??
       candidatosResult.error ??
       vagasResult.error ??
       perfisResult.error
 
-    if (falha) {
-      console.error('Erro ao carregar agenda:', falha.message)
+    if (error) {
+      console.error('Erro ao carregar agenda:', error.message)
       setErro('Não foi possível carregar a agenda.')
       setCarregando(false)
       return
@@ -346,19 +280,21 @@ function Agenda() {
     carregarDados()
   }, [carregarDados])
 
-  const itens = useMemo(() => {
-    const candidaturasMap = new Map(
+  const cards = useMemo(() => {
+    const candidatureMap = new Map(
       candidaturas.map((item) => [item.id, item]),
     )
-    const candidatosMap = new Map(
+    const candidateMap = new Map(
       candidatos.map((item) => [item.id, item]),
     )
-    const vagasMap = new Map(vagas.map((item) => [item.id, item]))
-    const perfisMap = new Map(perfis.map((item) => [item.id, item]))
+    const vacancyMap = new Map(vagas.map((item) => [item.id, item]))
+    const profileMap = new Map(
+      perfis.map((item) => [item.id, item]),
+    )
 
     return entrevistas
       .map((entrevista) => {
-        const candidatura = candidaturasMap.get(
+        const candidatura = candidatureMap.get(
           entrevista.candidatura_id,
         )
 
@@ -366,10 +302,10 @@ function Agenda() {
           return null
         }
 
-        const candidato = candidatosMap.get(
+        const candidato = candidateMap.get(
           candidatura.candidato_id,
         )
-        const vaga = vagasMap.get(candidatura.vaga_id)
+        const vaga = vacancyMap.get(candidatura.vaga_id)
 
         if (!candidato || !vaga) {
           return null
@@ -380,119 +316,69 @@ function Agenda() {
           candidato,
           vaga,
           entrevistador: entrevista.entrevistador_id
-            ? perfisMap.get(entrevista.entrevistador_id) ?? null
+            ? profileMap.get(entrevista.entrevistador_id) ?? null
             : null,
-        } satisfies AgendaItem
+        } satisfies AgendaCard
       })
-      .filter((item): item is AgendaItem => item !== null)
-  }, [candidatos, candidaturas, entrevistas, perfis, vagas])
+      .filter((item): item is AgendaCard => item !== null)
+  }, [
+    candidatos,
+    candidaturas,
+    entrevistas,
+    perfis,
+    vagas,
+  ])
 
-  const itensFiltrados = useMemo(() => {
+  const cardsFiltrados = useMemo(() => {
     const termo = pesquisa.trim().toLowerCase()
 
-    return itens.filter((item) => {
-      const combinaStatus =
+    return cards.filter((card) => {
+      const atendeStatus =
         filtroStatus === 'todos' ||
-        item.entrevista.status === filtroStatus
+        card.entrevista.status === filtroStatus
 
-      const combinaPesquisa =
+      const atendePesquisa =
         !termo ||
-        item.candidato.nome_completo.toLowerCase().includes(termo) ||
-        item.vaga.cargo.toLowerCase().includes(termo) ||
-        item.vaga.setor.toLowerCase().includes(termo) ||
-        item.entrevistador?.full_name.toLowerCase().includes(termo)
+        card.candidato.nome_completo
+          .toLowerCase()
+          .includes(termo) ||
+        card.vaga.cargo.toLowerCase().includes(termo) ||
+        card.vaga.setor.toLowerCase().includes(termo) ||
+        card.entrevistador?.full_name
+          .toLowerCase()
+          .includes(termo)
 
-      return combinaStatus && combinaPesquisa
+      return atendeStatus && atendePesquisa
     })
-  }, [filtroStatus, itens, pesquisa])
+  }, [cards, filtroStatus, pesquisa])
 
-  const itensPorDia = useMemo(() => {
-    const mapa = new Map<string, AgendaItem[]>()
+  const grupos = useMemo(() => {
+    const map = new Map<string, AgendaCard[]>()
 
-    for (const item of itensFiltrados) {
-      const chave = chaveDataIso(item.entrevista.inicio)
-      const lista = mapa.get(chave) ?? []
-      lista.push(item)
-      lista.sort(
-        (a, b) =>
-          new Date(a.entrevista.inicio).getTime() -
-          new Date(b.entrevista.inicio).getTime(),
-      )
-      mapa.set(chave, lista)
+    for (const card of cardsFiltrados) {
+      const key = new Date(card.entrevista.inicio)
+        .toISOString()
+        .slice(0, 10)
+
+      const current = map.get(key) ?? []
+      current.push(card)
+      map.set(key, current)
     }
 
-    return mapa
-  }, [itensFiltrados])
-
-  const diasCalendario = useMemo(
-    () => criarDiasDoCalendario(mesExibido),
-    [mesExibido],
-  )
-
-  const itensDiaSelecionado =
-    itensPorDia.get(chaveData(diaSelecionado)) ?? []
-
-  function selecionarDia(data: Date) {
-    setDiaSelecionado(data)
-
-    if (
-      data.getMonth() !== mesExibido.getMonth() ||
-      data.getFullYear() !== mesExibido.getFullYear()
-    ) {
-      setMesExibido(
-        new Date(data.getFullYear(), data.getMonth(), 1),
-      )
-    }
-  }
-
-  function navegarDiaComTeclado(
-    event: KeyboardEvent<HTMLDivElement>,
-    data: Date,
-  ) {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault()
-      selecionarDia(data)
-    }
-  }
-
-  function voltarMes() {
-    setMesExibido(
-      (atual) =>
-        new Date(atual.getFullYear(), atual.getMonth() - 1, 1),
+    return Array.from(map.entries()).sort(([a], [b]) =>
+      a.localeCompare(b),
     )
-  }
+  }, [cardsFiltrados])
 
-  function avancarMes() {
-    setMesExibido(
-      (atual) =>
-        new Date(atual.getFullYear(), atual.getMonth() + 1, 1),
-    )
-  }
-
-  function irParaHoje() {
-    const agora = new Date()
-    setDiaSelecionado(agora)
-    setMesExibido(
-      new Date(agora.getFullYear(), agora.getMonth(), 1),
-    )
-  }
-
-  function abrirNovaEntrevista(data = diaSelecionado) {
-    const inicio = new Date(
-      data.getFullYear(),
-      data.getMonth(),
-      data.getDate(),
-      9,
-      0,
-      0,
-      0,
-    )
-    const fim = new Date(inicio.getTime() + 60 * 60 * 1000)
+  function abrirNovaEntrevista() {
+    const now = new Date()
+    now.setMinutes(Math.ceil(now.getMinutes() / 30) * 30)
+    const end = new Date(now.getTime() + 60 * 60 * 1000)
 
     setForm({
-      ...FORM_INICIAL,
-      inicio: paraInputLocal(inicio.toISOString()),
-      fim: paraInputLocal(fim.toISOString()),
+      ...initialForm,
+      inicio: toLocalInput(now.toISOString()),
+      fim: toLocalInput(end.toISOString()),
     })
     setEntrevistaEditandoId(null)
     setErro('')
@@ -504,11 +390,11 @@ function Agenda() {
     setForm({
       candidatura_id: entrevista.candidatura_id,
       tipo: entrevista.tipo,
-      modalidade: entrevista.modalidade,
+      modalidade: 'google_meet',
       status: entrevista.status,
       resultado: entrevista.resultado,
-      inicio: paraInputLocal(entrevista.inicio),
-      fim: paraInputLocal(entrevista.fim),
+      inicio: toLocalInput(entrevista.inicio),
+      fim: toLocalInput(entrevista.fim),
       entrevistador_id: entrevista.entrevistador_id ?? '',
       local: entrevista.local ?? '',
       link_reuniao: entrevista.link_reuniao ?? '',
@@ -530,7 +416,7 @@ function Agenda() {
 
     setModalAberto(false)
     setEntrevistaEditandoId(null)
-    setForm(FORM_INICIAL)
+    setForm(initialForm)
     setErro('')
   }
 
@@ -563,18 +449,6 @@ function Agenda() {
       return
     }
 
-    const online = [
-      'google_meet',
-      'teams',
-      'zoom',
-      'outro',
-    ].includes(form.modalidade)
-
-    if (online && !form.link_reuniao.trim()) {
-      setErro('Informe o link da reunião.')
-      return
-    }
-
     const nota = form.nota.trim() ? Number(form.nota) : null
 
     if (
@@ -590,20 +464,20 @@ function Agenda() {
     const payload = {
       candidatura_id: form.candidatura_id,
       tipo: form.tipo,
-      modalidade: form.modalidade,
+      modalidade: 'google_meet',
       status: form.status,
       resultado: form.resultado,
       inicio: inicio.toISOString(),
       fim: fim.toISOString(),
       entrevistador_id: form.entrevistador_id || null,
-      local: textoOuNull(form.local),
-      link_reuniao: textoOuNull(form.link_reuniao),
-      observacoes: textoOuNull(form.observacoes),
-      parecer: textoOuNull(form.parecer),
+      local: null,
+      link_reuniao: nullableText(form.link_reuniao),
+      observacoes: nullableText(form.observacoes),
+      parecer: nullableText(form.parecer),
       nota,
     }
 
-    const resultado = entrevistaEditandoId
+    const result = entrevistaEditandoId
       ? await supabase
           .from('entrevistas')
           .update(payload)
@@ -618,25 +492,18 @@ function Agenda() {
 
     setSalvando(false)
 
-    if (resultado.error) {
+    if (result.error) {
       console.error(
         'Erro ao salvar entrevista:',
-        resultado.error.message,
+        result.error.message,
       )
       setErro('Não foi possível salvar a entrevista.')
       return
     }
 
-    const entrevistaSalva = resultado.data as Entrevista
-    const dataSalva = new Date(entrevistaSalva.inicio)
-
-    setDiaSelecionado(dataSalva)
-    setMesExibido(
-      new Date(dataSalva.getFullYear(), dataSalva.getMonth(), 1),
-    )
     setModalAberto(false)
     setEntrevistaEditandoId(null)
-    setForm(FORM_INICIAL)
+    setForm(initialForm)
     setMensagem(
       entrevistaEditandoId
         ? 'Entrevista atualizada com sucesso.'
@@ -659,7 +526,10 @@ function Agenda() {
       .eq('id', entrevista.id)
 
     if (error) {
-      console.error('Erro ao atualizar entrevista:', error.message)
+      console.error(
+        'Erro ao atualizar entrevista:',
+        error.message,
+      )
       setErro('Não foi possível atualizar a entrevista.')
       return
     }
@@ -689,7 +559,10 @@ function Agenda() {
     setExcluindoId(null)
 
     if (error) {
-      console.error('Erro ao excluir entrevista:', error.message)
+      console.error(
+        'Erro ao excluir entrevista:',
+        error.message,
+      )
       setErro('Não foi possível excluir a entrevista.')
       return
     }
@@ -700,8 +573,8 @@ function Agenda() {
 
   if (carregando) {
     return (
-      <section className="calendar-shell calendar-loading">
-        <div className="calendar-loading-icon">AG</div>
+      <section className="agenda-panel agenda-loading">
+        <div className="agenda-loading-icon">AG</div>
         <p>Carregando agenda...</p>
       </section>
     )
@@ -709,63 +582,52 @@ function Agenda() {
 
   return (
     <>
-      <section className="calendar-shell">
-        <header className="calendar-page-header">
+      <section className="agenda-panel">
+        <header className="agenda-header">
           <div>
-            <span className="calendar-eyebrow">Recrutamento</span>
+            <span className="agenda-eyebrow">Recrutamento</span>
             <h2>Agenda de entrevistas</h2>
             <p>
-              Visualize os compromissos por mês e acompanhe cada dia.
+              Agende entrevistas, registre confirmações e salve os
+              resultados.
             </p>
           </div>
 
-          <button
-            className="calendar-primary-button"
-            type="button"
-            onClick={() => abrirNovaEntrevista()}
-          >
-            + Agendar entrevista
-          </button>
+          <div className="agenda-header-actions">
+            <button
+              className="agenda-secondary-button"
+              type="button"
+              onClick={carregarDados}
+            >
+              Atualizar
+            </button>
+
+            <button
+              className="agenda-primary-button"
+              type="button"
+              onClick={abrirNovaEntrevista}
+            >
+              + Agendar entrevista
+            </button>
+          </div>
         </header>
 
-        <div className="calendar-toolbar">
-          <div className="calendar-navigation">
-            <button
-              type="button"
-              onClick={voltarMes}
-              aria-label="Mês anterior"
-            >
-              ‹
-            </button>
-
-            <button
-              className="today-button"
-              type="button"
-              onClick={irParaHoje}
-            >
-              Hoje
-            </button>
-
-            <button
-              type="button"
-              onClick={avancarMes}
-              aria-label="Próximo mês"
-            >
-              ›
-            </button>
-
-            <h3>{tituloMes(mesExibido)}</h3>
-          </div>
-
-          <div className="calendar-filters">
+        <div className="agenda-toolbar">
+          <div className="agenda-field">
+            <label htmlFor="agenda-pesquisa">Pesquisar</label>
             <input
+              id="agenda-pesquisa"
               type="search"
-              placeholder="Pesquisar candidato ou vaga..."
+              placeholder="Candidato, vaga ou entrevistador..."
               value={pesquisa}
               onChange={(event) => setPesquisa(event.target.value)}
             />
+          </div>
 
+          <div className="agenda-field">
+            <label htmlFor="agenda-status">Situação</label>
             <select
+              id="agenda-status"
               value={filtroStatus}
               onChange={(event) =>
                 setFiltroStatus(
@@ -775,8 +637,8 @@ function Agenda() {
                 )
               }
             >
-              <option value="todos">Todas as situações</option>
-              {Object.entries(STATUS_LABELS).map(
+              <option value="todos">Todas</option>
+              {Object.entries(statusLabels).map(
                 ([value, label]) => (
                   <option key={value} value={value}>
                     {label}
@@ -784,213 +646,150 @@ function Agenda() {
                 ),
               )}
             </select>
+          </div>
 
-            <button
-              className="calendar-refresh-button"
-              type="button"
-              onClick={carregarDados}
-            >
-              Atualizar
-            </button>
+          <div className="agenda-summary">
+            <span>Total</span>
+            <strong>{cards.length}</strong>
+          </div>
+
+          <div className="agenda-summary">
+            <span>Confirmadas</span>
+            <strong>
+              {
+                cards.filter(
+                  (card) =>
+                    card.entrevista.status === 'confirmada',
+                ).length
+              }
+            </strong>
           </div>
         </div>
 
         {erro && (
-          <div className="calendar-message error" role="alert">
+          <div className="agenda-message error" role="alert">
             {erro}
           </div>
         )}
 
         {mensagem && (
-          <div className="calendar-message success" role="status">
+          <div className="agenda-message success" role="status">
             {mensagem}
           </div>
         )}
 
-        <div className="calendar-main-layout">
-          <div className="calendar-board">
-            <div className="calendar-week-header">
-              {DIAS_SEMANA.map((dia) => (
-                <span key={dia}>{dia}</span>
-              ))}
-            </div>
+        <div className="agenda-content">
+          {grupos.map(([date, group]) => (
+            <section className="agenda-day" key={date}>
+              <header className="agenda-day-header">
+                <h3>{formatDate(group[0].entrevista.inicio)}</h3>
+                <span>{group.length} entrevista(s)</span>
+              </header>
 
-            <div className="calendar-grid">
-              {diasCalendario.map((data) => {
-                const chave = chaveData(data)
-                const compromissos = itensPorDia.get(chave) ?? []
-                const pertenceAoMes =
-                  data.getMonth() === mesExibido.getMonth()
-                const eHoje = mesmoDia(data, hoje)
-                const selecionado = mesmoDia(data, diaSelecionado)
-
-                return (
-                  <div
-                    className={[
-                      'calendar-day',
-                      !pertenceAoMes ? 'outside-month' : '',
-                      eHoje ? 'today' : '',
-                      selecionado ? 'selected' : '',
-                    ]
-                      .filter(Boolean)
-                      .join(' ')}
-                    key={chave}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => selecionarDia(data)}
-                    onKeyDown={(event) =>
-                      navegarDiaComTeclado(event, data)
-                    }
+              <div className="agenda-list">
+                {group.map((card) => (
+                  <article
+                    className="agenda-card"
+                    key={card.entrevista.id}
                   >
-                    <div className="calendar-day-number">
-                      <span>{data.getDate()}</span>
-
-                      {compromissos.length > 0 && (
-                        <small>{compromissos.length}</small>
-                      )}
+                    <div className="agenda-time">
+                      <strong>
+                        {formatTime(card.entrevista.inicio)}
+                      </strong>
+                      <span>
+                        até {formatTime(card.entrevista.fim)}
+                      </span>
                     </div>
 
-                    <div className="calendar-day-events">
-                      {compromissos.slice(0, 3).map((item) => (
-                        <button
-                          className={`calendar-event-chip event-${item.entrevista.status}`}
-                          key={item.entrevista.id}
-                          type="button"
-                          title={`${formatarHora(
-                            item.entrevista.inicio,
-                          )} — ${item.candidato.nome_completo}`}
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            abrirEdicao(item.entrevista)
-                          }}
-                        >
-                          <strong>
-                            {formatarHora(item.entrevista.inicio)}
-                          </strong>
-                          <span>{item.candidato.nome_completo}</span>
-                        </button>
-                      ))}
-
-                      {compromissos.length > 3 && (
-                        <div className="calendar-more-events">
-                          +{compromissos.length - 3} compromisso(s)
+                    <div className="agenda-card-main">
+                      <div className="agenda-card-title">
+                        <div>
+                          <h4>{card.candidato.nome_completo}</h4>
+                          <span>
+                            VAG-
+                            {String(card.vaga.numero).padStart(
+                              6,
+                              '0',
+                            )}{' '}
+                            — {card.vaga.cargo}
+                          </span>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
 
-          <aside className="calendar-day-panel">
-            <header className="calendar-day-panel-header">
-              <div>
-                <span>Dia selecionado</span>
-                <h3>{tituloDia(diaSelecionado)}</h3>
-              </div>
+                        <span
+                          className={`agenda-status status-${card.entrevista.status}`}
+                        >
+                          {
+                            statusLabels[
+                              card.entrevista.status
+                            ]
+                          }
+                        </span>
+                      </div>
 
-              <button
-                type="button"
-                onClick={() => abrirNovaEntrevista(diaSelecionado)}
-                aria-label="Adicionar compromisso neste dia"
-              >
-                +
-              </button>
-            </header>
+                      <div className="agenda-card-info">
+                        <span>
+                          {tipoLabels[card.entrevista.tipo]}
+                        </span>
+                        <span>Google Meet</span>
+                        <span>
+                          Entrevistador:{' '}
+                          {card.entrevistador?.full_name ??
+                            'Não definido'}
+                        </span>
+                      </div>
 
-            <div className="calendar-day-summary">
-              <div>
-                <span>Compromissos</span>
-                <strong>{itensDiaSelecionado.length}</strong>
-              </div>
-
-              <div>
-                <span>Confirmados</span>
-                <strong>
-                  {
-                    itensDiaSelecionado.filter(
-                      (item) =>
-                        item.entrevista.status === 'confirmada',
-                    ).length
-                  }
-                </strong>
-              </div>
-            </div>
-
-            <div className="calendar-day-list">
-              {itensDiaSelecionado.map((item) => (
-                <article
-                  className="calendar-appointment-card"
-                  key={item.entrevista.id}
-                >
-                  <div className="calendar-appointment-time">
-                    <strong>
-                      {formatarHora(item.entrevista.inicio)}
-                    </strong>
-                    <span>{formatarHora(item.entrevista.fim)}</span>
-                  </div>
-
-                  <div className="calendar-appointment-content">
-                    <div className="calendar-appointment-title">
-                      <h4>{item.candidato.nome_completo}</h4>
-                      <span
-                        className={`calendar-status status-${item.entrevista.status}`}
-                      >
-                        {STATUS_LABELS[item.entrevista.status]}
-                      </span>
-                    </div>
-
-                    <p>
-                      VAG-{String(item.vaga.numero).padStart(6, '0')}{' '}
-                      — {item.vaga.cargo}
-                    </p>
-
-                    <div className="calendar-appointment-meta">
-                      <span>{TIPO_LABELS[item.entrevista.tipo]}</span>
-                      <span>
-                        {MODALIDADE_LABELS[item.entrevista.modalidade]}
-                      </span>
-                      <span>
-                        {item.entrevistador?.full_name ??
-                          'Sem entrevistador'}
-                      </span>
-                    </div>
-
-                    {(item.entrevista.local ||
-                      item.entrevista.link_reuniao) && (
-                      <div className="calendar-appointment-location">
-                        {item.entrevista.local && (
-                          <span>{item.entrevista.local}</span>
-                        )}
-
-                        {item.entrevista.link_reuniao && (
+                      {card.entrevista.link_reuniao && (
+                        <div className="agenda-location">
                           <a
-                            href={item.entrevista.link_reuniao}
+                            href={card.entrevista.link_reuniao}
                             target="_blank"
                             rel="noreferrer"
                           >
-                            Abrir reunião
+                            Abrir Google Meet
                           </a>
-                        )}
-                      </div>
-                    )}
+                        </div>
+                      )}
 
-                    <div className="calendar-appointment-actions">
+                      {card.entrevista.status === 'realizada' && (
+                        <div className="agenda-result">
+                          <span>
+                            Resultado:{' '}
+                            <strong>
+                              {
+                                resultadoLabels[
+                                  card.entrevista.resultado
+                                ]
+                              }
+                            </strong>
+                          </span>
+
+                          <span>
+                            Nota:{' '}
+                            <strong>
+                              {card.entrevista.nota ?? '—'}
+                            </strong>
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="agenda-actions">
                       <button
                         type="button"
-                        onClick={() => abrirEdicao(item.entrevista)}
+                        onClick={() =>
+                          abrirEdicao(card.entrevista)
+                        }
                       >
                         Editar
                       </button>
 
-                      {item.entrevista.status === 'agendada' && (
+                      {card.entrevista.status === 'agendada' && (
                         <button
                           className="primary"
                           type="button"
                           onClick={() =>
                             atualizarStatus(
-                              item.entrevista,
+                              card.entrevista,
                               'confirmada',
                             )
                           }
@@ -1003,12 +802,12 @@ function Agenda() {
                         'realizada',
                         'cancelada',
                         'nao_compareceu',
-                      ].includes(item.entrevista.status) && (
+                      ].includes(card.entrevista.status) && (
                         <button
                           type="button"
                           onClick={() =>
                             atualizarStatus(
-                              item.entrevista,
+                              card.entrevista,
                               'cancelada',
                             )
                           }
@@ -1021,37 +820,38 @@ function Agenda() {
                         className="danger"
                         type="button"
                         onClick={() =>
-                          excluirEntrevista(item.entrevista)
+                          excluirEntrevista(card.entrevista)
                         }
-                        disabled={excluindoId === item.entrevista.id}
+                        disabled={
+                          excluindoId === card.entrevista.id
+                        }
                       >
-                        {excluindoId === item.entrevista.id
+                        {excluindoId === card.entrevista.id
                           ? 'Excluindo...'
                           : 'Excluir'}
                       </button>
                     </div>
-                  </div>
-                </article>
-              ))}
+                  </article>
+                ))}
+              </div>
+            </section>
+          ))}
 
-              {itensDiaSelecionado.length === 0 && (
-                <div className="calendar-empty-day">
-                  <div>AG</div>
-                  <strong>Nenhum compromisso</strong>
-                  <p>
-                    Clique no botão “+” para agendar uma entrevista
-                    neste dia.
-                  </p>
-                </div>
-              )}
+          {grupos.length === 0 && (
+            <div className="agenda-empty">
+              <div>AG</div>
+              <strong>Nenhuma entrevista encontrada</strong>
+              <p>
+                Agende uma entrevista ou altere os filtros.
+              </p>
             </div>
-          </aside>
+          )}
         </div>
       </section>
 
       {modalAberto && (
         <div
-          className="calendar-modal-overlay"
+          className="agenda-modal-overlay"
           role="presentation"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) {
@@ -1060,17 +860,17 @@ function Agenda() {
           }}
         >
           <section
-            className="calendar-modal"
+            className="agenda-modal"
             role="dialog"
             aria-modal="true"
-            aria-labelledby="calendar-modal-title"
+            aria-labelledby="agenda-modal-title"
           >
-            <header className="calendar-modal-header">
+            <header className="agenda-modal-header">
               <div>
-                <span className="calendar-eyebrow">
+                <span className="agenda-eyebrow">
                   {entrevistaEditandoId ? 'Edição' : 'Agenda'}
                 </span>
-                <h2 id="calendar-modal-title">
+                <h2 id="agenda-modal-title">
                   {entrevistaEditandoId
                     ? 'Editar entrevista'
                     : 'Agendar entrevista'}
@@ -1088,9 +888,9 @@ function Agenda() {
             </header>
 
             <form onSubmit={salvarEntrevista}>
-              <div className="calendar-form-section">
-                <div className="calendar-form-grid">
-                  <div className="calendar-field full">
+              <div className="agenda-form-section">
+                <div className="agenda-form-grid">
+                  <div className="agenda-field full">
                     <label htmlFor="agenda-candidatura">
                       Candidato e vaga *
                     </label>
@@ -1098,8 +898,8 @@ function Agenda() {
                       id="agenda-candidatura"
                       value={form.candidatura_id}
                       onChange={(event) =>
-                        setForm((atual) => ({
-                          ...atual,
+                        setForm((current) => ({
+                          ...current,
                           candidatura_id: event.target.value,
                         }))
                       }
@@ -1109,10 +909,12 @@ function Agenda() {
                       {candidaturas.map((candidatura) => {
                         const candidato = candidatos.find(
                           (item) =>
-                            item.id === candidatura.candidato_id,
+                            item.id ===
+                            candidatura.candidato_id,
                         )
                         const vaga = vagas.find(
-                          (item) => item.id === candidatura.vaga_id,
+                          (item) =>
+                            item.id === candidatura.vaga_id,
                         )
 
                         if (!candidato || !vaga) {
@@ -1125,28 +927,32 @@ function Agenda() {
                             value={candidatura.id}
                           >
                             {candidato.nome_completo} — VAG-
-                            {String(vaga.numero).padStart(6, '0')} —{' '}
-                            {vaga.cargo}
+                            {String(vaga.numero).padStart(
+                              6,
+                              '0',
+                            )}{' '}
+                            — {vaga.cargo}
                           </option>
                         )
                       })}
                     </select>
                   </div>
 
-                  <div className="calendar-field">
+                  <div className="agenda-field">
                     <label htmlFor="agenda-tipo">Tipo *</label>
                     <select
                       id="agenda-tipo"
                       value={form.tipo}
                       onChange={(event) =>
-                        setForm((atual) => ({
-                          ...atual,
-                          tipo: event.target.value as EntrevistaTipo,
+                        setForm((current) => ({
+                          ...current,
+                          tipo:
+                            event.target.value as EntrevistaTipo,
                         }))
                       }
                       disabled={salvando}
                     >
-                      {Object.entries(TIPO_LABELS).map(
+                      {Object.entries(tipoLabels).map(
                         ([value, label]) => (
                           <option key={value} value={value}>
                             {label}
@@ -1156,41 +962,28 @@ function Agenda() {
                     </select>
                   </div>
 
-                  <div className="calendar-field">
-                    <label htmlFor="agenda-modalidade">
-                      Modalidade *
+                  <div className="agenda-meet-fixed">
+                    <div className="agenda-meet-fixed-icon">M</div>
+                    <div>
+                      <strong>Google Meet</strong>
+                      <span>
+                        O link será gerado automaticamente pelo
+                        Google Agenda.
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="agenda-field">
+                    <label htmlFor="agenda-inicio">
+                      Início *
                     </label>
-                    <select
-                      id="agenda-modalidade"
-                      value={form.modalidade}
-                      onChange={(event) =>
-                        setForm((atual) => ({
-                          ...atual,
-                          modalidade:
-                            event.target.value as EntrevistaModalidade,
-                        }))
-                      }
-                      disabled={salvando}
-                    >
-                      {Object.entries(MODALIDADE_LABELS).map(
-                        ([value, label]) => (
-                          <option key={value} value={value}>
-                            {label}
-                          </option>
-                        ),
-                      )}
-                    </select>
-                  </div>
-
-                  <div className="calendar-field">
-                    <label htmlFor="agenda-inicio">Início *</label>
                     <input
                       id="agenda-inicio"
                       type="datetime-local"
                       value={form.inicio}
                       onChange={(event) =>
-                        setForm((atual) => ({
-                          ...atual,
+                        setForm((current) => ({
+                          ...current,
                           inicio: event.target.value,
                         }))
                       }
@@ -1198,15 +991,17 @@ function Agenda() {
                     />
                   </div>
 
-                  <div className="calendar-field">
-                    <label htmlFor="agenda-fim">Término *</label>
+                  <div className="agenda-field">
+                    <label htmlFor="agenda-fim">
+                      Término *
+                    </label>
                     <input
                       id="agenda-fim"
                       type="datetime-local"
                       value={form.fim}
                       onChange={(event) =>
-                        setForm((atual) => ({
-                          ...atual,
+                        setForm((current) => ({
+                          ...current,
                           fim: event.target.value,
                         }))
                       }
@@ -1214,7 +1009,7 @@ function Agenda() {
                     />
                   </div>
 
-                  <div className="calendar-field">
+                  <div className="agenda-field">
                     <label htmlFor="agenda-entrevistador">
                       Entrevistador
                     </label>
@@ -1222,9 +1017,10 @@ function Agenda() {
                       id="agenda-entrevistador"
                       value={form.entrevistador_id}
                       onChange={(event) =>
-                        setForm((atual) => ({
-                          ...atual,
-                          entrevistador_id: event.target.value,
+                        setForm((current) => ({
+                          ...current,
+                          entrevistador_id:
+                            event.target.value,
                         }))
                       }
                       disabled={salvando}
@@ -1238,7 +1034,7 @@ function Agenda() {
                     </select>
                   </div>
 
-                  <div className="calendar-field">
+                  <div className="agenda-field">
                     <label htmlFor="agenda-status-form">
                       Situação
                     </label>
@@ -1246,15 +1042,16 @@ function Agenda() {
                       id="agenda-status-form"
                       value={form.status}
                       onChange={(event) =>
-                        setForm((atual) => ({
-                          ...atual,
+                        setForm((current) => ({
+                          ...current,
                           status:
-                            event.target.value as EntrevistaStatus,
+                            event.target
+                              .value as EntrevistaStatus,
                         }))
                       }
                       disabled={salvando}
                     >
-                      {Object.entries(STATUS_LABELS).map(
+                      {Object.entries(statusLabels).map(
                         ([value, label]) => (
                           <option key={value} value={value}>
                             {label}
@@ -1264,43 +1061,9 @@ function Agenda() {
                     </select>
                   </div>
 
-                  <div className="calendar-field">
-                    <label htmlFor="agenda-local">Local</label>
-                    <input
-                      id="agenda-local"
-                      type="text"
-                      value={form.local}
-                      onChange={(event) =>
-                        setForm((atual) => ({
-                          ...atual,
-                          local: event.target.value,
-                        }))
-                      }
-                      disabled={salvando}
-                    />
-                  </div>
-
-                  <div className="calendar-field">
-                    <label htmlFor="agenda-link">
-                      Link da reunião
-                    </label>
-                    <input
-                      id="agenda-link"
-                      type="url"
-                      placeholder="https://..."
-                      value={form.link_reuniao}
-                      onChange={(event) =>
-                        setForm((atual) => ({
-                          ...atual,
-                          link_reuniao: event.target.value,
-                        }))
-                      }
-                      disabled={salvando}
-                    />
-                  </div>
                 </div>
 
-                <div className="calendar-field full space-top">
+                <div className="agenda-field full space-top">
                   <label htmlFor="agenda-observacoes">
                     Observações
                   </label>
@@ -1309,8 +1072,8 @@ function Agenda() {
                     rows={3}
                     value={form.observacoes}
                     onChange={(event) =>
-                      setForm((atual) => ({
-                        ...atual,
+                      setForm((current) => ({
+                        ...current,
                         observacoes: event.target.value,
                       }))
                     }
@@ -1319,11 +1082,11 @@ function Agenda() {
                 </div>
               </div>
 
-              <div className="calendar-form-section">
+              <div className="agenda-form-section">
                 <h3>Resultado da entrevista</h3>
 
-                <div className="calendar-form-grid">
-                  <div className="calendar-field">
+                <div className="agenda-form-grid">
+                  <div className="agenda-field">
                     <label htmlFor="agenda-resultado">
                       Resultado
                     </label>
@@ -1331,15 +1094,16 @@ function Agenda() {
                       id="agenda-resultado"
                       value={form.resultado}
                       onChange={(event) =>
-                        setForm((atual) => ({
-                          ...atual,
+                        setForm((current) => ({
+                          ...current,
                           resultado:
-                            event.target.value as EntrevistaResultado,
+                            event.target
+                              .value as EntrevistaResultado,
                         }))
                       }
                       disabled={salvando}
                     >
-                      {Object.entries(RESULTADO_LABELS).map(
+                      {Object.entries(resultadoLabels).map(
                         ([value, label]) => (
                           <option key={value} value={value}>
                             {label}
@@ -1349,7 +1113,7 @@ function Agenda() {
                     </select>
                   </div>
 
-                  <div className="calendar-field">
+                  <div className="agenda-field">
                     <label htmlFor="agenda-nota">
                       Nota de 0 a 10
                     </label>
@@ -1361,8 +1125,8 @@ function Agenda() {
                       step="0.1"
                       value={form.nota}
                       onChange={(event) =>
-                        setForm((atual) => ({
-                          ...atual,
+                        setForm((current) => ({
+                          ...current,
                           nota: event.target.value,
                         }))
                       }
@@ -1371,15 +1135,17 @@ function Agenda() {
                   </div>
                 </div>
 
-                <div className="calendar-field full space-top">
-                  <label htmlFor="agenda-parecer">Parecer</label>
+                <div className="agenda-field full space-top">
+                  <label htmlFor="agenda-parecer">
+                    Parecer
+                  </label>
                   <textarea
                     id="agenda-parecer"
                     rows={4}
                     value={form.parecer}
                     onChange={(event) =>
-                      setForm((atual) => ({
-                        ...atual,
+                      setForm((current) => ({
+                        ...current,
                         parecer: event.target.value,
                       }))
                     }
@@ -1389,12 +1155,14 @@ function Agenda() {
               </div>
 
               {erro && (
-                <div className="calendar-message error">{erro}</div>
+                <div className="agenda-message error">
+                  {erro}
+                </div>
               )}
 
-              <footer className="calendar-modal-actions">
+              <footer className="agenda-modal-actions">
                 <button
-                  className="calendar-secondary-button"
+                  className="agenda-secondary-button"
                   type="button"
                   onClick={fecharModal}
                   disabled={salvando}
@@ -1403,7 +1171,7 @@ function Agenda() {
                 </button>
 
                 <button
-                  className="calendar-primary-button"
+                  className="agenda-primary-button"
                   type="submit"
                   disabled={salvando}
                 >
