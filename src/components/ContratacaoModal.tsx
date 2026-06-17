@@ -2,11 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import './ContratacaoModal.css'
 
-type DocumentType =
-  | 'rg'
-  | 'cpf'
-  | 'carteira_trabalho'
-  | 'certidao_nascimento'
+type DocumentType = string
 
 type RhProfile = {
   id: string
@@ -155,24 +151,18 @@ function ContratacaoModal({
         return
       }
 
-      const allowedCodes = new Set<DocumentType>([
-        'rg',
-        'cpf',
-        'carteira_trabalho',
-        'certidao_nascimento',
-      ])
-
-      const configured = (data ?? [])
-        .filter((item) =>
-          allowedCodes.has(item.codigo as DocumentType),
-        )
-        .map((item) => ({
-          id: item.codigo as DocumentType,
-          label: item.nome,
-          description:
-            item.descricao ?? 'Documento admissional.',
-          defaultSelected: item.padrao,
-        }))
+      const configured = (data ?? []).map((item: {
+        codigo: string
+        nome: string
+        descricao: string | null
+        padrao: boolean
+      }) => ({
+        id: String(item.codigo),
+        label: item.nome,
+        description:
+          item.descricao ?? 'Documento admissional.',
+        defaultSelected: item.padrao,
+      }))
 
       if (configured.length > 0) {
         setDocumentOptions(configured)

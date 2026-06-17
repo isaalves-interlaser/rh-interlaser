@@ -95,7 +95,7 @@ const statusLabels: Record<VagaStatus, string> = {
   aberta: 'Aberta',
   em_selecao: 'Em seleção',
   suspensa: 'Suspensa',
-  preenchida: 'Preenchida / Finalizada',
+  preenchida: 'Fechada',
 }
 
 const prioridadeLabels: Record<VagaPrioridade, string> = {
@@ -276,6 +276,36 @@ function Vagas() {
     return map
   }, [candidaturas])
 
+  const contratadoPorVaga = useMemo(() => {
+    const map = new Map<
+      string,
+      { candidatura: Candidatura; candidato: Candidato }
+    >()
+
+    for (const candidatura of candidaturas) {
+      const contratado =
+        candidatura.status === 'contratado' ||
+        candidatura.etapa === 'contratado'
+
+      if (!contratado || map.has(candidatura.vaga_id)) {
+        continue
+      }
+
+      const candidato = candidatos.find(
+        (item) => item.id === candidatura.candidato_id,
+      )
+
+      if (candidato) {
+        map.set(candidatura.vaga_id, {
+          candidatura,
+          candidato,
+        })
+      }
+    }
+
+    return map
+  }, [candidatos, candidaturas])
+
   const vagaDetalhes =
     vagas.find((vaga) => vaga.id === vagaDetalhesId) ?? null
 
@@ -405,7 +435,7 @@ function Vagas() {
 
     if (totalCandidaturas > 0) {
       setErro(
-        'Esta vaga possui candidatos vinculados e não pode ser excluída. Altere o status para “Suspensa” ou “Preenchida / Finalizada”.',
+        'Esta vaga possui candidatos vinculados e não pode ser excluída. Altere o status para “Suspensa” ou “Fechada”.',
       )
       return
     }
@@ -526,6 +556,7 @@ function Vagas() {
                 <th>Empresa / filial</th>
                 <th>Contrato</th>
                 <th>Candidatos</th>
+                <th>Contratado</th>
                 <th>Status</th>
                 <th>Prioridade</th>
                 <th>Prazo</th>
@@ -541,6 +572,7 @@ function Vagas() {
                 const filial = filiais.find(
                   (item) => item.id === vaga.filial_id,
                 )
+                const contratado = contratadoPorVaga.get(vaga.id)
 
                 return (
                   <tr key={vaga.id}>
@@ -581,6 +613,27 @@ function Vagas() {
                       >
                         {candidaturasPorVaga.get(vaga.id)?.length ?? 0}
                       </button>
+                    </td>
+                    <td>
+                      {contratado ? (
+                        <button
+                          className="vacancy-hired-candidate"
+                          type="button"
+                          onClick={() => setVagaDetalhesId(vaga.id)}
+                          title={contratado.candidato.nome_completo}
+                        >
+                          <span>
+                            {contratado.candidato.nome_completo
+                              .charAt(0)
+                              .toUpperCase()}
+                          </span>
+                          <strong>
+                            {contratado.candidato.nome_completo}
+                          </strong>
+                        </button>
+                      ) : (
+                        <span className="vacancy-no-hire">—</span>
+                      )}
                     </td>
                     <td>
                       <span
@@ -640,7 +693,7 @@ function Vagas() {
 
               {vagasFiltradas.length === 0 && (
                 <tr>
-                  <td colSpan={9}>
+                  <td colSpan={10}>
                     <div className="vacancies-empty">
                       <div>VG</div>
                       <strong>Nenhuma vaga encontrada</strong>
@@ -705,6 +758,18 @@ function Vagas() {
                   {vagaDetalhes.setor} · {candidaturasDaVaga.length}{' '}
                   candidato(s) vinculado(s)
                 </p>
+
+                {contratadoPorVaga.get(vagaDetalhes.id) && (
+                  <div className="vacancy-filled-summary">
+                    <span>Vaga fechada com</span>
+                    <strong>
+                      {
+                        contratadoPorVaga.get(vagaDetalhes.id)
+                          ?.candidato.nome_completo
+                      }
+                    </strong>
+                  </div>
+                )}
               </div>
 
               <button
@@ -727,9 +792,17 @@ function Vagas() {
                   return null
                 }
 
+                const contratado =
+                  candidatura.status === 'contratado' ||
+                  candidatura.etapa === 'contratado'
+
                 return (
                   <article
-                    className="vacancy-candidate-card"
+                    className={
+                      contratado
+                        ? 'vacancy-candidate-card hired'
+                        : 'vacancy-candidate-card'
+                    }
                     key={candidatura.id}
                   >
                     <div className="vacancy-candidate-avatar">
@@ -745,6 +818,11 @@ function Vagas() {
                     </div>
 
                     <div className="vacancy-candidate-process">
+                      {contratado && (
+                        <span className="vacancy-hired-badge">
+                          Candidato contratado
+                        </span>
+                      )}
                       <span className={`vacancy-stage stage-${candidatura.etapa}`}>
                         {candidatura.etapa.replaceAll('_', ' ')}
                       </span>

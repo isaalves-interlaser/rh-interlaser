@@ -615,3 +615,70 @@
     align-items: flex-start;
   }
 }
+
+
+.vacancy-hired-candidate {
+  max-width: 210px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  color: #172033;
+  background: transparent;
+  cursor: pointer;
+}
+
+.vacancy-hired-candidate > span {
+  width: 27px;
+  height: 27px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #ffffff;
+  background: #16835f;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.vacancy-hired-candidate strong {
+  overflow: hidden;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vacancy-no-hire {
+  color: #98a2b3;
+}
+
+.vacancy-filled-summary {
+  margin-top: 9px;
+  padding: 8px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 8px;
+  color: #126437;
+  background: #eaf8f0;
+  font-size: 9px;
+}
+
+.vacancy-filled-summary strong {
+  font-size: 10px;
+}
+
+.vacancy-candidate-card.hired {
+  border-color: #a8ddbe;
+  background: #f2fbf6;
+}
+
+.vacancy-hired-badge {
+  padding: 4px 7px;
+  border-radius: 20px;
+  color: #126437;
+  background: #dff5e8;
+  font-size: 8px;
+  font-weight: 800;
+}

@@ -19,9 +19,6 @@ type OnboardingStatus =
 type TaskCategory =
   | 'documentacao'
   | 'exame'
-  | 'acesso'
-  | 'equipamento'
-  | 'treinamento'
   | 'integracao'
   | 'beneficios'
   | 'outro'
@@ -162,23 +159,16 @@ const taskStatusLabels: Record<TaskStatus, string> = {
 
 const categoryLabels: Record<TaskCategory, string> = {
   documentacao: 'Documentação',
-  exame: 'Exame',
-  acesso: 'Acessos',
-  equipamento: 'Equipamentos',
-  treinamento: 'Treinamento',
+  exame: 'Exame admissional',
   integracao: 'Integração',
-  beneficios: 'Benefícios',
-  outro: 'Outro',
+  beneficios: 'Benefícios e assinaturas',
+  outro: 'Outros',
 }
-
 
 const categoryOrder: TaskCategory[] = [
   'documentacao',
   'exame',
-  'acesso',
-  'equipamento',
   'integracao',
-  'treinamento',
   'beneficios',
   'outro',
 ]
@@ -1614,6 +1604,25 @@ function OnboardingDetails({
   const [taskFilter, setTaskFilter] =
     useState<TaskViewFilter>('todas')
 
+  const [documentsOpen, setDocumentsOpen] = useState(true)
+  const [openCategories, setOpenCategories] = useState<
+    Set<TaskCategory>
+  >(() => new Set<TaskCategory>(['exame', 'integracao']))
+
+  function toggleCategory(category: TaskCategory) {
+    setOpenCategories((current) => {
+      const next = new Set(current)
+
+      if (next.has(category)) {
+        next.delete(category)
+      } else {
+        next.add(category)
+      }
+
+      return next
+    })
+  }
+
   const progress = progressForTasks(view.tasks)
   const completedCount = view.tasks.filter(
     (task) => task.status === 'concluida',
@@ -1800,9 +1809,42 @@ function OnboardingDetails({
         )}
       </section>
 
-      <DocumentacaoAdmissional
-        candidaturaId={view.candidatura.id}
-      />
+      <section className="onboarding-collapsible-section">
+        <button
+          className="onboarding-collapsible-trigger"
+          type="button"
+          onClick={() => setDocumentsOpen((current) => !current)}
+          aria-expanded={documentsOpen}
+        >
+          <div>
+            <span className="onboarding-collapsible-icon">DOC</span>
+            <span>
+              <strong>Documentação admissional</strong>
+              <small>
+                Acompanhe os arquivos enviados pelo candidato.
+              </small>
+            </span>
+          </div>
+
+          <span
+            className={
+              documentsOpen
+                ? 'onboarding-collapse-arrow open'
+                : 'onboarding-collapse-arrow'
+            }
+          >
+            ›
+          </span>
+        </button>
+
+        {documentsOpen && (
+          <div className="onboarding-collapsible-content">
+            <DocumentacaoAdmissional
+              candidaturaId={view.candidatura.id}
+            />
+          </div>
+        )}
+      </section>
 
       <section className="onboarding-checklist v2">
         <header className="onboarding-checklist-header">
@@ -1864,7 +1906,12 @@ function OnboardingDetails({
               className="onboarding-task-group"
               key={group.category}
             >
-              <header>
+              <button
+                className="onboarding-task-group-trigger"
+                type="button"
+                onClick={() => toggleCategory(group.category)}
+                aria-expanded={openCategories.has(group.category)}
+              >
                 <div>
                   <span
                     className={`onboarding-category-icon category-${group.category}`}
@@ -1882,9 +1929,20 @@ function OnboardingDetails({
                     </p>
                   </div>
                 </div>
-              </header>
 
-              <div className="onboarding-task-list v2">
+                <span
+                  className={
+                    openCategories.has(group.category)
+                      ? 'onboarding-collapse-arrow open'
+                      : 'onboarding-collapse-arrow'
+                  }
+                >
+                  ›
+                </span>
+              </button>
+
+              {openCategories.has(group.category) && (
+                <div className="onboarding-task-list v2">
                 {group.tasks.map((task) => {
                   const overdue = isTaskOverdue(task)
                   const automatedDocumentTask =
@@ -2020,7 +2078,8 @@ function OnboardingDetails({
                     </article>
                   )
                 })}
-              </div>
+                </div>
+              )}
             </section>
           ))}
 

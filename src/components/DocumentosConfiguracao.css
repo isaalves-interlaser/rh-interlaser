@@ -426,3 +426,50 @@
     grid-column: 2;
   }
 }
+
+.documents-settings-header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.documents-settings-header-actions .primary {
+  border-color: #185fa5;
+  color: #ffffff;
+  background: #185fa5;
+}
+
+.documents-settings-field small {
+  display: block;
+  margin-top: 5px;
+  color: #98a2b3;
+  font-size: 8px;
+}
+
+.documents-settings-empty {
+  min-height: 210px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  text-align: center;
+}
+
+.documents-settings-empty strong {
+  color: #344054;
+  font-size: 11px;
+}
+
+.documents-settings-empty p {
+  margin: 6px 0 0;
+  color: #98a2b3;
+  font-size: 9px;
+}
+
+@media (max-width: 620px) {
+  .documents-settings-header-actions {
+    width: 100%;
+  }
+
+  .documents-settings-header-actions button {
+    flex: 1;
+  }
+}

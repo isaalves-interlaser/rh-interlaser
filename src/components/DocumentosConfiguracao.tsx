@@ -9,11 +9,7 @@ import { supabase } from '../lib/supabase'
 import './DocumentosConfiguracao.css'
 
 type DocumentoConfig = {
-  codigo:
-    | 'rg'
-    | 'cpf'
-    | 'carteira_trabalho'
-    | 'certidao_nascimento'
+  codigo: string
   nome: string
   descricao: string | null
   active: boolean
@@ -24,6 +20,7 @@ type DocumentoConfig = {
 }
 
 type DocumentoForm = {
+  codigo: string
   nome: string
   descricao: string
   active: boolean
@@ -32,11 +29,22 @@ type DocumentoForm = {
 }
 
 const emptyForm: DocumentoForm = {
+  codigo: '',
   nome: '',
   descricao: '',
   active: true,
   padrao: true,
-  ordem: '0',
+  ordem: '10',
+}
+
+function normalizeCode(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 50)
 }
 
 function DocumentosConfiguracao() {
@@ -44,6 +52,7 @@ function DocumentosConfiguracao() {
     useState<DocumentoConfig[]>([])
   const [editing, setEditing] =
     useState<DocumentoConfig | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] =
     useState<DocumentoForm>(emptyForm)
   const [carregando, setCarregando] = useState(true)
@@ -61,6 +70,7 @@ function DocumentosConfiguracao() {
         'codigo, nome, descricao, active, padrao, ordem, created_at, updated_at',
       )
       .order('ordem')
+      .order('nome')
 
     if (error) {
       console.error(
@@ -111,9 +121,26 @@ function DocumentosConfiguracao() {
     [documentos],
   )
 
+  function openNew() {
+    const nextOrder =
+      documentos.length === 0
+        ? 10
+        : Math.max(...documentos.map((item) => item.ordem)) + 10
+
+    setEditing(null)
+    setForm({
+      ...emptyForm,
+      ordem: String(nextOrder),
+    })
+    setErro('')
+    setMensagem('')
+    setModalOpen(true)
+  }
+
   function openEdit(documento: DocumentoConfig) {
     setEditing(documento)
     setForm({
+      codigo: documento.codigo,
       nome: documento.nome,
       descricao: documento.descricao ?? '',
       active: documento.active,
@@ -122,6 +149,7 @@ function DocumentosConfiguracao() {
     })
     setErro('')
     setMensagem('')
+    setModalOpen(true)
   }
 
   function closeModal() {
@@ -129,6 +157,7 @@ function DocumentosConfiguracao() {
       return
     }
 
+    setModalOpen(false)
     setEditing(null)
     setForm(emptyForm)
   }
@@ -137,16 +166,26 @@ function DocumentosConfiguracao() {
     event: FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault()
-
-    if (!editing) {
-      return
-    }
-
     setErro('')
     setMensagem('')
 
+    const codigo = normalizeCode(form.codigo || form.nome)
     const nome = form.nome.trim()
     const ordem = Number(form.ordem)
+
+    if (codigo.length < 2) {
+      setErro(
+        'Informe um código com pelo menos dois caracteres.',
+      )
+      return
+    }
+
+    if (!/^[a-z0-9]+(?:_[a-z0-9]+)*$/.test(codigo)) {
+      setErro(
+        'O código deve usar apenas letras minúsculas, números e sublinhado.',
+      )
+      return
+    }
 
     if (nome.length < 2) {
       setErro('Informe o nome do documento.')
@@ -160,43 +199,59 @@ function DocumentosConfiguracao() {
 
     setSalvando(true)
 
-    const { data, error } = await supabase
-      .from('documentos_configuracao')
-      .update({
-        nome,
-        descricao: form.descricao.trim() || null,
-        active: form.active,
-        padrao: form.active ? form.padrao : false,
-        ordem,
-      })
-      .eq('codigo', editing.codigo)
-      .select()
-      .single()
+    const payload = {
+      codigo,
+      nome,
+      descricao: form.descricao.trim() || null,
+      active: form.active,
+      padrao: form.active ? form.padrao : false,
+      ordem,
+    }
+
+    const result = editing
+      ? await supabase
+          .from('documentos_configuracao')
+          .update({
+            nome: payload.nome,
+            descricao: payload.descricao,
+            active: payload.active,
+            padrao: payload.padrao,
+            ordem: payload.ordem,
+          })
+          .eq('codigo', editing.codigo)
+          .select()
+          .single()
+      : await supabase
+          .from('documentos_configuracao')
+          .insert(payload)
+          .select()
+          .single()
 
     setSalvando(false)
 
-    if (error) {
+    if (result.error) {
       console.error(
-        'Erro ao atualizar documento:',
-        error.message,
+        'Erro ao salvar documento:',
+        result.error.message,
       )
-      setErro('Não foi possível atualizar o documento.')
+
+      setErro(
+        result.error.code === '23505'
+          ? 'Já existe um documento com esse código.'
+          : 'Não foi possível salvar o documento.',
+      )
       return
     }
 
-    setDocumentos((current) =>
-      current
-        .map((documento) =>
-          documento.codigo === editing.codigo
-            ? (data as DocumentoConfig)
-            : documento,
-        )
-        .sort((a, b) => a.ordem - b.ordem),
-    )
-
+    setModalOpen(false)
     setEditing(null)
     setForm(emptyForm)
-    setMensagem('Documento atualizado com sucesso.')
+    setMensagem(
+      editing
+        ? 'Documento atualizado com sucesso.'
+        : 'Documento cadastrado com sucesso.',
+    )
+    await carregarDocumentos()
   }
 
   async function toggleActive(documento: DocumentoConfig) {
@@ -254,22 +309,32 @@ function DocumentosConfiguracao() {
             <span>Configurações</span>
             <h2>Documentação admissional</h2>
             <p>
-              Defina quais documentos aparecem na contratação
-              e quais ficam selecionados por padrão.
+              Cadastre os documentos que o RH poderá solicitar
+              ao candidato.
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={carregarDocumentos}
-          >
-            Atualizar
-          </button>
+          <div className="documents-settings-header-actions">
+            <button
+              type="button"
+              onClick={carregarDocumentos}
+            >
+              Atualizar
+            </button>
+
+            <button
+              className="primary"
+              type="button"
+              onClick={openNew}
+            >
+              + Novo documento
+            </button>
+          </div>
         </header>
 
         <div className="documents-settings-summary">
           <div>
-            <span>Total integrado</span>
+            <span>Total cadastrado</span>
             <strong>{documentos.length}</strong>
           </div>
 
@@ -287,9 +352,9 @@ function DocumentosConfiguracao() {
         <div className="documents-settings-note">
           <strong>Como esta configuração funciona</strong>
           <p>
-            Os documentos ativos aparecem na tela de solicitação.
-            Os marcados como padrão já iniciam selecionados para o
-            RH.
+            Documentos ativos aparecem na solicitação. Os
+            marcados como padrão já iniciam selecionados, mas o
+            RH poderá desmarcá-los.
           </p>
         </div>
 
@@ -363,6 +428,15 @@ function DocumentosConfiguracao() {
               </div>
             </article>
           ))}
+
+          {documentos.length === 0 && (
+            <div className="documents-settings-empty">
+              <strong>Nenhum documento cadastrado</strong>
+              <p>
+                Clique em “Novo documento” para criar o primeiro.
+              </p>
+            </div>
+          )}
         </div>
       </section>
 
@@ -390,7 +464,7 @@ function DocumentosConfiguracao() {
         </div>
       )}
 
-      {editing && (
+      {modalOpen && (
         <div
           className="documents-settings-modal-overlay"
           role="presentation"
@@ -408,7 +482,11 @@ function DocumentosConfiguracao() {
             <header>
               <div>
                 <span>Documento</span>
-                <h2>Editar {editing.nome}</h2>
+                <h2>
+                  {editing
+                    ? `Editar ${editing.nome}`
+                    : 'Novo documento'}
+                </h2>
               </div>
 
               <button type="button" onClick={closeModal}>
@@ -425,15 +503,43 @@ function DocumentosConfiguracao() {
                   <input
                     id="document-name"
                     value={form.nome}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      const nome = event.target.value
                       setForm((current) => ({
                         ...current,
-                        nome: event.target.value,
+                        nome,
+                        codigo: editing
+                          ? current.codigo
+                          : normalizeCode(nome),
                       }))
-                    }
+                    }}
                     disabled={salvando}
                     autoFocus
                   />
+                </div>
+
+                <div className="documents-settings-field">
+                  <label htmlFor="document-code">
+                    Código interno *
+                  </label>
+                  <input
+                    id="document-code"
+                    value={form.codigo}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        codigo: normalizeCode(
+                          event.target.value,
+                        ),
+                      }))
+                    }
+                    placeholder="ex.: comprovante_endereco"
+                    disabled={salvando || Boolean(editing)}
+                  />
+                  <small>
+                    O código não poderá ser alterado depois do
+                    cadastro.
+                  </small>
                 </div>
 
                 <div className="documents-settings-field">
@@ -533,7 +639,9 @@ function DocumentosConfiguracao() {
                 >
                   {salvando
                     ? 'Salvando...'
-                    : 'Salvar alterações'}
+                    : editing
+                      ? 'Salvar alterações'
+                      : 'Cadastrar documento'}
                 </button>
               </footer>
             </form>
