@@ -9,13 +9,10 @@ import { supabase } from '../lib/supabase'
 import './Vagas.css'
 
 type VagaStatus =
-  | 'rascunho'
-  | 'aguardando_aprovacao'
   | 'aberta'
   | 'em_selecao'
   | 'suspensa'
   | 'preenchida'
-  | 'cancelada'
 
 type VagaPrioridade = 'normal' | 'alta' | 'urgente'
 type VagaContrato =
@@ -26,12 +23,6 @@ type VagaContrato =
   | 'aprendiz'
   | 'terceiro'
 type VagaModalidade = 'presencial' | 'hibrido' | 'remoto'
-type VagaMotivo =
-  | 'substituicao'
-  | 'aumento_quadro'
-  | 'temporaria'
-  | 'outro'
-
 type Empresa = {
   id: string
   nome_fantasia: string
@@ -44,6 +35,23 @@ type Filial = {
   nome: string
 }
 
+type Candidatura = {
+  id: string
+  candidato_id: string
+  vaga_id: string
+  etapa: string
+  status: string
+  data_entrada: string
+}
+
+type Candidato = {
+  id: string
+  numero: number
+  nome_completo: string
+  email: string | null
+  whatsapp: string | null
+}
+
 type Vaga = {
   id: string
   numero: number
@@ -51,9 +59,6 @@ type Vaga = {
   filial_id: string
   cargo: string
   setor: string
-  quantidade: number
-  motivo: VagaMotivo
-  justificativa: string
   tipo_contrato: VagaContrato
   modalidade: VagaModalidade
   prioridade: VagaPrioridade
@@ -67,9 +72,6 @@ type VagaForm = {
   filial_id: string
   cargo: string
   setor: string
-  quantidade: string
-  motivo: VagaMotivo
-  justificativa: string
   tipo_contrato: VagaContrato
   modalidade: VagaModalidade
   prioridade: VagaPrioridade
@@ -82,24 +84,18 @@ const initialForm: VagaForm = {
   filial_id: '',
   cargo: '',
   setor: '',
-  quantidade: '1',
-  motivo: 'aumento_quadro',
-  justificativa: '',
   tipo_contrato: 'clt',
   modalidade: 'presencial',
   prioridade: 'normal',
-  status: 'rascunho',
+  status: 'aberta',
   data_limite: '',
 }
 
 const statusLabels: Record<VagaStatus, string> = {
-  rascunho: 'Rascunho',
-  aguardando_aprovacao: 'Aguardando aprovação',
   aberta: 'Aberta',
   em_selecao: 'Em seleção',
   suspensa: 'Suspensa',
-  preenchida: 'Preenchida',
-  cancelada: 'Cancelada',
+  preenchida: 'Preenchida / Finalizada',
 }
 
 const prioridadeLabels: Record<VagaPrioridade, string> = {
@@ -123,12 +119,6 @@ const modalidadeLabels: Record<VagaModalidade, string> = {
   remoto: 'Remoto',
 }
 
-const motivoLabels: Record<VagaMotivo, string> = {
-  substituicao: 'Substituição',
-  aumento_quadro: 'Aumento de quadro',
-  temporaria: 'Necessidade temporária',
-  outro: 'Outro',
-}
 
 function formatDate(value: string | null) {
   if (!value) return '—'
@@ -142,6 +132,9 @@ function Vagas() {
   const [vagas, setVagas] = useState<Vaga[]>([])
   const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [filiais, setFiliais] = useState<Filial[]>([])
+  const [candidaturas, setCandidaturas] = useState<Candidatura[]>([])
+  const [candidatos, setCandidatos] = useState<Candidato[]>([])
+  const [vagaDetalhesId, setVagaDetalhesId] = useState<string | null>(null)
   const [form, setForm] = useState<VagaForm>(initialForm)
   const [editandoId, setEditandoId] = useState<string | null>(null)
   const [modalAberto, setModalAberto] = useState(false)
@@ -158,8 +151,13 @@ function Vagas() {
     setCarregando(true)
     setErro('')
 
-    const [empresasResult, filiaisResult, vagasResult] =
-      await Promise.all([
+    const [
+      empresasResult,
+      filiaisResult,
+      vagasResult,
+      candidaturasResult,
+      candidatosResult,
+    ] = await Promise.all([
         supabase
           .from('empresas')
           .select('id, nome_fantasia')
@@ -173,18 +171,32 @@ function Vagas() {
         supabase
           .from('vagas')
           .select(
-            'id, numero, empresa_id, filial_id, cargo, setor, quantidade, motivo, justificativa, tipo_contrato, modalidade, prioridade, status, data_limite, created_at',
+            'id, numero, empresa_id, filial_id, cargo, setor, tipo_contrato, modalidade, prioridade, status, data_limite, created_at',
           )
           .order('created_at', { ascending: false }),
+        supabase
+          .from('candidaturas')
+          .select('id, candidato_id, vaga_id, etapa, status, data_entrada')
+          .order('data_entrada', { ascending: false }),
+        supabase
+          .from('candidatos')
+          .select('id, numero, nome_completo, email, whatsapp')
+          .order('nome_completo'),
       ])
 
     if (
       empresasResult.error ||
       filiaisResult.error ||
-      vagasResult.error
+      vagasResult.error ||
+      candidaturasResult.error ||
+      candidatosResult.error
     ) {
       console.error(
-        empresasResult.error || filiaisResult.error || vagasResult.error,
+        empresasResult.error ||
+          filiaisResult.error ||
+          vagasResult.error ||
+          candidaturasResult.error ||
+          candidatosResult.error,
       )
       setErro('Não foi possível carregar os dados das vagas.')
       setCarregando(false)
@@ -194,12 +206,30 @@ function Vagas() {
     setEmpresas((empresasResult.data ?? []) as Empresa[])
     setFiliais((filiaisResult.data ?? []) as Filial[])
     setVagas((vagasResult.data ?? []) as Vaga[])
+    setCandidaturas(
+      (candidaturasResult.data ?? []) as Candidatura[],
+    )
+    setCandidatos((candidatosResult.data ?? []) as Candidato[])
     setCarregando(false)
   }, [])
 
   useEffect(() => {
     carregarDados()
   }, [carregarDados])
+
+
+  useEffect(() => {
+    if (!erro && !mensagem) {
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      setErro('')
+      setMensagem('')
+    }, 6000)
+
+    return () => window.clearTimeout(timer)
+  }, [erro, mensagem])
 
   const filiaisDisponiveis = useMemo(
     () =>
@@ -234,6 +264,25 @@ function Vagas() {
     })
   }, [empresas, filiais, filtroStatus, pesquisa, vagas])
 
+  const candidaturasPorVaga = useMemo(() => {
+    const map = new Map<string, Candidatura[]>()
+
+    for (const candidatura of candidaturas) {
+      const current = map.get(candidatura.vaga_id) ?? []
+      current.push(candidatura)
+      map.set(candidatura.vaga_id, current)
+    }
+
+    return map
+  }, [candidaturas])
+
+  const vagaDetalhes =
+    vagas.find((vaga) => vaga.id === vagaDetalhesId) ?? null
+
+  const candidaturasDaVaga = vagaDetalhes
+    ? candidaturasPorVaga.get(vagaDetalhes.id) ?? []
+    : []
+
   function abrirNovaVaga() {
     setForm(initialForm)
     setEditandoId(null)
@@ -248,9 +297,6 @@ function Vagas() {
       filial_id: vaga.filial_id,
       cargo: vaga.cargo,
       setor: vaga.setor,
-      quantidade: String(vaga.quantidade),
-      motivo: vaga.motivo,
-      justificativa: vaga.justificativa,
       tipo_contrato: vaga.tipo_contrato,
       modalidade: vaga.modalidade,
       prioridade: vaga.prioridade,
@@ -277,8 +323,6 @@ function Vagas() {
     setErro('')
     setMensagem('')
 
-    const quantidade = Number(form.quantidade)
-
     if (!form.empresa_id) {
       setErro('Selecione a empresa.')
       return
@@ -294,15 +338,7 @@ function Vagas() {
       return
     }
 
-    if (!Number.isInteger(quantidade) || quantidade < 1) {
-      setErro('A quantidade deve ser maior que zero.')
-      return
-    }
 
-    if (!form.justificativa.trim()) {
-      setErro('Informe a justificativa da contratação.')
-      return
-    }
 
     setSalvando(true)
 
@@ -311,9 +347,6 @@ function Vagas() {
       filial_id: form.filial_id,
       cargo: form.cargo.trim(),
       setor: form.setor.trim(),
-      quantidade,
-      motivo: form.motivo,
-      justificativa: form.justificativa.trim(),
       tipo_contrato: form.tipo_contrato,
       modalidade: form.modalidade,
       prioridade: form.prioridade,
@@ -330,7 +363,12 @@ function Vagas() {
           .single()
       : await supabase
           .from('vagas')
-          .insert(payload)
+          .insert({
+            ...payload,
+            quantidade: 1,
+            motivo: 'outro',
+            justificativa: 'Cadastro simplificado pelo RH',
+          })
           .select()
           .single()
 
@@ -362,9 +400,12 @@ function Vagas() {
     setErro('')
     setMensagem('')
 
-    if (vaga.status !== 'rascunho') {
+    const totalCandidaturas =
+      candidaturasPorVaga.get(vaga.id)?.length ?? 0
+
+    if (totalCandidaturas > 0) {
       setErro(
-        'Somente vagas em rascunho podem ser excluídas. Altere as demais para Cancelada.',
+        'Esta vaga possui candidatos vinculados e não pode ser excluída. Altere o status para “Suspensa” ou “Preenchida / Finalizada”.',
       )
       return
     }
@@ -475,17 +516,6 @@ function Vagas() {
           </div>
         </div>
 
-        {erro && (
-          <div className="vacancies-message error" role="alert">
-            {erro}
-          </div>
-        )}
-
-        {mensagem && (
-          <div className="vacancies-message success" role="status">
-            {mensagem}
-          </div>
-        )}
 
         <div className="vacancies-table-wrapper">
           <table className="vacancies-table">
@@ -495,7 +525,7 @@ function Vagas() {
                 <th>Cargo</th>
                 <th>Empresa / filial</th>
                 <th>Contrato</th>
-                <th>Qtd.</th>
+                <th>Candidatos</th>
                 <th>Status</th>
                 <th>Prioridade</th>
                 <th>Prazo</th>
@@ -543,7 +573,15 @@ function Vagas() {
                         <span>{modalidadeLabels[vaga.modalidade]}</span>
                       </div>
                     </td>
-                    <td>{vaga.quantidade}</td>
+                    <td>
+                      <button
+                        className="vacancy-candidate-count"
+                        type="button"
+                        onClick={() => setVagaDetalhesId(vaga.id)}
+                      >
+                        {candidaturasPorVaga.get(vaga.id)?.length ?? 0}
+                      </button>
+                    </td>
                     <td>
                       <span
                         className={`vacancy-status status-${vaga.status}`}
@@ -563,6 +601,13 @@ function Vagas() {
                       <div className="vacancy-actions">
                         <button
                           type="button"
+                          onClick={() => setVagaDetalhesId(vaga.id)}
+                        >
+                          Ver candidatos
+                        </button>
+
+                        <button
+                          type="button"
                           onClick={() => abrirEdicao(vaga)}
                         >
                           Editar
@@ -573,12 +618,14 @@ function Vagas() {
                           onClick={() => excluirVaga(vaga)}
                           disabled={
                             excluindoId === vaga.id ||
-                            vaga.status !== 'rascunho'
+                            (candidaturasPorVaga.get(vaga.id)
+                              ?.length ?? 0) > 0
                           }
                           title={
-                            vaga.status === 'rascunho'
-                              ? 'Excluir vaga'
-                              : 'Apenas rascunhos podem ser excluídos'
+                            (candidaturasPorVaga.get(vaga.id)
+                              ?.length ?? 0) > 0
+                              ? 'A vaga possui candidatos vinculados'
+                              : 'Excluir vaga'
                           }
                         >
                           {excluindoId === vaga.id
@@ -606,6 +653,123 @@ function Vagas() {
           </table>
         </div>
       </section>
+
+      {(erro || mensagem) && (
+        <aside
+          className={`vacancies-toast ${erro ? 'error' : 'success'}`}
+          role={erro ? 'alert' : 'status'}
+        >
+          <div>
+            <strong>{erro ? 'Atenção' : 'Tudo certo'}</strong>
+            <span>{erro || mensagem}</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setErro('')
+              setMensagem('')
+            }}
+            aria-label="Fechar aviso"
+          >
+            ×
+          </button>
+        </aside>
+      )}
+
+      {vagaDetalhes && (
+        <div
+          className="vacancies-modal-overlay"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setVagaDetalhesId(null)
+            }
+          }}
+        >
+          <section
+            className="vacancies-modal vacancy-candidates-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="titulo-candidatos-vaga"
+          >
+            <header className="vacancies-modal-header">
+              <div>
+                <span className="vacancies-eyebrow">
+                  VAG-{String(vagaDetalhes.numero).padStart(6, '0')}
+                </span>
+                <h2 id="titulo-candidatos-vaga">
+                  Candidatos — {vagaDetalhes.cargo}
+                </h2>
+                <p className="vacancy-candidates-subtitle">
+                  {vagaDetalhes.setor} · {candidaturasDaVaga.length}{' '}
+                  candidato(s) vinculado(s)
+                </p>
+              </div>
+
+              <button
+                className="vacancies-close-button"
+                type="button"
+                onClick={() => setVagaDetalhesId(null)}
+                aria-label="Fechar"
+              >
+                ×
+              </button>
+            </header>
+
+            <div className="vacancy-candidates-list">
+              {candidaturasDaVaga.map((candidatura) => {
+                const candidato = candidatos.find(
+                  (item) => item.id === candidatura.candidato_id,
+                )
+
+                if (!candidato) {
+                  return null
+                }
+
+                return (
+                  <article
+                    className="vacancy-candidate-card"
+                    key={candidatura.id}
+                  >
+                    <div className="vacancy-candidate-avatar">
+                      {candidato.nome_completo.charAt(0).toUpperCase()}
+                    </div>
+
+                    <div className="vacancy-candidate-main">
+                      <strong>{candidato.nome_completo}</strong>
+                      <span>
+                        CAN-{String(candidato.numero).padStart(6, '0')}
+                        {candidato.email ? ` · ${candidato.email}` : ''}
+                      </span>
+                    </div>
+
+                    <div className="vacancy-candidate-process">
+                      <span className={`vacancy-stage stage-${candidatura.etapa}`}>
+                        {candidatura.etapa.replaceAll('_', ' ')}
+                      </span>
+                      <span className={`vacancy-application-status application-${candidatura.status}`}>
+                        {candidatura.status.replaceAll('_', ' ')}
+                      </span>
+                    </div>
+                  </article>
+                )
+              })}
+
+              {candidaturasDaVaga.length === 0 && (
+                <div className="vacancy-candidates-empty">
+                  <div>VG</div>
+                  <strong>Nenhum candidato vinculado</strong>
+                  <p>
+                    Os candidatos aparecerão aqui quando forem cadastrados
+                    nesta vaga.
+                  </p>
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+      )}
 
       {modalAberto && (
         <div
@@ -721,44 +885,7 @@ function Vagas() {
                   />
                 </div>
 
-                <div className="vacancies-form-group">
-                  <label htmlFor="vaga-quantidade">Quantidade *</label>
-                  <input
-                    id="vaga-quantidade"
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={form.quantidade}
-                    onChange={(event) =>
-                      setForm((atual) => ({
-                        ...atual,
-                        quantidade: event.target.value,
-                      }))
-                    }
-                    disabled={salvando}
-                  />
-                </div>
 
-                <div className="vacancies-form-group">
-                  <label htmlFor="vaga-motivo">Motivo *</label>
-                  <select
-                    id="vaga-motivo"
-                    value={form.motivo}
-                    onChange={(event) =>
-                      setForm((atual) => ({
-                        ...atual,
-                        motivo: event.target.value as VagaMotivo,
-                      }))
-                    }
-                    disabled={salvando}
-                  >
-                    {Object.entries(motivoLabels).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
 
                 <div className="vacancies-form-group">
                   <label htmlFor="vaga-contrato">Contrato *</label>
@@ -860,30 +987,8 @@ function Vagas() {
                   />
                 </div>
 
-                <div className="vacancies-form-group full">
-                  <label htmlFor="vaga-justificativa">
-                    Justificativa *
-                  </label>
-                  <textarea
-                    id="vaga-justificativa"
-                    rows={4}
-                    value={form.justificativa}
-                    onChange={(event) =>
-                      setForm((atual) => ({
-                        ...atual,
-                        justificativa: event.target.value,
-                      }))
-                    }
-                    disabled={salvando}
-                  />
-                </div>
               </div>
 
-              {erro && (
-                <div className="vacancies-message error" role="alert">
-                  {erro}
-                </div>
-              )}
 
               <footer className="vacancies-modal-actions">
                 <button

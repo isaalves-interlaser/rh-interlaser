@@ -42,16 +42,12 @@ type Candidato = {
   numero: number
   nome_completo: string
   email: string | null
-  telefone: string | null
   whatsapp: string | null
   cidade: string | null
   uf: string | null
   pretensao_salarial: number | null
-  disponibilidade: string | null
   origem: CandidatoOrigem
-  detalhe_origem: string | null
   observacoes: string | null
-  consentimento_lgpd: boolean
   curriculo_path: string | null
   drive_folder_url: string | null
   active: boolean
@@ -87,18 +83,13 @@ type Vaga = {
 type CandidatoForm = {
   nome_completo: string
   email: string
-  telefone: string
   whatsapp: string
   cidade: string
   uf: string
   pretensao_salarial: string
-  disponibilidade: string
   origem: CandidatoOrigem
-  detalhe_origem: string
   observacoes: string
-  consentimento_lgpd: boolean
   vaga_id: string
-  etapa: CandidaturaEtapa
 }
 
 type NovaCandidaturaForm = {
@@ -111,18 +102,13 @@ type NovaCandidaturaForm = {
 const initialCandidateForm: CandidatoForm = {
   nome_completo: '',
   email: '',
-  telefone: '',
   whatsapp: '',
   cidade: '',
   uf: '',
   pretensao_salarial: '',
-  disponibilidade: '',
   origem: 'outro',
-  detalhe_origem: '',
   observacoes: '',
-  consentimento_lgpd: false,
   vaga_id: '',
-  etapa: 'recebido',
 }
 
 const initialApplicationForm: NovaCandidaturaForm = {
@@ -250,16 +236,12 @@ function Candidatos() {
               numero,
               nome_completo,
               email,
-              telefone,
               whatsapp,
               cidade,
               uf,
               pretensao_salarial,
-              disponibilidade,
               origem,
-              detalhe_origem,
               observacoes,
-              consentimento_lgpd,
               curriculo_path,
               drive_folder_url,
               active,
@@ -339,6 +321,20 @@ function Candidatos() {
     carregarDados()
   }, [carregarDados])
 
+
+  useEffect(() => {
+    if (!erro && !mensagem) {
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      setErro('')
+      setMensagem('')
+    }, 6000)
+
+    return () => window.clearTimeout(timer)
+  }, [erro, mensagem])
+
   const candidaturasPorCandidato = useMemo(() => {
     const map = new Map<string, Candidatura[]>()
 
@@ -362,7 +358,6 @@ function Candidatos() {
         !termo ||
         candidato.nome_completo.toLowerCase().includes(termo) ||
         candidato.email?.toLowerCase().includes(termo) ||
-        candidato.telefone?.includes(termo) ||
         candidato.whatsapp?.includes(termo) ||
         String(candidato.numero).includes(termo)
 
@@ -419,7 +414,6 @@ function Candidatos() {
     setForm({
       nome_completo: candidato.nome_completo,
       email: candidato.email ?? '',
-      telefone: candidato.telefone ?? '',
       whatsapp: candidato.whatsapp ?? '',
       cidade: candidato.cidade ?? '',
       uf: candidato.uf ?? '',
@@ -427,14 +421,10 @@ function Candidatos() {
         candidato.pretensao_salarial === null
           ? ''
           : String(candidato.pretensao_salarial),
-      disponibilidade: candidato.disponibilidade ?? '',
       origem: candidato.origem,
-      detalhe_origem: candidato.detalhe_origem ?? '',
       observacoes: candidato.observacoes ?? '',
-      consentimento_lgpd: candidato.consentimento_lgpd,
       vaga_id: '',
-      etapa: 'recebido',
-    })
+        })
     setCandidatoEditandoId(candidato.id)
     setErro('')
     setMensagem('')
@@ -504,7 +494,6 @@ function Candidatos() {
 
     const nome = form.nome_completo.trim()
     const email = form.email.trim().toLowerCase()
-    const telefone = normalizePhone(form.telefone)
     const whatsapp = normalizePhone(form.whatsapp)
     const uf = form.uf.trim().toUpperCase()
     const pretensao = nullableNumber(form.pretensao_salarial)
@@ -523,14 +512,6 @@ function Candidatos() {
     }
 
     if (
-      telefone &&
-      (telefone.length < 10 || telefone.length > 13)
-    ) {
-      setErro('Informe um telefone válido com DDD.')
-      return
-    }
-
-    if (
       whatsapp &&
       (whatsapp.length < 10 || whatsapp.length > 13)
     ) {
@@ -540,6 +521,32 @@ function Candidatos() {
 
     if (uf && !/^[A-Z]{2}$/.test(uf)) {
       setErro('Informe a UF com duas letras, por exemplo SP.')
+      return
+    }
+
+    const emailDuplicado =
+      Boolean(email) &&
+      candidatos.some(
+        (candidato) =>
+          candidato.id !== candidatoEditandoId &&
+          candidato.email?.trim().toLowerCase() === email,
+      )
+
+    if (emailDuplicado) {
+      setErro('Já existe um candidato cadastrado com esse e-mail.')
+      return
+    }
+
+    const whatsappDuplicado =
+      Boolean(whatsapp) &&
+      candidatos.some(
+        (candidato) =>
+          candidato.id !== candidatoEditandoId &&
+          normalizePhone(candidato.whatsapp ?? '') === whatsapp,
+      )
+
+    if (whatsappDuplicado) {
+      setErro('Já existe um candidato cadastrado com esse WhatsApp.')
       return
     }
 
@@ -553,19 +560,12 @@ function Candidatos() {
     const payload = {
       nome_completo: nome,
       email: email || null,
-      telefone: telefone || null,
       whatsapp: whatsapp || null,
       cidade: nullableText(form.cidade),
       uf: uf || null,
       pretensao_salarial: pretensao,
-      disponibilidade: nullableText(form.disponibilidade),
       origem: form.origem,
-      detalhe_origem: nullableText(form.detalhe_origem),
       observacoes: nullableText(form.observacoes),
-      consentimento_lgpd: form.consentimento_lgpd,
-      consentimento_lgpd_em: form.consentimento_lgpd
-        ? new Date().toISOString()
-        : null,
     }
 
     if (candidatoEditandoId) {
@@ -581,7 +581,17 @@ function Candidatos() {
           'Erro ao atualizar candidato:',
           error.message,
         )
-        setErro('Não foi possível atualizar o candidato.')
+        if (error.code === '23505') {
+          const detail = `${error.message} ${error.details ?? ''}`.toLowerCase()
+
+          setErro(
+            detail.includes('whatsapp')
+              ? 'Já existe um candidato cadastrado com esse WhatsApp.'
+              : 'Já existe um candidato cadastrado com esse e-mail.',
+          )
+        } else {
+          setErro('Não foi possível atualizar o candidato.')
+        }
         return
       }
 
@@ -607,12 +617,16 @@ function Candidatos() {
         candidatoError?.message,
       )
 
-      if (
-        candidatoError?.message
-          .toLowerCase()
-          .includes('duplicate')
-      ) {
-        setErro('Já existe um candidato com esse e-mail.')
+      if (candidatoError?.code === '23505') {
+        const detail = `${candidatoError.message} ${
+          candidatoError.details ?? ''
+        }`.toLowerCase()
+
+        setErro(
+          detail.includes('whatsapp')
+            ? 'Já existe um candidato cadastrado com esse WhatsApp.'
+            : 'Já existe um candidato cadastrado com esse e-mail.',
+        )
       } else {
         setErro('Não foi possível criar o candidato.')
       }
@@ -625,7 +639,7 @@ function Candidatos() {
       .insert({
         candidato_id: candidatoCriado.id,
         vaga_id: form.vaga_id,
-        etapa: form.etapa,
+        etapa: 'recebido',
         status: 'ativo',
       })
 
@@ -747,7 +761,7 @@ function Candidatos() {
             <input
               id="pesquisa-candidato"
               type="search"
-              placeholder="Nome, e-mail, telefone ou código..."
+              placeholder="Nome, e-mail, WhatsApp ou código..."
               value={pesquisa}
               onChange={(event) => setPesquisa(event.target.value)}
             />
@@ -796,20 +810,6 @@ function Candidatos() {
           </div>
         </div>
 
-        {erro && (
-          <div className="candidates-message error" role="alert">
-            {erro}
-          </div>
-        )}
-
-        {mensagem && (
-          <div
-            className="candidates-message success"
-            role="status"
-          >
-            {mensagem}
-          </div>
-        )}
 
         <div className="candidates-list">
           {candidatosFiltrados.map((candidato) => {
@@ -948,6 +948,29 @@ function Candidatos() {
         </div>
       </section>
 
+      {(erro || mensagem) && (
+        <aside
+          className={`candidates-toast ${erro ? 'error' : 'success'}`}
+          role={erro ? 'alert' : 'status'}
+        >
+          <div>
+            <strong>{erro ? 'Atenção' : 'Tudo certo'}</strong>
+            <span>{erro || mensagem}</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setErro('')
+              setMensagem('')
+            }}
+            aria-label="Fechar aviso"
+          >
+            ×
+          </button>
+        </aside>
+      )}
+
       {modalDetalhesAberto && candidatoSelecionado && (
         <div
           className="candidates-modal-overlay"
@@ -1037,14 +1060,6 @@ function Candidatos() {
                     </strong>
                   </div>
 
-                  <div>
-                    <span>Telefone</span>
-                    <strong>
-                      {formatPhone(
-                        candidatoSelecionado.telefone,
-                      )}
-                    </strong>
-                  </div>
 
                   <div>
                     <span>WhatsApp</span>
@@ -1078,13 +1093,6 @@ function Candidatos() {
                     </strong>
                   </div>
 
-                  <div>
-                    <span>Detalhe da origem</span>
-                    <strong>
-                      {candidatoSelecionado.detalhe_origem ??
-                        'Não informado'}
-                    </strong>
-                  </div>
 
                   <div>
                     <span>Pretensão salarial</span>
@@ -1095,22 +1103,7 @@ function Candidatos() {
                     </strong>
                   </div>
 
-                  <div>
-                    <span>Disponibilidade</span>
-                    <strong>
-                      {candidatoSelecionado.disponibilidade ??
-                        'Não informada'}
-                    </strong>
-                  </div>
 
-                  <div>
-                    <span>LGPD</span>
-                    <strong>
-                      {candidatoSelecionado.consentimento_lgpd
-                        ? 'Autorizado'
-                        : 'Pendente'}
-                    </strong>
-                  </div>
                 </div>
 
                 {candidatoSelecionado.observacoes && (
@@ -1247,6 +1240,46 @@ function Candidatos() {
             </header>
 
             <form onSubmit={salvarCandidato}>
+
+              {!candidatoEditandoId && (
+                <div className="candidates-form-section candidate-vacancy-first">
+                  <h3>Vaga da candidatura</h3>
+                  <p className="candidates-form-description">
+                    Selecione a vaga em que o candidato está concorrendo.
+                  </p>
+
+                  <div className="candidates-form-group full">
+                    <label htmlFor="candidato-vaga">Vaga *</label>
+                    <select
+                      id="candidato-vaga"
+                      value={form.vaga_id}
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          vaga_id: event.target.value,
+                        }))
+                      }
+                      disabled={salvando}
+                    >
+                      <option value="">Selecione</option>
+                      {vagas
+                        .filter((vaga) =>
+                          ['aberta', 'em_selecao'].includes(
+                            vaga.status,
+                          ),
+                        )
+                        .map((vaga) => (
+                          <option key={vaga.id} value={vaga.id}>
+                            VAG-
+                            {String(vaga.numero).padStart(6, '0')}{' '}
+                            — {vaga.cargo} · {vaga.setor}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
               <div className="candidates-form-section">
                 <h3>Dados pessoais</h3>
 
@@ -1288,24 +1321,6 @@ function Candidatos() {
                     />
                   </div>
 
-                  <div className="candidates-form-group">
-                    <label htmlFor="candidato-telefone">
-                      Telefone
-                    </label>
-                    <input
-                      id="candidato-telefone"
-                      type="tel"
-                      placeholder="DDD + número"
-                      value={form.telefone}
-                      onChange={(event) =>
-                        setForm((current) => ({
-                          ...current,
-                          telefone: event.target.value,
-                        }))
-                      }
-                      disabled={salvando}
-                    />
-                  </div>
 
                   <div className="candidates-form-group">
                     <label htmlFor="candidato-whatsapp">
@@ -1383,24 +1398,6 @@ function Candidatos() {
                     />
                   </div>
 
-                  <div className="candidates-form-group">
-                    <label htmlFor="candidato-disponibilidade">
-                      Disponibilidade
-                    </label>
-                    <input
-                      id="candidato-disponibilidade"
-                      type="text"
-                      placeholder="Ex.: Imediata"
-                      value={form.disponibilidade}
-                      onChange={(event) =>
-                        setForm((current) => ({
-                          ...current,
-                          disponibilidade: event.target.value,
-                        }))
-                      }
-                      disabled={salvando}
-                    />
-                  </div>
 
                   <div className="candidates-form-group">
                     <label htmlFor="candidato-origem">
@@ -1428,24 +1425,6 @@ function Candidatos() {
                     </select>
                   </div>
 
-                  <div className="candidates-form-group">
-                    <label htmlFor="candidato-detalhe-origem">
-                      Detalhe da origem
-                    </label>
-                    <input
-                      id="candidato-detalhe-origem"
-                      type="text"
-                      placeholder="Ex.: Indicado por João"
-                      value={form.detalhe_origem}
-                      onChange={(event) =>
-                        setForm((current) => ({
-                          ...current,
-                          detalhe_origem: event.target.value,
-                        }))
-                      }
-                      disabled={salvando}
-                    />
-                  </div>
                 </div>
 
                 <div className="candidates-form-group full">
@@ -1466,98 +1445,9 @@ function Candidatos() {
                   />
                 </div>
 
-                <label className="candidate-lgpd-option">
-                  <input
-                    type="checkbox"
-                    checked={form.consentimento_lgpd}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        consentimento_lgpd:
-                          event.target.checked,
-                      }))
-                    }
-                    disabled={salvando}
-                  />
-                  <span>
-                    <strong>Consentimento LGPD registrado</strong>
-                    <small>
-                      Confirma que o candidato autorizou o
-                      tratamento dos dados para recrutamento.
-                    </small>
-                  </span>
-                </label>
               </div>
 
-              {!candidatoEditandoId && (
-                <div className="candidates-form-section">
-                  <h3>Candidatura inicial</h3>
 
-                  <div className="candidates-form-grid">
-                    <div className="candidates-form-group">
-                      <label htmlFor="candidato-vaga">
-                        Vaga *
-                      </label>
-                      <select
-                        id="candidato-vaga"
-                        value={form.vaga_id}
-                        onChange={(event) =>
-                          setForm((current) => ({
-                            ...current,
-                            vaga_id: event.target.value,
-                          }))
-                        }
-                        disabled={salvando}
-                      >
-                        <option value="">Selecione</option>
-                        {vagas.map((vaga) => (
-                          <option key={vaga.id} value={vaga.id}>
-                            VAG-
-                            {String(vaga.numero).padStart(
-                              6,
-                              '0',
-                            )}{' '}
-                            — {vaga.cargo} ({vaga.status})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="candidates-form-group">
-                      <label htmlFor="candidato-etapa">
-                        Etapa inicial
-                      </label>
-                      <select
-                        id="candidato-etapa"
-                        value={form.etapa}
-                        onChange={(event) =>
-                          setForm((current) => ({
-                            ...current,
-                            etapa:
-                              event.target
-                                .value as CandidaturaEtapa,
-                          }))
-                        }
-                        disabled={salvando}
-                      >
-                        {Object.entries(etapaLabels).map(
-                          ([value, label]) => (
-                            <option key={value} value={value}>
-                              {label}
-                            </option>
-                          ),
-                        )}
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {erro && (
-                <div className="candidates-message error">
-                  {erro}
-                </div>
-              )}
 
               <footer className="candidates-modal-actions">
                 <button
@@ -1696,11 +1586,6 @@ function Candidatos() {
                 </div>
               </div>
 
-              {erro && (
-                <div className="candidates-message error">
-                  {erro}
-                </div>
-              )}
 
               <footer className="candidates-modal-actions">
                 <button
