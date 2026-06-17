@@ -47,6 +47,8 @@ type Entrevista = {
   inicio: string
   fim: string
   entrevistador_id: string | null
+  gestor_nome: string | null
+  gestor_email: string | null
   local: string | null
   link_reuniao: string | null
   google_event_id: string | null
@@ -101,6 +103,8 @@ type EntrevistaForm = {
   inicio: string
   fim: string
   entrevistador_id: string
+  gestor_nome: string
+  gestor_email: string
   local: string
   link_reuniao: string
   observacoes: string
@@ -117,6 +121,8 @@ const initialForm: EntrevistaForm = {
   inicio: '',
   fim: '',
   entrevistador_id: '',
+  gestor_nome: '',
+  gestor_email: '',
   local: '',
   link_reuniao: '',
   observacoes: '',
@@ -180,6 +186,60 @@ function formatTime(value: string) {
   }).format(new Date(value))
 }
 
+function endThirtyMinutesAfter(startValue: string) {
+  const start = new Date(startValue)
+
+  if (Number.isNaN(start.getTime())) {
+    return ''
+  }
+
+  return toLocalInput(
+    new Date(start.getTime() + 30 * 60 * 1000).toISOString(),
+  )
+}
+
+function validEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
+}
+
+async function readFunctionError(
+  error: unknown,
+  fallback: string,
+) {
+  const candidate = error as {
+    message?: string
+    context?: Response
+  }
+
+  if (candidate.context) {
+    try {
+      const body = await candidate.context.clone().json()
+      if (body?.error) {
+        return String(body.error)
+      }
+    } catch {
+      // Usa a mensagem padrão.
+    }
+  }
+
+  return candidate.message ?? fallback
+}
+
+function dateKey(value: Date | string) {
+  const date = typeof value === 'string' ? new Date(value) : value
+  const local = new Date(
+    date.getTime() - date.getTimezoneOffset() * 60_000,
+  )
+  return local.toISOString().slice(0, 10)
+}
+
+function monthLabel(value: Date) {
+  return new Intl.DateTimeFormat('pt-BR', {
+    month: 'long',
+    year: 'numeric',
+  }).format(value)
+}
+
 function Agenda() {
   const [entrevistas, setEntrevistas] = useState<Entrevista[]>([])
   const [candidaturas, setCandidaturas] = useState<Candidatura[]>([])
@@ -201,6 +261,13 @@ function Agenda() {
   >('todos')
   const [erro, setErro] = useState('')
   const [mensagem, setMensagem] = useState('')
+  const [modoVisualizacao, setModoVisualizacao] = useState<
+    'lista' | 'calendario'
+  >('lista')
+  const [mesReferencia, setMesReferencia] = useState(() => {
+    const now = new Date()
+    return new Date(now.getFullYear(), now.getMonth(), 1)
+  })
 
   const carregarDados = useCallback(async () => {
     setCarregando(true)
@@ -226,6 +293,8 @@ function Agenda() {
             inicio,
             fim,
             entrevistador_id,
+            gestor_nome,
+            gestor_email,
             local,
             link_reuniao,
             google_event_id,
@@ -289,6 +358,22 @@ function Agenda() {
   useEffect(() => {
     carregarDados()
   }, [carregarDados])
+
+  useEffect(() => {
+    if (!erro && !mensagem) {
+      return
+    }
+
+    const timer = window.setTimeout(
+      () => {
+        setErro('')
+        setMensagem('')
+      },
+      erro ? 8000 : 4500,
+    )
+
+    return () => window.clearTimeout(timer)
+  }, [erro, mensagem])
 
   const cards = useMemo(() => {
     const candidatureMap = new Map(
@@ -380,10 +465,42 @@ function Agenda() {
     )
   }, [cardsFiltrados])
 
+  const calendarDays = useMemo(() => {
+    const year = mesReferencia.getFullYear()
+    const month = mesReferencia.getMonth()
+    const first = new Date(year, month, 1)
+    const firstGridDay = new Date(year, month, 1 - first.getDay())
+
+    return Array.from({ length: 42 }, (_, index) => {
+      const date = new Date(firstGridDay)
+      date.setDate(firstGridDay.getDate() + index)
+      const key = dateKey(date)
+
+      return {
+        date,
+        key,
+        currentMonth: date.getMonth() === month,
+        cards: cardsFiltrados.filter(
+          (card) => dateKey(card.entrevista.inicio) === key,
+        ),
+      }
+    })
+  }, [cardsFiltrados, mesReferencia])
+
+  function changeMonth(offset: number) {
+    setMesReferencia((current) =>
+      new Date(
+        current.getFullYear(),
+        current.getMonth() + offset,
+        1,
+      ),
+    )
+  }
+
   function abrirNovaEntrevista() {
     const now = new Date()
     now.setMinutes(Math.ceil(now.getMinutes() / 30) * 30)
-    const end = new Date(now.getTime() + 60 * 60 * 1000)
+    const end = new Date(now.getTime() + 30 * 60 * 1000)
 
     setForm({
       ...initialForm,
@@ -406,6 +523,8 @@ function Agenda() {
       inicio: toLocalInput(entrevista.inicio),
       fim: toLocalInput(entrevista.fim),
       entrevistador_id: entrevista.entrevistador_id ?? '',
+      gestor_nome: entrevista.gestor_nome ?? '',
+      gestor_email: entrevista.gestor_email ?? '',
       local: entrevista.local ?? '',
       link_reuniao: entrevista.link_reuniao ?? '',
       observacoes: entrevista.observacoes ?? '',
@@ -448,8 +567,10 @@ function Agenda() {
     if (error) {
       throw new Error(
         data?.error ??
-          error.message ??
-          'Não foi possível conectar ao Google Agenda.',
+          (await readFunctionError(
+            error,
+            'Não foi possível conectar ao Google Agenda.',
+          )),
       )
     }
 
@@ -515,6 +636,19 @@ function Agenda() {
       return
     }
 
+    if (form.tipo === 'gestor' && !form.gestor_nome.trim()) {
+      setErro('Informe o nome do gestor.')
+      return
+    }
+
+    if (
+      form.tipo === 'gestor' &&
+      !validEmail(form.gestor_email)
+    ) {
+      setErro('Informe um e-mail válido para o gestor.')
+      return
+    }
+
     const nota = form.nota.trim() ? Number(form.nota) : null
 
     if (
@@ -527,6 +661,100 @@ function Agenda() {
 
     setSalvando(true)
 
+    const candidateConflictQuery = supabase
+      .from('entrevistas')
+      .select('id')
+      .eq('candidatura_id', form.candidatura_id)
+      .in('status', ['agendada', 'confirmada'])
+      .lt('inicio', fim.toISOString())
+      .gt('fim', inicio.toISOString())
+
+    if (entrevistaEditandoId) {
+      candidateConflictQuery.neq('id', entrevistaEditandoId)
+    }
+
+    const {
+      data: candidateConflict,
+      error: candidateConflictError,
+    } = await candidateConflictQuery.limit(1).maybeSingle()
+
+    if (candidateConflictError) {
+      setSalvando(false)
+      setErro('Não foi possível verificar conflitos de horário.')
+      return
+    }
+
+    if (candidateConflict) {
+      setSalvando(false)
+      setErro('O candidato já possui uma entrevista neste horário.')
+      return
+    }
+
+    if (form.entrevistador_id) {
+      const interviewerQuery = supabase
+        .from('entrevistas')
+        .select('id')
+        .eq('entrevistador_id', form.entrevistador_id)
+        .in('status', ['agendada', 'confirmada'])
+        .lt('inicio', fim.toISOString())
+        .gt('fim', inicio.toISOString())
+
+      if (entrevistaEditandoId) {
+        interviewerQuery.neq('id', entrevistaEditandoId)
+      }
+
+      const {
+        data: interviewerConflict,
+        error: interviewerConflictError,
+      } = await interviewerQuery.limit(1).maybeSingle()
+
+      if (interviewerConflictError) {
+        setSalvando(false)
+        setErro('Não foi possível verificar a agenda do entrevistador.')
+        return
+      }
+
+      if (interviewerConflict) {
+        setSalvando(false)
+        setErro('O entrevistador já está ocupado neste horário.')
+        return
+      }
+    }
+
+    if (form.tipo === 'gestor') {
+      const managerQuery = supabase
+        .from('entrevistas')
+        .select('id')
+        .eq(
+          'gestor_email',
+          form.gestor_email.trim().toLowerCase(),
+        )
+        .in('status', ['agendada', 'confirmada'])
+        .lt('inicio', fim.toISOString())
+        .gt('fim', inicio.toISOString())
+
+      if (entrevistaEditandoId) {
+        managerQuery.neq('id', entrevistaEditandoId)
+      }
+
+      const {
+        data: managerConflict,
+        error: managerConflictError,
+      } = await managerQuery.limit(1).maybeSingle()
+
+      if (managerConflictError) {
+        setSalvando(false)
+        setErro('Não foi possível verificar a agenda do gestor.')
+        return
+      }
+
+      if (managerConflict) {
+        setSalvando(false)
+        setErro('O gestor já está ocupado neste horário.')
+        return
+      }
+    }
+
     const payload = {
       candidatura_id: form.candidatura_id,
       tipo: form.tipo,
@@ -536,6 +764,14 @@ function Agenda() {
       inicio: inicio.toISOString(),
       fim: fim.toISOString(),
       entrevistador_id: form.entrevistador_id || null,
+      gestor_nome:
+        form.tipo === 'gestor'
+          ? form.gestor_nome.trim()
+          : null,
+      gestor_email:
+        form.tipo === 'gestor'
+          ? form.gestor_email.trim().toLowerCase()
+          : null,
       local: null,
       link_reuniao: nullableText(form.link_reuniao),
       observacoes: nullableText(form.observacoes),
@@ -726,6 +962,36 @@ function Agenda() {
             </select>
           </div>
 
+          <div className="agenda-view-switch">
+            <span>Visualização</span>
+            <div>
+              <button
+                className={
+                  modoVisualizacao === 'lista'
+                    ? 'active'
+                    : ''
+                }
+                type="button"
+                onClick={() => setModoVisualizacao('lista')}
+              >
+                Lista
+              </button>
+              <button
+                className={
+                  modoVisualizacao === 'calendario'
+                    ? 'active'
+                    : ''
+                }
+                type="button"
+                onClick={() =>
+                  setModoVisualizacao('calendario')
+                }
+              >
+                Calendário
+              </button>
+            </div>
+          </div>
+
           <div className="agenda-summary">
             <span>Total</span>
             <strong>{cards.length}</strong>
@@ -744,19 +1010,8 @@ function Agenda() {
           </div>
         </div>
 
-        {erro && (
-          <div className="agenda-message error" role="alert">
-            {erro}
-          </div>
-        )}
-
-        {mensagem && (
-          <div className="agenda-message success" role="status">
-            {mensagem}
-          </div>
-        )}
-
-        <div className="agenda-content">
+        {modoVisualizacao === 'lista' ? (
+          <div className="agenda-content">
           {grupos.map(([date, group]) => (
             <section className="agenda-day" key={date}>
               <header className="agenda-day-header">
@@ -814,6 +1069,13 @@ function Agenda() {
                           {card.entrevistador?.full_name ??
                             'Não definido'}
                         </span>
+                        {card.entrevista.tipo === 'gestor' &&
+                          card.entrevista.gestor_nome && (
+                            <span>
+                              Gestor:{' '}
+                              {card.entrevista.gestor_nome}
+                            </span>
+                          )}
                       </div>
 
                       {card.entrevista.link_reuniao && (
@@ -946,8 +1208,141 @@ function Agenda() {
               </p>
             </div>
           )}
-        </div>
+          </div>
+        ) : (
+          <div className="agenda-calendar">
+            <header className="agenda-calendar-header">
+              <button
+                type="button"
+                onClick={() => changeMonth(-1)}
+                aria-label="Mês anterior"
+              >
+                ‹
+              </button>
+
+              <div>
+                <strong>{monthLabel(mesReferencia)}</strong>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const now = new Date()
+                    setMesReferencia(
+                      new Date(
+                        now.getFullYear(),
+                        now.getMonth(),
+                        1,
+                      ),
+                    )
+                  }}
+                >
+                  Hoje
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => changeMonth(1)}
+                aria-label="Próximo mês"
+              >
+                ›
+              </button>
+            </header>
+
+            <div className="agenda-calendar-weekdays">
+              {[
+                'Dom',
+                'Seg',
+                'Ter',
+                'Qua',
+                'Qui',
+                'Sex',
+                'Sáb',
+              ].map((day) => (
+                <span key={day}>{day}</span>
+              ))}
+            </div>
+
+            <div className="agenda-calendar-grid">
+              {calendarDays.map((day) => (
+                <section
+                  className={
+                    day.currentMonth
+                      ? 'agenda-calendar-day'
+                      : 'agenda-calendar-day outside'
+                  }
+                  key={day.key}
+                >
+                  <header>
+                    <span>{day.date.getDate()}</span>
+                    {day.cards.length > 0 && (
+                      <small>{day.cards.length}</small>
+                    )}
+                  </header>
+
+                  <div>
+                    {day.cards.slice(0, 3).map((card) => (
+                      <button
+                        type="button"
+                        className={`agenda-calendar-event status-${card.entrevista.status}`}
+                        key={card.entrevista.id}
+                        onClick={() =>
+                          abrirEdicao(card.entrevista)
+                        }
+                        title={`${formatTime(
+                          card.entrevista.inicio,
+                        )} — ${
+                          card.candidato.nome_completo
+                        }`}
+                      >
+                        <strong>
+                          {formatTime(
+                            card.entrevista.inicio,
+                          )}
+                        </strong>
+                        <span>
+                          {card.candidato.nome_completo}
+                        </span>
+                      </button>
+                    ))}
+
+                    {day.cards.length > 3 && (
+                      <small className="agenda-calendar-more">
+                        +{day.cards.length - 3} entrevista(s)
+                      </small>
+                    )}
+                  </div>
+                </section>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
+
+      {(erro || mensagem) && (
+        <div
+          className={
+            erro
+              ? 'agenda-toast error'
+              : 'agenda-toast success'
+          }
+          role={erro ? 'alert' : 'status'}
+        >
+          <div>
+            <strong>{erro ? 'Não foi possível concluir' : 'Tudo certo'}</strong>
+            <span>{erro || mensagem}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setErro('')
+              setMensagem('')
+            }}
+            aria-label="Fechar mensagem"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {modalAberto && (
         <div
@@ -1085,6 +1480,9 @@ function Agenda() {
                         setForm((current) => ({
                           ...current,
                           inicio: event.target.value,
+                          fim: endThirtyMinutesAfter(
+                            event.target.value,
+                          ),
                         }))
                       }
                       disabled={salvando}
@@ -1133,6 +1531,48 @@ function Agenda() {
                       ))}
                     </select>
                   </div>
+
+                  {form.tipo === 'gestor' && (
+                    <>
+                      <div className="agenda-field">
+                        <label htmlFor="agenda-manager-name">
+                          Nome do gestor *
+                        </label>
+                        <input
+                          id="agenda-manager-name"
+                          type="text"
+                          value={form.gestor_nome}
+                          onChange={(event) =>
+                            setForm((current) => ({
+                              ...current,
+                              gestor_nome:
+                                event.target.value,
+                            }))
+                          }
+                          disabled={salvando}
+                        />
+                      </div>
+
+                      <div className="agenda-field">
+                        <label htmlFor="agenda-manager-email">
+                          E-mail do gestor *
+                        </label>
+                        <input
+                          id="agenda-manager-email"
+                          type="email"
+                          value={form.gestor_email}
+                          onChange={(event) =>
+                            setForm((current) => ({
+                              ...current,
+                              gestor_email:
+                                event.target.value,
+                            }))
+                          }
+                          disabled={salvando}
+                        />
+                      </div>
+                    </>
+                  )}
 
                   <div className="agenda-field">
                     <label htmlFor="agenda-status-form">

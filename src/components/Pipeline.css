@@ -882,3 +882,129 @@
   font-size: 9px;
   line-height: 1.45;
 }
+
+
+/* Ações rápidas para teste e exame. */
+.pipeline-card-process-actions {
+  margin-top: 10px;
+}
+
+.pipeline-card-process-actions button {
+  width: 100%;
+  min-height: 32px;
+  border: 1px solid #b9d7f4;
+  border-radius: 8px;
+  color: #0c447c;
+  background: #edf6ff;
+  font-size: 9px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pipeline-card-process-actions button:hover {
+  border-color: #185fa5;
+  background: #e2f0fc;
+}
+
+.pipeline-process-modal {
+  width: min(720px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+
+/* Mensagens fixas no canto inferior direito. */
+.pipeline-toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 220;
+  width: min(420px, calc(100vw - 48px));
+  padding: 14px 15px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  border-radius: 12px;
+  box-shadow: 0 20px 55px rgba(16, 24, 40, 0.24);
+  animation: pipeline-toast-in 0.2s ease-out;
+}
+
+.pipeline-toast.error {
+  border: 1px solid #f1b2ad;
+  color: #8a1c13;
+  background: #fff1f0;
+}
+
+.pipeline-toast.success {
+  border: 1px solid #a8ddbe;
+  color: #126437;
+  background: #effbf4;
+}
+
+.pipeline-toast > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.pipeline-toast strong {
+  font-size: 11px;
+}
+
+.pipeline-toast span {
+  margin-top: 4px;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.pipeline-toast button {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 7px;
+  color: inherit;
+  background: transparent;
+  font-size: 19px;
+  cursor: pointer;
+}
+
+.pipeline-toast button:hover {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+@keyframes pipeline-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 680px) {
+  .pipeline-toast {
+    right: 14px;
+    bottom: 14px;
+    width: calc(100vw - 28px);
+  }
+}
+
+.pipeline-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+@media (max-width: 735px) {
+  .pipeline-header-actions {
+    width: 100%;
+  }
+
+  .pipeline-header-actions button {
+    flex: 1;
+  }
+}

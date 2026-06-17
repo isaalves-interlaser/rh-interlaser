@@ -134,12 +134,17 @@ const etapaLabels: Record<CandidaturaEtapa, string> = {
   recebido: 'Recebido',
   em_analise: 'Em análise',
   entrevista_rh: 'Entrevista RH',
-  entrevista_gestor: 'Entrevista gestor',
+  entrevista_gestor: 'Entrevista com gestor',
   teste_pratico: 'Teste prático',
-  exame_admissional: 'Exame admissional',
   documentacao: 'Documentação',
+  exame_admissional: 'Exame admissional',
   contratado: 'Contratado',
 }
+
+const applicationStageOptions: CandidaturaEtapa[] = [
+  'recebido',
+  'em_analise',
+]
 
 const statusLabels: Record<CandidaturaStatus, string> = {
   ativo: 'Ativo',
@@ -1557,13 +1562,11 @@ function Candidatos() {
                     }
                     disabled={salvando}
                   >
-                    {Object.entries(etapaLabels).map(
-                      ([value, label]) => (
-                        <option key={value} value={value}>
-                          {label}
-                        </option>
-                      ),
-                    )}
+                    {applicationStageOptions.map((value) => (
+                      <option key={value} value={value}>
+                        {etapaLabels[value]}
+                      </option>
+                    ))}
                   </select>
                 </div>
 

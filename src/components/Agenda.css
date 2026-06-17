@@ -75,7 +75,12 @@
 .agenda-toolbar {
   padding: 18px 24px;
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) 220px 120px 140px;
+  grid-template-columns:
+    minmax(260px, 1fr)
+    200px
+    210px
+    105px
+    120px;
   gap: 16px;
   border-bottom: 1px solid #edf0f4;
   background: #fbfcfd;
@@ -574,4 +579,316 @@
   color: #475467;
   font-size: 9px;
   line-height: 1.4;
+}
+
+
+/* Alternância entre lista e calendário. */
+.agenda-view-switch > span {
+  display: block;
+  margin-bottom: 6px;
+  color: #344054;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.agenda-view-switch > div {
+  height: 42px;
+  padding: 3px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  border: 1px solid #d0d5dd;
+  border-radius: 9px;
+  background: #ffffff;
+}
+
+.agenda-view-switch button {
+  border: 0;
+  border-radius: 6px;
+  color: #667085;
+  background: transparent;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.agenda-view-switch button.active {
+  color: #ffffff;
+  background: #185fa5;
+}
+
+/* Calendário mensal. */
+.agenda-calendar {
+  padding: 20px 24px 26px;
+  background: #f8fafc;
+}
+
+.agenda-calendar-header {
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 42px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #e3e8ef;
+  border-bottom: 0;
+  border-radius: 12px 12px 0 0;
+  background: #ffffff;
+}
+
+.agenda-calendar-header > button {
+  width: 38px;
+  height: 38px;
+  border: 1px solid #d0d5dd;
+  border-radius: 9px;
+  color: #344054;
+  background: #ffffff;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.agenda-calendar-header > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.agenda-calendar-header strong {
+  color: #172033;
+  font-size: 15px;
+  text-transform: capitalize;
+}
+
+.agenda-calendar-header > div button {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  color: #344054;
+  background: #ffffff;
+  font-size: 9px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.agenda-calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border: 1px solid #e3e8ef;
+  border-bottom: 0;
+  background: #ffffff;
+}
+
+.agenda-calendar-weekdays span {
+  padding: 9px 6px;
+  color: #667085;
+  font-size: 9px;
+  font-weight: 800;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.agenda-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border-top: 1px solid #e3e8ef;
+  border-left: 1px solid #e3e8ef;
+  background: #ffffff;
+}
+
+.agenda-calendar-day {
+  min-height: 132px;
+  padding: 8px;
+  border-right: 1px solid #e3e8ef;
+  border-bottom: 1px solid #e3e8ef;
+  background: #ffffff;
+}
+
+.agenda-calendar-day.outside {
+  background: #f8fafc;
+}
+
+.agenda-calendar-day > header {
+  margin-bottom: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.agenda-calendar-day > header span {
+  width: 25px;
+  height: 25px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #344054;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.agenda-calendar-day.outside > header span {
+  color: #98a2b3;
+}
+
+.agenda-calendar-day > header small {
+  min-width: 20px;
+  padding: 2px 5px;
+  border-radius: 20px;
+  color: #185fa5;
+  background: #edf6ff;
+  font-size: 8px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.agenda-calendar-day > div {
+  display: grid;
+  gap: 5px;
+}
+
+.agenda-calendar-event {
+  min-width: 0;
+  padding: 6px 7px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  border: 0;
+  border-left: 3px solid #185fa5;
+  border-radius: 6px;
+  color: #0c447c;
+  background: #edf6ff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.agenda-calendar-event.status-confirmada {
+  border-left-color: #1d9e75;
+  color: #126437;
+  background: #eaf8f0;
+}
+
+.agenda-calendar-event.status-cancelada,
+.agenda-calendar-event.status-nao_compareceu {
+  border-left-color: #d92d20;
+  color: #8a1c13;
+  background: #fff0ef;
+}
+
+.agenda-calendar-event strong {
+  flex: 0 0 auto;
+  font-size: 8px;
+}
+
+.agenda-calendar-event span {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 8px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agenda-calendar-more {
+  color: #667085;
+  font-size: 8px;
+  text-align: center;
+}
+
+/* Mensagens fixas no canto inferior direito. */
+.agenda-toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 220;
+  width: min(420px, calc(100vw - 48px));
+  padding: 14px 15px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  border-radius: 12px;
+  box-shadow: 0 20px 55px rgba(16, 24, 40, 0.24);
+  animation: agenda-toast-in 0.2s ease-out;
+}
+
+.agenda-toast.error {
+  border: 1px solid #f1b2ad;
+  color: #8a1c13;
+  background: #fff1f0;
+}
+
+.agenda-toast.success {
+  border: 1px solid #a8ddbe;
+  color: #126437;
+  background: #effbf4;
+}
+
+.agenda-toast > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.agenda-toast strong {
+  font-size: 11px;
+}
+
+.agenda-toast span {
+  margin-top: 4px;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.agenda-toast button {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 7px;
+  color: inherit;
+  background: transparent;
+  font-size: 19px;
+  cursor: pointer;
+}
+
+@keyframes agenda-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 1100px) {
+  .agenda-toolbar {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  .agenda-calendar-day {
+    min-height: 110px;
+  }
+}
+
+@media (max-width: 760px) {
+  .agenda-calendar {
+    padding: 14px;
+    overflow-x: auto;
+  }
+
+  .agenda-calendar-header,
+  .agenda-calendar-weekdays,
+  .agenda-calendar-grid {
+    min-width: 760px;
+  }
+
+  .agenda-toast {
+    right: 14px;
+    bottom: 14px;
+    width: calc(100vw - 28px);
+  }
 }

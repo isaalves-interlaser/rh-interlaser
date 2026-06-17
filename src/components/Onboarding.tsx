@@ -837,8 +837,8 @@ function Onboarding() {
             </span>
             <h2>Onboarding de colaboradores</h2>
             <p>
-              Acompanhe documentos, acessos, equipamentos e
-              integrações.
+              Acompanhe documentos, exame admissional e
+              integração do novo colaborador.
             </p>
           </div>
 
@@ -1607,7 +1607,7 @@ function OnboardingDetails({
   const [documentsOpen, setDocumentsOpen] = useState(true)
   const [openCategories, setOpenCategories] = useState<
     Set<TaskCategory>
-  >(() => new Set<TaskCategory>(['exame', 'integracao']))
+  >(() => new Set<TaskCategory>())
 
   function toggleCategory(category: TaskCategory) {
     setOpenCategories((current) => {

@@ -5,6 +5,8 @@ import {
   useState,
 } from 'react'
 import { supabase } from '../lib/supabase'
+import SolicitacaoDocumentosModal from './SolicitacaoDocumentosModal'
+import AdicionarCandidatoPipelineModal from './AdicionarCandidatoPipelineModal'
 import './Pipeline.css'
 
 type CandidaturaEtapa =
@@ -57,6 +59,16 @@ type Candidatura = {
   motivo_reprovacao: string | null
   parecer_final: string | null
   observacoes: string | null
+  teste_inicio: string | null
+  teste_local: string | null
+  exame_inicio: string | null
+  exame_local: string | null
+  exame_status:
+    | 'em_andamento'
+    | 'apto'
+    | 'inapto'
+    | 'cancelado'
+    | null
   created_at: string
   updated_at: string
 }
@@ -76,6 +88,7 @@ type StatusModalData = {
 type Perfil = {
   id: string
   full_name: string
+  role: 'admin' | 'rh' | 'gestor' | 'consulta'
 }
 
 type InterviewStage =
@@ -91,7 +104,24 @@ type InterviewModalData = {
   inicio: string
   fim: string
   entrevistadorId: string
+  gestorNome: string
+  gestorEmail: string
   observacoes: string
+}
+
+type ProcessModalData = {
+  candidaturaId: string
+  candidatoNome: string
+  vagaLabel: string
+  tipo: 'teste' | 'exame'
+  inicio: string
+  local: string
+  observacoes: string
+  exameStatus:
+    | 'em_andamento'
+    | 'apto'
+    | 'inapto'
+    | 'cancelado'
 }
 
 const etapas: Array<{
@@ -113,7 +143,7 @@ const etapas: Array<{
   {
     id: 'entrevista_gestor',
     label: 'Entrevista com gestor',
-    shortLabel: 'Gestor',
+    shortLabel: 'Entrevista com gestor',
   },
   {
     id: 'teste_pratico',
@@ -121,14 +151,14 @@ const etapas: Array<{
     shortLabel: 'Teste',
   },
   {
-    id: 'exame_admissional',
-    label: 'Exame admissional',
-    shortLabel: 'Exame',
-  },
-  {
     id: 'documentacao',
     label: 'Documentação',
     shortLabel: 'Documentação',
+  },
+  {
+    id: 'exame_admissional',
+    label: 'Exame admissional',
+    shortLabel: 'Exame',
   },
   {
     id: 'contratado',
@@ -209,12 +239,51 @@ function defaultInterviewPeriod() {
   start.setSeconds(0, 0)
   start.setMinutes(Math.ceil(start.getMinutes() / 30) * 30)
 
-  const end = new Date(start.getTime() + 60 * 60 * 1000)
+  const end = new Date(start.getTime() + 30 * 60 * 1000)
 
   return {
     inicio: toLocalInput(start.toISOString()),
     fim: toLocalInput(end.toISOString()),
   }
+}
+
+function endThirtyMinutesAfter(startValue: string) {
+  const start = new Date(startValue)
+
+  if (Number.isNaN(start.getTime())) {
+    return ''
+  }
+
+  return toLocalInput(
+    new Date(start.getTime() + 30 * 60 * 1000).toISOString(),
+  )
+}
+
+function validEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
+}
+
+async function readFunctionError(
+  error: unknown,
+  fallback: string,
+) {
+  const candidate = error as {
+    message?: string
+    context?: Response
+  }
+
+  if (candidate.context) {
+    try {
+      const body = await candidate.context.clone().json()
+      if (body?.error) {
+        return String(body.error)
+      }
+    } catch {
+      // Usa a mensagem padrão.
+    }
+  }
+
+  return candidate.message ?? fallback
 }
 
 function Pipeline() {
@@ -238,6 +307,16 @@ function Pipeline() {
   const [entrevistaModal, setEntrevistaModal] =
     useState<InterviewModalData | null>(null)
   const [salvandoEntrevista, setSalvandoEntrevista] =
+    useState(false)
+  const [processModal, setProcessModal] =
+    useState<ProcessModalData | null>(null)
+  const [salvandoProcesso, setSalvandoProcesso] =
+    useState(false)
+  const [documentacaoId, setDocumentacaoId] =
+    useState<string | null>(null)
+  const [finalizandoId, setFinalizandoId] =
+    useState<string | null>(null)
+  const [adicionarCandidatoAberto, setAdicionarCandidatoAberto] =
     useState(false)
   const [modoVisualizacao, setModoVisualizacao] = useState<
     'confortavel' | 'compacta'
@@ -281,6 +360,11 @@ function Pipeline() {
               motivo_reprovacao,
               parecer_final,
               observacoes,
+              teste_inicio,
+              teste_local,
+              exame_inicio,
+              exame_local,
+              exame_status,
               created_at,
               updated_at
             `,
@@ -289,7 +373,7 @@ function Pipeline() {
 
         supabase
           .from('profiles')
-          .select('id, full_name')
+          .select('id, full_name, role')
           .eq('active', true)
           .order('full_name'),
       ])
@@ -349,6 +433,22 @@ function Pipeline() {
     carregarDados()
   }, [carregarDados])
 
+  useEffect(() => {
+    if (!erro && !mensagem) {
+      return
+    }
+
+    const timer = window.setTimeout(
+      () => {
+        setErro('')
+        setMensagem('')
+      },
+      erro ? 8000 : 4500,
+    )
+
+    return () => window.clearTimeout(timer)
+  }, [erro, mensagem])
+
   const cards = useMemo(() => {
     const candidatoMap = new Map(
       candidatos.map((candidato) => [candidato.id, candidato]),
@@ -372,6 +472,21 @@ function Pipeline() {
       })
       .filter((item): item is CardData => item !== null)
   }, [candidatos, candidaturas, vagas])
+
+  const responsaveisRh = useMemo(
+    () =>
+      perfis.filter(
+        (perfil) => perfil.role === 'rh',
+      ),
+    [perfis],
+  )
+
+  const documentacaoCard = documentacaoId
+    ? cards.find(
+        (card) =>
+          card.candidatura.id === documentacaoId,
+      ) ?? null
+    : null
 
   const cardsFiltrados = useMemo(() => {
     const termo = pesquisa.trim().toLowerCase()
@@ -457,6 +572,8 @@ function Pipeline() {
       inicio: period.inicio,
       fim: period.fim,
       entrevistadorId: '',
+      gestorNome: '',
+      gestorEmail: '',
       observacoes: '',
     })
 
@@ -488,8 +605,10 @@ function Pipeline() {
     if (error) {
       throw new Error(
         data?.error ??
-          error.message ??
-          'Não foi possível conectar ao Google Agenda.',
+          (await readFunctionError(
+            error,
+            'Não foi possível conectar ao Google Agenda.',
+          )),
       )
     }
 
@@ -534,7 +653,113 @@ function Pipeline() {
       return
     }
 
+    if (
+      entrevistaModal.tipo === 'gestor' &&
+      !entrevistaModal.gestorNome.trim()
+    ) {
+      setErro('Informe o nome do gestor.')
+      return
+    }
+
+    if (
+      entrevistaModal.tipo === 'gestor' &&
+      !validEmail(entrevistaModal.gestorEmail)
+    ) {
+      setErro('Informe um e-mail válido para o gestor.')
+      return
+    }
+
     setSalvandoEntrevista(true)
+
+    const conflictBase = supabase
+      .from('entrevistas')
+      .select('id, tipo, inicio, fim')
+      .in('status', ['agendada', 'confirmada'])
+      .lt('inicio', fim.toISOString())
+      .gt('fim', inicio.toISOString())
+
+    const { data: candidateConflict, error: candidateConflictError } =
+      await conflictBase
+        .eq(
+          'candidatura_id',
+          entrevistaModal.candidaturaId,
+        )
+        .limit(1)
+        .maybeSingle()
+
+    if (candidateConflictError) {
+      setSalvandoEntrevista(false)
+      setErro('Não foi possível verificar conflitos de horário.')
+      return
+    }
+
+    if (candidateConflict) {
+      setSalvandoEntrevista(false)
+      setErro(
+        'O candidato já possui outra entrevista neste horário.',
+      )
+      return
+    }
+
+    if (entrevistaModal.entrevistadorId) {
+      const { data: interviewerConflict, error: interviewerError } =
+        await supabase
+          .from('entrevistas')
+          .select('id')
+          .in('status', ['agendada', 'confirmada'])
+          .eq(
+            'entrevistador_id',
+            entrevistaModal.entrevistadorId,
+          )
+          .lt('inicio', fim.toISOString())
+          .gt('fim', inicio.toISOString())
+          .limit(1)
+          .maybeSingle()
+
+      if (interviewerError) {
+        setSalvandoEntrevista(false)
+        setErro('Não foi possível verificar a agenda do entrevistador.')
+        return
+      }
+
+      if (interviewerConflict) {
+        setSalvandoEntrevista(false)
+        setErro(
+          'O entrevistador já possui uma entrevista neste horário.',
+        )
+        return
+      }
+    }
+
+    if (entrevistaModal.tipo === 'gestor') {
+      const { data: managerConflict, error: managerConflictError } =
+        await supabase
+          .from('entrevistas')
+          .select('id')
+          .in('status', ['agendada', 'confirmada'])
+          .eq(
+            'gestor_email',
+            entrevistaModal.gestorEmail.trim().toLowerCase(),
+          )
+          .lt('inicio', fim.toISOString())
+          .gt('fim', inicio.toISOString())
+          .limit(1)
+          .maybeSingle()
+
+      if (managerConflictError) {
+        setSalvandoEntrevista(false)
+        setErro('Não foi possível verificar a agenda do gestor.')
+        return
+      }
+
+      if (managerConflict) {
+        setSalvandoEntrevista(false)
+        setErro(
+          'O gestor já possui uma entrevista neste horário.',
+        )
+        return
+      }
+    }
 
     const { data: existingInterview, error: existingError } =
       await supabase
@@ -583,6 +808,16 @@ function Pipeline() {
           fim: fim.toISOString(),
           entrevistador_id:
             entrevistaModal.entrevistadorId || null,
+          gestor_nome:
+            entrevistaModal.tipo === 'gestor'
+              ? entrevistaModal.gestorNome.trim()
+              : null,
+          gestor_email:
+            entrevistaModal.tipo === 'gestor'
+              ? entrevistaModal.gestorEmail
+                  .trim()
+                  .toLowerCase()
+              : null,
           local: null,
           link_reuniao: null,
           observacoes: nullableText(
@@ -651,6 +886,11 @@ function Pipeline() {
             motivo_reprovacao,
             parecer_final,
             observacoes,
+            teste_inicio,
+            teste_local,
+            exame_inicio,
+            exame_local,
+            exame_status,
             created_at,
             updated_at
           `,
@@ -690,6 +930,249 @@ function Pipeline() {
     )
   }
 
+  function abrirProcesso(
+    candidaturaId: string,
+    tipo: 'teste' | 'exame',
+  ) {
+    const card = cards.find(
+      (item) => item.candidatura.id === candidaturaId,
+    )
+
+    if (!card) {
+      setErro('Não foi possível localizar a candidatura.')
+      setDraggedId(null)
+      return
+    }
+
+    const savedStart =
+      tipo === 'teste'
+        ? card.candidatura.teste_inicio
+        : card.candidatura.exame_inicio
+
+    const start =
+      savedStart ??
+      new Date(
+        Math.ceil(Date.now() / 1_800_000) * 1_800_000,
+      ).toISOString()
+
+    setProcessModal({
+      candidaturaId,
+      candidatoNome: card.candidato.nome_completo,
+      vagaLabel: `VAG-${String(card.vaga.numero).padStart(
+        6,
+        '0',
+      )} — ${card.vaga.cargo}`,
+      tipo,
+      inicio: toLocalInput(start),
+      local:
+        (tipo === 'teste'
+          ? card.candidatura.teste_local
+          : card.candidatura.exame_local) ?? '',
+      observacoes: '',
+      exameStatus:
+        card.candidatura.exame_status ?? 'em_andamento',
+    })
+
+    setDraggedId(null)
+    setErro('')
+    setMensagem('')
+  }
+
+  function fecharProcessModal() {
+    if (salvandoProcesso) {
+      return
+    }
+
+    setProcessModal(null)
+    setErro('')
+  }
+
+  async function salvarProcesso() {
+    if (!processModal) {
+      return
+    }
+
+    setErro('')
+    setMensagem('')
+
+    if (!processModal.inicio) {
+      setErro(
+        processModal.tipo === 'teste'
+          ? 'Informe a data e o horário do teste.'
+          : 'Informe a data e o horário do exame.',
+      )
+      return
+    }
+
+    if (!processModal.local.trim()) {
+      setErro(
+        processModal.tipo === 'teste'
+          ? 'Informe o local do teste.'
+          : 'Informe a clínica ou o local do exame.',
+      )
+      return
+    }
+
+    const inicio = new Date(processModal.inicio)
+
+    if (Number.isNaN(inicio.getTime())) {
+      setErro('Informe uma data e um horário válidos.')
+      return
+    }
+
+    setSalvandoProcesso(true)
+
+    const isTest = processModal.tipo === 'teste'
+    const etapa: CandidaturaEtapa = isTest
+      ? 'teste_pratico'
+      : 'exame_admissional'
+    const label = isTest
+      ? 'Teste prático'
+      : 'Exame admissional'
+
+    const payload = isTest
+      ? {
+          etapa,
+          status: 'ativo' as const,
+          teste_inicio: inicio.toISOString(),
+          teste_local: processModal.local.trim(),
+          proxima_acao: label,
+          proxima_acao_em: inicio.toISOString(),
+          observacoes:
+            processModal.observacoes.trim() ||
+            `${label} agendado.`,
+        }
+      : {
+          etapa,
+          status: 'ativo' as const,
+          exame_inicio: inicio.toISOString(),
+          exame_local: processModal.local.trim(),
+          exame_status: processModal.exameStatus,
+          proxima_acao:
+            processModal.exameStatus === 'apto'
+              ? 'Exame admissional concluído: apto'
+              : processModal.exameStatus === 'inapto'
+                ? 'Exame admissional concluído: inapto'
+                : label,
+          proxima_acao_em: inicio.toISOString(),
+          observacoes:
+            processModal.observacoes.trim() ||
+            `${label} registrado.`,
+        }
+
+    const { data, error } = await supabase
+      .from('candidaturas')
+      .update(payload)
+      .eq('id', processModal.candidaturaId)
+      .select(
+        `
+          id,
+          candidato_id,
+          vaga_id,
+          etapa,
+          status,
+          responsavel_id,
+          data_entrada,
+          proxima_acao,
+          proxima_acao_em,
+          motivo_reprovacao,
+          parecer_final,
+          observacoes,
+          teste_inicio,
+          teste_local,
+          exame_inicio,
+          exame_local,
+          exame_status,
+          created_at,
+          updated_at
+        `,
+      )
+      .single()
+
+    setSalvandoProcesso(false)
+
+    if (error) {
+      console.error(`Erro ao salvar ${label}:`, error.message)
+      setErro(`Não foi possível salvar ${label.toLowerCase()}.`)
+      return
+    }
+
+    setCandidaturas((current) =>
+      current.map((item) =>
+        item.id === processModal.candidaturaId
+          ? (data as Candidatura)
+          : item,
+      ),
+    )
+
+    setProcessModal(null)
+    setMensagem(
+      isTest
+        ? 'Teste prático agendado.'
+        : 'Exame admissional atualizado e sincronizado com o Onboarding.',
+    )
+  }
+
+  async function finalizarContratacao(
+    candidaturaId: string,
+  ) {
+    setFinalizandoId(candidaturaId)
+    setErro('')
+    setMensagem('')
+
+    const { data, error } = await supabase.functions.invoke(
+      'finalizar-contratacao',
+      {
+        body: { candidaturaId },
+      },
+    )
+
+    setFinalizandoId(null)
+    setDraggedId(null)
+
+    if (error || !data?.ok || !data?.candidature) {
+      const message =
+        data?.error ??
+        (error
+          ? await readFunctionError(
+              error,
+              'Não foi possível finalizar a contratação.',
+            )
+          : 'Não foi possível finalizar a contratação.')
+      setErro(message)
+      return
+    }
+
+    setCandidaturas((current) =>
+      current.map((item) =>
+        item.id === candidaturaId
+          ? (data.candidature as Candidatura)
+          : item,
+      ),
+    )
+
+    setMensagem(
+      data.message ??
+        'Contratação finalizada e vaga fechada.',
+    )
+  }
+
+  function onDocumentacaoSuccess(
+    candidature: Candidatura,
+    message: string,
+  ) {
+    setCandidaturas((current) =>
+      current.map((item) =>
+        item.id === candidature.id
+          ? candidature
+          : item,
+      ),
+    )
+    setDocumentacaoId(null)
+    setMensagem(message)
+    setErro('')
+  }
+
   async function moverCandidatura(
     candidaturaId: string,
     novaEtapa: CandidaturaEtapa,
@@ -714,16 +1197,60 @@ function Pipeline() {
       return
     }
 
+    if (novaEtapa === 'teste_pratico') {
+      abrirProcesso(candidaturaId, 'teste')
+      return
+    }
+
+    if (novaEtapa === 'documentacao') {
+      setDocumentacaoId(candidaturaId)
+      setDraggedId(null)
+      setErro('')
+      setMensagem('')
+      return
+    }
+
+    if (novaEtapa === 'exame_admissional') {
+      const { data: documentRequest, error: documentRequestError } =
+        await supabase
+          .from('solicitacoes_documentos')
+          .select('id')
+          .eq('candidatura_id', candidaturaId)
+          .maybeSingle()
+
+      if (documentRequestError) {
+        setDraggedId(null)
+        setErro(
+          'Não foi possível verificar a documentação do candidato.',
+        )
+        return
+      }
+
+      if (!documentRequest) {
+        setDraggedId(null)
+        setErro(
+          'Solicite os documentos antes de encaminhar o candidato ao exame admissional.',
+        )
+        return
+      }
+
+      abrirProcesso(candidaturaId, 'exame')
+      return
+    }
+
+    if (novaEtapa === 'contratado') {
+      await finalizarContratacao(candidaturaId)
+      return
+    }
+
     setMovendoId(candidaturaId)
     setErro('')
     setMensagem('')
 
     const novoStatus: CandidaturaStatus =
-      novaEtapa === 'contratado'
-        ? 'contratado'
-        : candidatura.status === 'contratado'
-          ? 'ativo'
-          : candidatura.status
+      candidatura.status === 'contratado'
+        ? 'ativo'
+        : candidatura.status
 
     const { data, error } = await supabase
       .from('candidaturas')
@@ -926,13 +1453,27 @@ function Pipeline() {
             </p>
           </div>
 
-          <button
-            className="pipeline-secondary-button"
-            type="button"
-            onClick={carregarDados}
-          >
-            Atualizar
-          </button>
+          <div className="pipeline-header-actions">
+            <button
+              className="pipeline-secondary-button"
+              type="button"
+              onClick={carregarDados}
+            >
+              Atualizar
+            </button>
+
+            <button
+              className="pipeline-primary-button"
+              type="button"
+              onClick={() => {
+                setAdicionarCandidatoAberto(true)
+                setErro('')
+                setMensagem('')
+              }}
+            >
+              + Adicionar candidato
+            </button>
+          </div>
         </header>
 
         <div className="pipeline-toolbar">
@@ -1047,18 +1588,6 @@ function Pipeline() {
           ))}
         </nav>
 
-        {erro && (
-          <div className="pipeline-message error" role="alert">
-            {erro}
-          </div>
-        )}
-
-        {mensagem && (
-          <div className="pipeline-message success" role="status">
-            {mensagem}
-          </div>
-        )}
-
         <div
           className={`pipeline-board-wrapper mode-${modoVisualizacao}`}
         >
@@ -1101,12 +1630,16 @@ function Pipeline() {
                     {cardsDaEtapa.map((card) => (
                       <article
                         className={
-                          movendoId === card.candidatura.id
+                          movendoId === card.candidatura.id ||
+                          finalizandoId === card.candidatura.id
                             ? 'pipeline-card moving'
                             : 'pipeline-card'
                         }
                         key={card.candidatura.id}
-                        draggable={movendoId !== card.candidatura.id}
+                        draggable={
+                          movendoId !== card.candidatura.id &&
+                          finalizandoId !== card.candidatura.id
+                        }
                         onDragStart={(event) => {
                           event.dataTransfer.effectAllowed = 'move'
                           event.dataTransfer.setData(
@@ -1152,7 +1685,6 @@ function Pipeline() {
                                 'banco_talentos',
                                 'desistente',
                                 'reprovado',
-                                'contratado',
                               ] as CandidaturaStatus[]
                             ).map((status) => (
                               <button
@@ -1215,6 +1747,31 @@ function Pipeline() {
                                 card.candidatura.proxima_acao_em,
                               )}
                             </small>
+                          </div>
+                        )}
+
+                        {(card.candidatura.etapa ===
+                          'teste_pratico' ||
+                          card.candidatura.etapa ===
+                            'exame_admissional') && (
+                          <div className="pipeline-card-process-actions">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                abrirProcesso(
+                                  card.candidatura.id,
+                                  card.candidatura.etapa ===
+                                    'teste_pratico'
+                                    ? 'teste'
+                                    : 'exame',
+                                )
+                              }
+                            >
+                              {card.candidatura.etapa ===
+                              'teste_pratico'
+                                ? 'Editar teste'
+                                : 'Atualizar exame'}
+                            </button>
                           </div>
                         )}
 
@@ -1339,6 +1896,9 @@ function Pipeline() {
                           ? {
                               ...current,
                               inicio: event.target.value,
+                              fim: endThirtyMinutesAfter(
+                                event.target.value,
+                              ),
                             }
                           : current,
                       )
@@ -1403,6 +1963,58 @@ function Pipeline() {
                   </select>
                 </div>
 
+                {entrevistaModal.tipo === 'gestor' && (
+                  <>
+                    <div className="pipeline-field">
+                      <label htmlFor="pipeline-manager-name">
+                        Nome do gestor *
+                      </label>
+                      <input
+                        id="pipeline-manager-name"
+                        type="text"
+                        value={entrevistaModal.gestorNome}
+                        onChange={(event) =>
+                          setEntrevistaModal((current) =>
+                            current
+                              ? {
+                                  ...current,
+                                  gestorNome:
+                                    event.target.value,
+                                }
+                              : current,
+                          )
+                        }
+                        placeholder="Nome completo do gestor"
+                        disabled={salvandoEntrevista}
+                      />
+                    </div>
+
+                    <div className="pipeline-field">
+                      <label htmlFor="pipeline-manager-email">
+                        E-mail do gestor *
+                      </label>
+                      <input
+                        id="pipeline-manager-email"
+                        type="email"
+                        value={entrevistaModal.gestorEmail}
+                        onChange={(event) =>
+                          setEntrevistaModal((current) =>
+                            current
+                              ? {
+                                  ...current,
+                                  gestorEmail:
+                                    event.target.value,
+                                }
+                              : current,
+                          )
+                        }
+                        placeholder="gestor@empresa.com.br"
+                        disabled={salvandoEntrevista}
+                      />
+                    </div>
+                  </>
+                )}
+
                 <div className="pipeline-field full">
                   <label htmlFor="pipeline-interview-notes">
                     Observações
@@ -1457,6 +2069,260 @@ function Pipeline() {
               </button>
             </footer>
           </section>
+        </div>
+      )}
+
+      {processModal && (
+        <div
+          className="pipeline-modal-overlay"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              fecharProcessModal()
+            }
+          }}
+        >
+          <section
+            className="pipeline-modal pipeline-process-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pipeline-process-title"
+          >
+            <header className="pipeline-modal-header">
+              <div>
+                <span className="pipeline-eyebrow">
+                  {processModal.tipo === 'teste'
+                    ? 'Avaliação'
+                    : 'Pré-admissão'}
+                </span>
+                <h2 id="pipeline-process-title">
+                  {processModal.tipo === 'teste'
+                    ? 'Agendar teste prático'
+                    : 'Exame admissional'}
+                </h2>
+              </div>
+
+              <button
+                type="button"
+                onClick={fecharProcessModal}
+                disabled={salvandoProcesso}
+                aria-label="Fechar"
+              >
+                ×
+              </button>
+            </header>
+
+            <div className="pipeline-modal-body">
+              <div className="pipeline-interview-summary">
+                <div>
+                  <span>Candidato</span>
+                  <strong>{processModal.candidatoNome}</strong>
+                </div>
+                <div>
+                  <span>Vaga</span>
+                  <strong>{processModal.vagaLabel}</strong>
+                </div>
+              </div>
+
+              <div className="pipeline-form-grid">
+                <div className="pipeline-field">
+                  <label htmlFor="pipeline-process-start">
+                    Data e horário *
+                  </label>
+                  <input
+                    id="pipeline-process-start"
+                    type="datetime-local"
+                    value={processModal.inicio}
+                    onChange={(event) =>
+                      setProcessModal((current) =>
+                        current
+                          ? {
+                              ...current,
+                              inicio: event.target.value,
+                            }
+                          : current,
+                      )
+                    }
+                    disabled={salvandoProcesso}
+                  />
+                </div>
+
+                <div className="pipeline-field">
+                  <label htmlFor="pipeline-process-location">
+                    {processModal.tipo === 'teste'
+                      ? 'Local do teste *'
+                      : 'Clínica ou local do exame *'}
+                  </label>
+                  <input
+                    id="pipeline-process-location"
+                    type="text"
+                    value={processModal.local}
+                    onChange={(event) =>
+                      setProcessModal((current) =>
+                        current
+                          ? {
+                              ...current,
+                              local: event.target.value,
+                            }
+                          : current,
+                      )
+                    }
+                    placeholder={
+                      processModal.tipo === 'teste'
+                        ? 'Informe onde o teste será realizado'
+                        : 'Informe a clínica e/ou endereço'
+                    }
+                    disabled={salvandoProcesso}
+                  />
+                </div>
+
+                {processModal.tipo === 'exame' && (
+                  <div className="pipeline-field">
+                    <label htmlFor="pipeline-exam-status">
+                      Situação do exame
+                    </label>
+                    <select
+                      id="pipeline-exam-status"
+                      value={processModal.exameStatus}
+                      onChange={(event) =>
+                        setProcessModal((current) =>
+                          current
+                            ? {
+                                ...current,
+                                exameStatus:
+                                  event.target.value as
+                                    | 'em_andamento'
+                                    | 'apto'
+                                    | 'inapto'
+                                    | 'cancelado',
+                              }
+                            : current,
+                        )
+                      }
+                      disabled={salvandoProcesso}
+                    >
+                      <option value="em_andamento">
+                        Em andamento
+                      </option>
+                      <option value="apto">Apto</option>
+                      <option value="inapto">Inapto</option>
+                      <option value="cancelado">Cancelado</option>
+                    </select>
+                  </div>
+                )}
+
+                <div className="pipeline-field full">
+                  <label htmlFor="pipeline-process-notes">
+                    Observações
+                  </label>
+                  <textarea
+                    id="pipeline-process-notes"
+                    rows={4}
+                    value={processModal.observacoes}
+                    onChange={(event) =>
+                      setProcessModal((current) =>
+                        current
+                          ? {
+                              ...current,
+                              observacoes:
+                                event.target.value,
+                            }
+                          : current,
+                      )
+                    }
+                    disabled={salvandoProcesso}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <footer className="pipeline-modal-actions">
+              <button
+                className="pipeline-secondary-button"
+                type="button"
+                onClick={fecharProcessModal}
+                disabled={salvandoProcesso}
+              >
+                Cancelar
+              </button>
+              <button
+                className="pipeline-primary-button"
+                type="button"
+                onClick={salvarProcesso}
+                disabled={salvandoProcesso}
+              >
+                {salvandoProcesso
+                  ? 'Salvando...'
+                  : processModal.tipo === 'teste'
+                    ? 'Agendar teste'
+                    : 'Salvar exame'}
+              </button>
+            </footer>
+          </section>
+        </div>
+      )}
+
+      {adicionarCandidatoAberto && (
+        <AdicionarCandidatoPipelineModal
+          candidatos={candidatos}
+          vagas={vagas}
+          responsaveisRh={responsaveisRh}
+          candidaturas={candidaturas}
+          onClose={() => setAdicionarCandidatoAberto(false)}
+          onCreated={async (message) => {
+            setMensagem(message)
+            setErro('')
+            await carregarDados()
+          }}
+          onError={(message) => {
+            setErro(message)
+            setMensagem('')
+          }}
+        />
+      )}
+
+      {documentacaoCard && (
+        <SolicitacaoDocumentosModal
+          candidaturaId={documentacaoCard.candidatura.id}
+          candidato={{
+            numero: documentacaoCard.candidato.numero,
+            nome: documentacaoCard.candidato.nome_completo,
+            email: documentacaoCard.candidato.email,
+          }}
+          vaga={{
+            numero: documentacaoCard.vaga.numero,
+            cargo: documentacaoCard.vaga.cargo,
+            setor: documentacaoCard.vaga.setor,
+          }}
+          responsaveisRh={responsaveisRh}
+          onClose={() => setDocumentacaoId(null)}
+          onSuccess={onDocumentacaoSuccess}
+        />
+      )}
+
+      {(erro || mensagem) && (
+        <div
+          className={
+            erro
+              ? 'pipeline-toast error'
+              : 'pipeline-toast success'
+          }
+          role={erro ? 'alert' : 'status'}
+        >
+          <div>
+            <strong>{erro ? 'Não foi possível concluir' : 'Tudo certo'}</strong>
+            <span>{erro || mensagem}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setErro('')
+              setMensagem('')
+            }}
+            aria-label="Fechar mensagem"
+          >
+            ×
+          </button>
         </div>
       )}
 

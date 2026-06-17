@@ -399,15 +399,6 @@ function Dashboard({
           </div>
 
           <div className="header-actions">
-            <button
-              className="notification-button"
-              type="button"
-              aria-label="Notificações"
-            >
-              <AppIcon name="bell" width={18} height={18} />
-              <span className="notification-dot" />
-            </button>
-
             <div className="header-user">
               <div className="header-user-avatar">
                 {userName.charAt(0).toUpperCase()}

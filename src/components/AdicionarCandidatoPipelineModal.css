@@ -1,0 +1,212 @@
+.pipeline-add-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 180;
+  padding: 20px;
+  display: grid;
+  place-items: center;
+  background: rgba(16, 24, 40, 0.54);
+}
+
+.pipeline-add-modal {
+  width: min(720px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 28px 80px rgba(16, 24, 40, 0.28);
+}
+
+.pipeline-add-modal > header {
+  padding: 22px 24px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid #e9edf2;
+}
+
+.pipeline-add-modal > header span {
+  color: #185fa5;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.pipeline-add-modal > header h2 {
+  margin: 6px 0 0;
+  color: #172033;
+  font-size: 22px;
+}
+
+.pipeline-add-modal > header p {
+  margin: 6px 0 0;
+  color: #667085;
+  font-size: 10px;
+}
+
+.pipeline-add-modal > header > button {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  border: 1px solid #d8e0e9;
+  border-radius: 9px;
+  color: #667085;
+  background: #ffffff;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.pipeline-add-mode-switch {
+  margin: 20px 24px 0;
+  padding: 4px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid #dfe6ee;
+  border-radius: 10px;
+  background: #f5f7fa;
+}
+
+.pipeline-add-mode-switch button {
+  min-height: 38px;
+  border: 0;
+  border-radius: 8px;
+  color: #667085;
+  background: transparent;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pipeline-add-mode-switch button.active {
+  color: #185fa5;
+  background: #ffffff;
+  box-shadow: 0 3px 12px rgba(35, 56, 85, 0.1);
+}
+
+.pipeline-add-form-grid {
+  padding: 20px 24px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 15px;
+}
+
+.pipeline-add-field.full {
+  grid-column: 1 / -1;
+}
+
+.pipeline-add-field label {
+  display: block;
+  margin-bottom: 6px;
+  color: #344054;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.pipeline-add-field input,
+.pipeline-add-field select,
+.pipeline-add-field textarea {
+  width: 100%;
+  border: 1px solid #d0d7e1;
+  border-radius: 9px;
+  outline: none;
+  color: #172033;
+  background: #ffffff;
+  font: inherit;
+}
+
+.pipeline-add-field input,
+.pipeline-add-field select {
+  height: 41px;
+  padding: 0 12px;
+}
+
+.pipeline-add-field textarea {
+  min-height: 82px;
+  padding: 10px 12px;
+  resize: vertical;
+}
+
+.pipeline-add-field input:focus,
+.pipeline-add-field select:focus,
+.pipeline-add-field textarea:focus {
+  border-color: #185fa5;
+  box-shadow: 0 0 0 3px rgba(24, 95, 165, 0.1);
+}
+
+.pipeline-add-error,
+.pipeline-add-warning {
+  margin: 0 24px 16px;
+  padding: 11px 13px;
+  border-radius: 9px;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.pipeline-add-error {
+  border: 1px solid #f1b2ad;
+  color: #8a1c13;
+  background: #fff1f0;
+}
+
+.pipeline-add-warning {
+  border: 1px solid #edcf91;
+  color: #633806;
+  background: #fff8e7;
+}
+
+.pipeline-add-modal footer {
+  position: sticky;
+  bottom: 0;
+  padding: 16px 24px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  border-top: 1px solid #e9edf2;
+  background: #ffffff;
+}
+
+.pipeline-add-modal footer button {
+  min-height: 40px;
+  padding: 0 15px;
+  border: 1px solid #d0d7e1;
+  border-radius: 9px;
+  color: #344054;
+  background: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pipeline-add-modal footer button.primary {
+  border-color: #185fa5;
+  color: #ffffff;
+  background: #185fa5;
+}
+
+.pipeline-add-modal button:disabled,
+.pipeline-add-modal input:disabled,
+.pipeline-add-modal select:disabled,
+.pipeline-add-modal textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+@media (max-width: 620px) {
+  .pipeline-add-modal-overlay {
+    padding: 10px;
+  }
+
+  .pipeline-add-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pipeline-add-field.full {
+    grid-column: auto;
+  }
+
+  .pipeline-add-modal footer button {
+    flex: 1;
+  }
+}
