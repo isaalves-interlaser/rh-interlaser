@@ -8,6 +8,7 @@ export type AppIconName =
   | 'calendar'
   | 'onboarding'
   | 'contracts'
+  | 'reports'
   | 'settings'
   | 'users'
   | 'companies'
@@ -71,6 +72,15 @@ const paths: Record<AppIconName, ReactNode> = {
       <path d="M6 3h9l4 4v14H6z" />
       <path d="M14 3v5h5" />
       <path d="M9 13h6M9 17h6" />
+    </>
+  ),
+  reports: (
+    <>
+      <path d="M4 19V5" />
+      <path d="M4 19h17" />
+      <rect x="7" y="11" width="3" height="5" rx="1" />
+      <rect x="12" y="8" width="3" height="8" rx="1" />
+      <rect x="17" y="4" width="3" height="12" rx="1" />
     </>
   ),
   settings: (

@@ -10,6 +10,7 @@ import DashboardHome from './DashboardHome'
 import EmpresasFiliais from './EmpresasFiliais'
 import DocumentosConfiguracao from './DocumentosConfiguracao'
 import Contratos from './Contratos'
+import Relatorios from './Relatorios'
 import AppIcon, { type AppIconName } from './AppIcon'
 import './Dashboard.css'
 
@@ -21,6 +22,7 @@ type PageId =
   | 'agenda'
   | 'onboarding'
   | 'contratos'
+  | 'relatorios'
   | 'usuarios'
   | 'empresas-filiais'
   | 'documentacao-config'
@@ -85,6 +87,12 @@ const mainMenuItems: MenuItem[] = [
     icon: 'onboarding',
   },
 ]
+
+const reportsMenuItem: MenuItem = {
+  id: 'relatorios',
+  label: 'Relatórios',
+  icon: 'reports',
+}
 
 const contractsMenuItem: MenuItem = {
   id: 'contratos',
@@ -190,7 +198,7 @@ function Dashboard({
       return mainMenuItems
     }
 
-    return [...mainMenuItems, contractsMenuItem]
+    return [...mainMenuItems, reportsMenuItem, contractsMenuItem]
   }, [canManageHrSettings])
 
   const visibleSettingsItems = useMemo(
@@ -487,6 +495,9 @@ function Dashboard({
           {activePage === 'agenda' && <Agenda />}
 
           {activePage === 'onboarding' && <Onboarding />}
+
+          {activePage === 'relatorios' &&
+            canManageHrSettings && <Relatorios />}
 
           {activePage === 'contratos' &&
             canManageHrSettings && <Contratos />}
