@@ -490,7 +490,9 @@ function Dashboard({
 
           {activePage === 'candidatos' && <Candidatos />}
 
-          {activePage === 'vagas' && <Vagas responsavelRhEmail={userEmail} />}
+          {activePage === 'vagas' && (
+            <Vagas responsavelRhEmail={userEmail} />
+          )}
 
           {activePage === 'agenda' && <Agenda />}
 

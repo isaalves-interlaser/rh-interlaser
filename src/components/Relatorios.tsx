@@ -196,6 +196,7 @@ function parseDate(value: string | null | undefined) {
   const normalized = value.includes('T')
     ? value
     : `${value}T00:00:00`
+
   const date = new Date(normalized)
 
   return Number.isNaN(date.getTime()) ? null : date
@@ -254,13 +255,18 @@ function escapeCsv(value: string | number) {
   return text
 }
 
-function downloadCsv(filename: string, rows: Array<Array<string | number>>) {
+function downloadCsv(
+  filename: string,
+  rows: Array<Array<string | number>>,
+) {
   const csv = rows
     .map((row) => row.map(escapeCsv).join(';'))
     .join('\n')
+
   const blob = new Blob([`\ufeff${csv}`], {
     type: 'text/csv;charset=utf-8;',
   })
+
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
 
@@ -297,6 +303,7 @@ function ReportBarList({ items }: { items: BarItem[] }) {
               <span>{item.label}</span>
               <strong>{item.value}</strong>
             </div>
+
             <div className="reports-bar-track">
               <span style={{ width: `${width}%` }} />
             </div>
@@ -323,6 +330,7 @@ function Relatorios() {
   const [statusVagaFiltro, setStatusVagaFiltro] = useState<
     'todos' | VagaStatus
   >('todos')
+
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -342,30 +350,35 @@ function Relatorios() {
         .from('candidatos')
         .select('id, numero, nome_completo, active, created_at')
         .order('created_at', { ascending: false }),
+
       supabase
         .from('vagas')
         .select(
           'id, numero, cargo, setor, status, prioridade, tipo_contrato, modalidade, created_at, data_limite',
         )
         .order('created_at', { ascending: false }),
+
       supabase
         .from('candidaturas')
         .select(
           'id, candidato_id, vaga_id, etapa, status, data_entrada, created_at, updated_at',
         )
         .order('data_entrada', { ascending: false }),
+
       supabase
         .from('entrevistas')
         .select(
           'id, candidatura_id, status, tipo, modalidade, inicio, created_at',
         )
         .order('inicio', { ascending: false }),
+
       supabase
         .from('onboardings')
         .select(
           'id, candidatura_id, status, data_prevista_inicio, data_admissao, created_at, updated_at',
         )
         .order('created_at', { ascending: false }),
+
       supabase
         .from('contratos')
         .select(
@@ -387,6 +400,7 @@ function Relatorios() {
         'Erro ao carregar relatórios:',
         firstError.message,
       )
+
       setError(
         'Não foi possível carregar os dados do relatório.',
       )
@@ -453,6 +467,7 @@ function Relatorios() {
 
       const setorOk =
         setorFiltro === 'todos' || vaga.setor === setorFiltro
+
       const statusOk =
         statusVagaFiltro === 'todos' ||
         vaga.status === statusVagaFiltro
@@ -580,19 +595,24 @@ function Relatorios() {
     const candidaturasAtivas = candidaturasFiltradas.filter(
       (item) => item.status === 'ativo',
     ).length
+
     const candidatosContratados = candidaturasFiltradas.filter(
       (item) =>
         item.status === 'contratado' || item.etapa === 'contratado',
     ).length
+
     const entrevistasRealizadas = entrevistasFiltradas.filter(
       (item) => item.status === 'realizada',
     ).length
+
     const onboardingsConcluidos = onboardingsFiltrados.filter(
       (item) => item.status === 'concluido',
     ).length
+
     const contratosAtivos = contratosFiltrados.filter(
       (item) => item.status === 'ativo',
     ).length
+
     const taxaContratacao = candidaturasFiltradas.length
       ? (candidatosContratados / candidaturasFiltradas.length) * 100
       : 0
@@ -725,7 +745,9 @@ function Relatorios() {
     const candidaturasPorVaga = new Map<string, Candidatura[]>()
 
     for (const candidatura of candidaturasFiltradas) {
-      const current = candidaturasPorVaga.get(candidatura.vaga_id) ?? []
+      const current =
+        candidaturasPorVaga.get(candidatura.vaga_id) ?? []
+
       current.push(candidatura)
       candidaturasPorVaga.set(candidatura.vaga_id, current)
     }
@@ -737,7 +759,9 @@ function Relatorios() {
         if (!vaga) return null
 
         const contratados = rows.filter(
-          (row) => row.status === 'contratado' || row.etapa === 'contratado',
+          (row) =>
+            row.status === 'contratado' ||
+            row.etapa === 'contratado',
         ).length
 
         return {
@@ -764,7 +788,10 @@ function Relatorios() {
   function exportarRelatorio() {
     const rows: Array<Array<string | number>> = [
       ['Relatório de recrutamento'],
-      ['Período', `${formatDate(periodoInicio)} até ${formatDate(periodoFim)}`],
+      [
+        'Período',
+        `${formatDate(periodoInicio)} até ${formatDate(periodoFim)}`,
+      ],
       ['Setor', setorFiltro === 'todos' ? 'Todos' : setorFiltro],
       [
         'Status da vaga',
@@ -865,7 +892,9 @@ function Relatorios() {
             id="relatorio-inicio"
             type="date"
             value={periodoInicio}
-            onChange={(event) => setPeriodoInicio(event.target.value)}
+            onChange={(event) =>
+              setPeriodoInicio(event.target.value)
+            }
           />
         </div>
 
@@ -876,7 +905,9 @@ function Relatorios() {
             type="date"
             value={periodoFim}
             min={periodoInicio}
-            onChange={(event) => setPeriodoFim(event.target.value)}
+            onChange={(event) =>
+              setPeriodoFim(event.target.value)
+            }
           />
         </div>
 
@@ -885,9 +916,12 @@ function Relatorios() {
           <select
             id="relatorio-setor"
             value={setorFiltro}
-            onChange={(event) => setSetorFiltro(event.target.value)}
+            onChange={(event) =>
+              setSetorFiltro(event.target.value)
+            }
           >
             <option value="todos">Todos</option>
+
             {setores.map((setor) => (
               <option key={setor} value={setor}>
                 {setor}
@@ -897,7 +931,9 @@ function Relatorios() {
         </div>
 
         <div className="reports-filter">
-          <label htmlFor="relatorio-status-vaga">Status da vaga</label>
+          <label htmlFor="relatorio-status-vaga">
+            Status da vaga
+          </label>
           <select
             id="relatorio-status-vaga"
             value={statusVagaFiltro}
@@ -908,16 +944,21 @@ function Relatorios() {
             }
           >
             <option value="todos">Todos</option>
-            {Object.entries(statusVagaLabels).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
+
+            {Object.entries(statusVagaLabels).map(
+              ([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ),
+            )}
           </select>
         </div>
       </div>
 
-      {error && <div className="reports-message error">{error}</div>}
+      {error && (
+        <div className="reports-message error">{error}</div>
+      )}
 
       <div className="reports-kpis">
         <article className="reports-kpi-card">
@@ -952,7 +993,9 @@ function Relatorios() {
 
         <article className="reports-kpi-card highlight">
           <span>Taxa de contratação</span>
-          <strong>{formatPercentage(indicadores.taxaContratacao)}</strong>
+          <strong>
+            {formatPercentage(indicadores.taxaContratacao)}
+          </strong>
           <small>{indicadores.contratosAtivos} contratos ativos</small>
         </article>
       </div>
@@ -965,6 +1008,7 @@ function Relatorios() {
               <h3>Por status</h3>
             </div>
           </div>
+
           <ReportBarList items={vagasPorStatus} />
         </article>
 
@@ -975,6 +1019,7 @@ function Relatorios() {
               <h3>Candidaturas por etapa</h3>
             </div>
           </div>
+
           <ReportBarList items={candidaturasPorEtapa} />
         </article>
 
@@ -985,6 +1030,7 @@ function Relatorios() {
               <h3>Por status</h3>
             </div>
           </div>
+
           <ReportBarList items={candidaturasPorStatus} />
         </article>
 
@@ -995,6 +1041,7 @@ function Relatorios() {
               <h3>Entrevistas por status</h3>
             </div>
           </div>
+
           <ReportBarList items={entrevistasPorStatus} />
         </article>
 
@@ -1005,6 +1052,7 @@ function Relatorios() {
               <h3>Onboarding por status</h3>
             </div>
           </div>
+
           <ReportBarList items={onboardingsPorStatus} />
         </article>
 
@@ -1015,6 +1063,7 @@ function Relatorios() {
               <h3>Por status</h3>
             </div>
           </div>
+
           <ReportBarList items={contratosPorStatus} />
         </article>
       </div>
@@ -1040,6 +1089,7 @@ function Relatorios() {
                 <th>Contratados</th>
               </tr>
             </thead>
+
             <tbody>
               {movimentacaoVagas.length > 0 ? (
                 movimentacaoVagas.map((item) => (
