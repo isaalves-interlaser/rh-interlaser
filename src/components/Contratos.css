@@ -17,7 +17,7 @@
 
 .contracts-header > div > span,
 .contracts-modal header span {
-  color: #185fa5;
+  color: #f97316;
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.12em;
@@ -52,9 +52,9 @@
 }
 
 .contracts-modal footer button.primary {
-  border-color: #185fa5;
+  border-color: #f97316;
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
 }
 
 .contracts-toolbar {
@@ -191,7 +191,7 @@
   place-items: center;
   border-radius: 50%;
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
   font-weight: 800;
 }
 
@@ -231,8 +231,8 @@
 }
 
 .contract-status.status-encerrado {
-  color: #0c447c;
-  background: #e6f1fb;
+  color: #c2410c;
+  background: #ffedd5;
 }
 
 .contract-status.status-cancelado {
@@ -337,7 +337,7 @@
   place-items: center;
   border-radius: 13px;
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
   font-weight: 800;
 }
 

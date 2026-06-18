@@ -27,7 +27,7 @@
 }
 
 .pipeline-add-modal > header span {
-  color: #185fa5;
+  color: #f97316;
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.12em;
@@ -80,7 +80,7 @@
 }
 
 .pipeline-add-mode-switch button.active {
-  color: #185fa5;
+  color: #f97316;
   background: #ffffff;
   box-shadow: 0 3px 12px rgba(35, 56, 85, 0.1);
 }
@@ -131,8 +131,8 @@
 .pipeline-add-field input:focus,
 .pipeline-add-field select:focus,
 .pipeline-add-field textarea:focus {
-  border-color: #185fa5;
-  box-shadow: 0 0 0 3px rgba(24, 95, 165, 0.1);
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
 }
 
 .pipeline-add-error,
@@ -180,9 +180,9 @@
 }
 
 .pipeline-add-modal footer button.primary {
-  border-color: #185fa5;
+  border-color: #f97316;
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
 }
 
 .pipeline-add-modal button:disabled,

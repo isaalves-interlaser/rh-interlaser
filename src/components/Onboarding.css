@@ -18,7 +18,7 @@
 .onboarding-eyebrow {
   display: block;
   margin-bottom: 6px;
-  color: #185fa5;
+  color: #f97316;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.12em;
@@ -57,13 +57,13 @@
 }
 
 .onboarding-primary-button {
-  border: 1px solid #185fa5;
+  border: 1px solid #f97316;
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
 }
 
 .onboarding-primary-button:hover:not(:disabled) {
-  background: #0c447c;
+  background: #c2410c;
 }
 
 .onboarding-secondary-button {
@@ -116,8 +116,8 @@
 .onboarding-field input:focus,
 .onboarding-field select:focus,
 .onboarding-field textarea:focus {
-  border-color: #185fa5;
-  box-shadow: 0 0 0 3px rgba(24, 95, 165, 0.1);
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
 }
 
 .onboarding-field.full {
@@ -214,8 +214,8 @@
 }
 
 .onboarding-list-card.active {
-  border-color: #185fa5;
-  box-shadow: 0 0 0 2px rgba(24, 95, 165, 0.1);
+  border-color: #f97316;
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.1);
 }
 
 .onboarding-avatar {
@@ -225,7 +225,7 @@
   place-items: center;
   border-radius: 50%;
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
   font-weight: 800;
 }
 
@@ -262,8 +262,8 @@
 }
 
 .status-em_andamento {
-  color: #0c447c;
-  background: #e6f1fb;
+  color: #c2410c;
+  background: #ffedd5;
 }
 
 .status-bloqueado {
@@ -317,7 +317,7 @@
   height: 100%;
   display: block;
   border-radius: 10px;
-  background: #185fa5;
+  background: #f97316;
 }
 
 .onboarding-mini-progress small {
@@ -410,7 +410,7 @@
   height: 100%;
   display: block;
   border-radius: 20px;
-  background: linear-gradient(90deg, #185fa5, #378add);
+  background: linear-gradient(90deg, #f97316, #fb923c);
 }
 
 .onboarding-progress-meta {
@@ -454,9 +454,9 @@
 .onboarding-notes {
   margin-top: 14px;
   padding: 12px 14px;
-  border-left: 3px solid #185fa5;
+  border-left: 3px solid #f97316;
   border-radius: 7px;
-  background: #edf6ff;
+  background: #fff7ed;
 }
 
 .onboarding-notes span {
@@ -581,8 +581,8 @@
 }
 
 .onboarding-task-category {
-  color: #0c447c;
-  background: #e6f1fb;
+  color: #c2410c;
+  background: #ffedd5;
 }
 
 .onboarding-task-required {
@@ -655,7 +655,7 @@
   place-items: center;
   border-radius: 13px;
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
   font-weight: 800;
 }
 
@@ -754,7 +754,7 @@
 
 .onboarding-required-option input {
   margin-top: 2px;
-  accent-color: #185fa5;
+  accent-color: #f97316;
 }
 
 .onboarding-required-option span {
@@ -963,7 +963,7 @@
 }
 
 .onboarding-list-panel-header span {
-  color: #185fa5;
+  color: #f97316;
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.1em;
@@ -980,8 +980,8 @@
   min-width: 28px;
   padding: 5px 8px;
   border-radius: 20px;
-  color: #185fa5;
-  background: #edf6ff;
+  color: #f97316;
+  background: #fff7ed;
   font-size: 10px;
   font-weight: 800;
   text-align: center;
@@ -1012,16 +1012,16 @@
 }
 
 .onboarding-list-card.active {
-  border-color: #185fa5;
+  border-color: #f97316;
   background: #f7fbff;
-  box-shadow: 0 0 0 2px rgba(24, 95, 165, 0.11);
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.11);
 }
 
 .onboarding-avatar {
   width: 44px;
   height: 44px;
   font-size: 14px;
-  box-shadow: 0 6px 14px rgba(24, 95, 165, 0.18);
+  box-shadow: 0 6px 14px rgba(249, 115, 22, 0.18);
 }
 
 .onboarding-list-title > strong {
@@ -1074,7 +1074,7 @@
   background:
     radial-gradient(
       circle at 94% 15%,
-      rgba(24, 95, 165, 0.1),
+      rgba(249, 115, 22, 0.1),
       transparent 27%
     ),
     linear-gradient(135deg, #ffffff, #f7fbff);
@@ -1095,8 +1095,8 @@
   place-items: center;
   border-radius: 16px;
   color: #ffffff;
-  background: linear-gradient(145deg, #185fa5, #0c447c);
-  box-shadow: 0 9px 20px rgba(24, 95, 165, 0.2);
+  background: linear-gradient(145deg, #f97316, #c2410c);
+  box-shadow: 0 9px 20px rgba(249, 115, 22, 0.2);
   font-size: 20px;
   font-weight: 800;
 }
@@ -1159,7 +1159,7 @@
   margin: 0;
   padding: 18px;
   border-color: #cfe0ef;
-  background: linear-gradient(135deg, #f8fbfe, #edf6ff);
+  background: linear-gradient(135deg, #f8fbfe, #fff7ed);
 }
 
 .onboarding-progress-card.v2 .onboarding-progress-top {
@@ -1295,13 +1295,13 @@
   place-items: center;
   border-radius: 50%;
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
   font-size: 11px;
   font-weight: 800;
 }
 
 .onboarding-notes.v2 span {
-  color: #185fa5;
+  color: #f97316;
   font-size: 9px;
 }
 
@@ -1371,11 +1371,11 @@
 
 .onboarding-task-filters button.active {
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
 }
 
 .onboarding-task-filters button.active small {
-  color: #185fa5;
+  color: #f97316;
 }
 
 .onboarding-task-groups {
@@ -1412,8 +1412,8 @@
   display: grid;
   place-items: center;
   border-radius: 9px;
-  color: #185fa5;
-  background: #edf6ff;
+  color: #f97316;
+  background: #fff7ed;
   font-size: 12px;
   font-weight: 800;
 }
@@ -1528,8 +1528,8 @@
 }
 
 .onboarding-task-status.status-em_andamento {
-  color: #0c447c;
-  background: #e6f1fb;
+  color: #c2410c;
+  background: #ffedd5;
 }
 
 .onboarding-task-status.status-concluida {
@@ -1714,8 +1714,8 @@
 }
 
 .onboarding-task-badges .automatic {
-  color: #0c447c;
-  background: #e6f1fb;
+  color: #c2410c;
+  background: #ffedd5;
 }
 
 
@@ -1775,8 +1775,8 @@
   display: grid;
   place-items: center;
   border-radius: 9px;
-  color: #185fa5;
-  background: #e6f1fb;
+  color: #f97316;
+  background: #ffedd5;
   font-size: 8px;
   font-weight: 800;
 }

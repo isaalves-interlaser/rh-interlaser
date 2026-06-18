@@ -18,7 +18,7 @@
 .vacancies-eyebrow {
   display: block;
   margin-bottom: 6px;
-  color: #185fa5;
+  color: #f97316;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.12em;
@@ -57,9 +57,9 @@
 }
 
 .vacancies-primary-button {
-  border: 1px solid #185fa5;
+  border: 1px solid #f97316;
   color: #fff;
-  background: #185fa5;
+  background: #f97316;
 }
 
 .vacancies-secondary-button {
@@ -119,8 +119,8 @@
 .vacancies-form-group input:focus,
 .vacancies-form-group select:focus,
 .vacancies-form-group textarea:focus {
-  border-color: #185fa5;
-  box-shadow: 0 0 0 3px rgba(24, 95, 165, 0.1);
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
 }
 
 .vacancies-summary {
@@ -194,7 +194,7 @@
 }
 
 .vacancy-code {
-  color: #185fa5;
+  color: #f97316;
   font-size: 11px;
 }
 
@@ -237,8 +237,8 @@
 }
 
 .status-aberta {
-  color: #0c447c;
-  background: #e6f1fb;
+  color: #c2410c;
+  background: #ffedd5;
 }
 
 .status-em_selecao,
@@ -293,7 +293,7 @@
   place-items: center;
   border-radius: 13px;
   color: #fff;
-  background: #185fa5;
+  background: #f97316;
   font-weight: 800;
 }
 
@@ -465,8 +465,8 @@
   height: 30px;
   border: 1px solid #b9d5ef;
   border-radius: 8px;
-  color: #185fa5;
-  background: #edf6ff;
+  color: #f97316;
+  background: #fff7ed;
   font-size: 10px;
   font-weight: 800;
   cursor: pointer;
@@ -508,7 +508,7 @@
   place-items: center;
   border-radius: 50%;
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
   font-size: 12px;
   font-weight: 800;
 }
@@ -550,8 +550,8 @@
 }
 
 .vacancy-stage {
-  color: #0c447c;
-  background: #e6f1fb;
+  color: #c2410c;
+  background: #ffedd5;
 }
 
 .vacancy-application-status {
@@ -572,7 +572,7 @@
   place-items: center;
   border-radius: 13px;
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
   font-weight: 800;
 }
 

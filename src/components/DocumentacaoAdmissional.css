@@ -28,15 +28,15 @@
   display: grid;
   place-items: center;
   border-radius: 12px;
-  color: #185fa5;
-  background: #e6f1fb;
+  color: #f97316;
+  background: #ffedd5;
   font-size: 10px;
   font-weight: 800;
 }
 
 .admission-documents-eyebrow {
   display: block;
-  color: #185fa5;
+  color: #f97316;
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.12em;
@@ -87,8 +87,8 @@
 .admission-request-status {
   padding: 5px 9px;
   border-radius: 20px;
-  color: #0c447c;
-  background: #e6f1fb;
+  color: #c2410c;
+  background: #ffedd5;
   font-size: 8px;
   font-weight: 800;
 }
@@ -125,8 +125,8 @@
 
 .admission-documents-actions a {
   border-color: #9fc3e5;
-  color: #185fa5;
-  background: #edf6ff;
+  color: #f97316;
+  background: #fff7ed;
 }
 
 .admission-documents-overview {
@@ -189,7 +189,7 @@
   height: 100%;
   display: block;
   border-radius: 10px;
-  background: #185fa5;
+  background: #f97316;
 }
 
 .admission-documents-message {
@@ -411,8 +411,8 @@
 }
 
 .document-refusal-body textarea:focus {
-  border-color: #185fa5;
-  box-shadow: 0 0 0 3px rgba(24, 95, 165, 0.1);
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
 }
 
 .document-refusal-modal > footer {

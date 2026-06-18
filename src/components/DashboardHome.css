@@ -142,8 +142,8 @@
   display: grid;
   place-items: center;
   border-radius: 9px;
-  color: #185fa5;
-  background: #edf6ff;
+  color: #f97316;
+  background: #fff7ed;
   font-size: 15px;
   font-weight: 800;
 }
@@ -249,7 +249,7 @@
   place-items: center;
   border-radius: 50%;
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
   font-size: 12px;
   font-weight: 800;
 }
@@ -289,8 +289,8 @@
 .dashboard-home-process-status .stage {
   padding: 4px 8px;
   border-radius: 20px;
-  color: #0c447c;
-  background: #e6f1fb;
+  color: #c2410c;
+  background: #ffedd5;
   font-size: 8px;
   font-weight: 700;
 }
@@ -329,11 +329,11 @@
   justify-content: center;
   flex-direction: column;
   border-radius: 8px;
-  background: #edf6ff;
+  background: #fff7ed;
 }
 
 .dashboard-home-interview-date strong {
-  color: #185fa5;
+  color: #f97316;
   font-size: 9px;
 }
 
@@ -351,8 +351,8 @@
 }
 
 .dashboard-home-interview-status.status-agendada {
-  color: #0c447c;
-  background: #e6f1fb;
+  color: #c2410c;
+  background: #ffedd5;
 }
 
 .dashboard-home-interview-status.status-confirmada {
@@ -376,8 +376,8 @@
   display: grid;
   place-items: center;
   border-radius: 12px;
-  color: #185fa5;
-  background: #edf6ff;
+  color: #f97316;
+  background: #fff7ed;
   font-weight: 800;
 }
 
@@ -410,7 +410,7 @@
   place-items: center;
   border-radius: 13px;
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
   font-weight: 800;
 }
 

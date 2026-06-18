@@ -18,7 +18,7 @@
 .agenda-eyebrow {
   display: block;
   margin-bottom: 6px;
-  color: #185fa5;
+  color: #f97316;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.12em;
@@ -57,13 +57,13 @@
 }
 
 .agenda-primary-button {
-  border: 1px solid #185fa5;
+  border: 1px solid #f97316;
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
 }
 
 .agenda-primary-button:hover:not(:disabled) {
-  background: #0c447c;
+  background: #c2410c;
 }
 
 .agenda-secondary-button {
@@ -121,8 +121,8 @@
 .agenda-field input:focus,
 .agenda-field select:focus,
 .agenda-field textarea:focus {
-  border-color: #185fa5;
-  box-shadow: 0 0 0 3px rgba(24, 95, 165, 0.1);
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
 }
 
 .agenda-field.full {
@@ -225,8 +225,8 @@
   justify-content: center;
   flex-direction: column;
   border-radius: 9px;
-  color: #185fa5;
-  background: #edf6ff;
+  color: #f97316;
+  background: #fff7ed;
 }
 
 .agenda-time strong {
@@ -272,8 +272,8 @@
 }
 
 .status-agendada {
-  color: #0c447c;
-  background: #e6f1fb;
+  color: #c2410c;
+  background: #ffedd5;
 }
 
 .status-confirmada {
@@ -310,7 +310,7 @@
 }
 
 .agenda-location a {
-  color: #185fa5;
+  color: #f97316;
   font-weight: 700;
   text-decoration: none;
 }
@@ -343,9 +343,9 @@
 }
 
 .agenda-actions button.primary {
-  border-color: #185fa5;
+  border-color: #f97316;
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
 }
 
 .agenda-actions button.danger {
@@ -366,7 +366,7 @@
   place-items: center;
   border-radius: 13px;
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
   font-weight: 800;
 }
 
@@ -546,9 +546,9 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  border: 1px solid #b9d7f4;
+  border: 1px solid #fed7aa;
   border-radius: 10px;
-  background: #edf6ff;
+  background: #fff7ed;
 }
 
 .agenda-meet-fixed-icon {
@@ -559,7 +559,7 @@
   place-items: center;
   border-radius: 9px;
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
   font-size: 11px;
   font-weight: 800;
 }
@@ -570,7 +570,7 @@
 }
 
 .agenda-meet-fixed strong {
-  color: #0c447c;
+  color: #c2410c;
   font-size: 10px;
 }
 
@@ -614,7 +614,7 @@
 
 .agenda-view-switch button.active {
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
 }
 
 /* Calendário mensal. */
@@ -734,8 +734,8 @@
   min-width: 20px;
   padding: 2px 5px;
   border-radius: 20px;
-  color: #185fa5;
-  background: #edf6ff;
+  color: #f97316;
+  background: #fff7ed;
   font-size: 8px;
   font-weight: 800;
   text-align: center;
@@ -754,10 +754,10 @@
   gap: 5px;
   overflow: hidden;
   border: 0;
-  border-left: 3px solid #185fa5;
+  border-left: 3px solid #f97316;
   border-radius: 6px;
-  color: #0c447c;
-  background: #edf6ff;
+  color: #c2410c;
+  background: #fff7ed;
   text-align: left;
   cursor: pointer;
 }

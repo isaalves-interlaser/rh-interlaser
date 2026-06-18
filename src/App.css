@@ -28,7 +28,7 @@ input {
   place-items: center;
   border-radius: 14px;
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
   font-weight: 800;
 }
 
@@ -71,9 +71,9 @@ input {
     ),
     linear-gradient(
       145deg,
-      #16345c 0%,
-      #185fa5 55%,
-      #0c447c 100%
+      #7c2d12 0%,
+      #f97316 55%,
+      #c2410c 100%
     );
 }
 
@@ -95,7 +95,7 @@ input {
 }
 
 .brand-icon {
-  color: #185fa5;
+  color: #f97316;
   background: #ffffff;
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.12);
 }
@@ -131,7 +131,7 @@ input {
 }
 
 .presentation-label {
-  color: #c8e4ff;
+  color: #ffedd5;
 }
 
 .presentation-content h1 {
@@ -202,12 +202,12 @@ input {
   display: none;
   margin-bottom: 24px;
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
 }
 
 .login-label {
   margin-bottom: 10px;
-  color: #185fa5;
+  color: #f97316;
 }
 
 .login-header h2 {
@@ -256,8 +256,8 @@ input {
 }
 
 .form-group input:focus {
-  border-color: #185fa5;
-  box-shadow: 0 0 0 4px rgba(24, 95, 165, 0.11);
+  border-color: #f97316;
+  box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.11);
 }
 
 .form-group input:disabled,
@@ -287,7 +287,7 @@ button:disabled {
   right: 12px;
   padding: 5px;
   border: 0;
-  color: #185fa5;
+  color: #f97316;
   background: transparent;
   font-size: 11px;
   font-weight: 800;
@@ -313,7 +313,7 @@ button:disabled {
 .back-to-login {
   padding: 0;
   border: 0;
-  color: #185fa5;
+  color: #f97316;
   background: transparent;
   font-size: 12px;
   font-weight: 800;
@@ -339,9 +339,9 @@ button:disabled {
 }
 
 .form-message.info {
-  border: 1px solid #b9d7f4;
-  color: #0c447c;
-  background: #edf6ff;
+  border: 1px solid #fed7aa;
+  color: #c2410c;
+  background: #fff7ed;
 }
 
 .form-message.success {
@@ -362,7 +362,7 @@ button:disabled {
   border: 0;
   border-radius: 10px;
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
   font-size: 14px;
   font-weight: 800;
   cursor: pointer;
@@ -372,7 +372,7 @@ button:disabled {
 }
 
 .login-button:hover:not(:disabled) {
-  background: #0c447c;
+  background: #c2410c;
 }
 
 .login-button:active:not(:disabled) {

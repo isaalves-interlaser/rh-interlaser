@@ -39,7 +39,7 @@
   display: grid;
   place-items: center;
   border-radius: 12px;
-  color: #185fa5;
+  color: #f97316;
   background: #ffffff;
   box-shadow: 0 9px 22px rgba(0, 0, 0, 0.12);
   font-size: 15px;
@@ -322,7 +322,7 @@
   width: 36px;
   height: 36px;
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
 }
 
 .header-user > div:last-child {
@@ -364,12 +364,12 @@
   place-items: center;
   border-radius: 14px;
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
   font-weight: 800;
 }
 
 .profile-state span {
-  color: #185fa5;
+  color: #f97316;
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.1em;
@@ -394,7 +394,7 @@
   border: 0;
   border-radius: 9px;
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
   font-weight: 700;
   cursor: pointer;
 }

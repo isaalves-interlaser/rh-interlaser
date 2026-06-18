@@ -44,7 +44,7 @@ input:disabled {
   background:
     radial-gradient(
       circle at 20% 20%,
-      rgba(24, 95, 165, 0.12),
+      rgba(249, 115, 22, 0.12),
       transparent 35%
     ),
     #f5f7fa;
@@ -71,7 +71,7 @@ input:disabled {
   place-items: center;
   border-radius: 14px;
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
   font-size: 18px;
   font-weight: 800;
 }
@@ -122,11 +122,11 @@ input:disabled {
   border: 0;
   border-radius: 10px;
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
   font-weight: 700;
   cursor: pointer;
 }
 
 .logout-button:hover:not(:disabled) {
-  background: #0c447c;
+  background: #c2410c;
 }

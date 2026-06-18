@@ -17,7 +17,7 @@
 
 .documents-settings-header > div > span,
 .documents-settings-modal header span {
-  color: #185fa5;
+  color: #f97316;
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.12em;
@@ -103,13 +103,13 @@
 .documents-settings-note {
   margin: 18px 22px 0;
   padding: 13px 15px;
-  border-left: 4px solid #185fa5;
+  border-left: 4px solid #f97316;
   border-radius: 8px;
-  background: #edf6ff;
+  background: #fff7ed;
 }
 
 .documents-settings-note strong {
-  color: #0c447c;
+  color: #c2410c;
   font-size: 10px;
 }
 
@@ -148,8 +148,8 @@
   display: grid;
   place-items: center;
   border-radius: 11px;
-  color: #185fa5;
-  background: #edf6ff;
+  color: #f97316;
+  background: #fff7ed;
   font-size: 9px;
   font-weight: 800;
 }
@@ -207,8 +207,8 @@
 }
 
 .document-setting-badges .default {
-  color: #0c447c;
-  background: #e6f1fb;
+  color: #c2410c;
+  background: #ffedd5;
 }
 
 .document-setting-badges .order {
@@ -306,7 +306,7 @@
   place-items: center;
   border-radius: 13px;
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
   font-weight: 800;
 }
 
@@ -401,7 +401,7 @@
 
 .documents-settings-check input {
   margin-top: 2px;
-  accent-color: #185fa5;
+  accent-color: #f97316;
 }
 
 .documents-settings-check span {
@@ -449,9 +449,9 @@
 
 .documents-settings-header-actions .primary,
 .documents-settings-modal footer button.primary {
-  border-color: #185fa5;
+  border-color: #f97316;
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
 }
 
 .documents-settings-header-actions .primary:hover:not(:disabled),

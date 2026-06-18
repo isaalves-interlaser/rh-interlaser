@@ -17,7 +17,7 @@
 
 .organization-header > div:first-child > span,
 .organization-modal > header span {
-  color: #185fa5;
+  color: #f97316;
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.12em;
@@ -60,9 +60,9 @@
 .organization-header button.primary,
 .organization-company-header button.primary,
 .organization-modal footer button.primary {
-  border-color: #185fa5;
+  border-color: #f97316;
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
 }
 
 .organization-toolbar {
@@ -97,8 +97,8 @@
 
 .organization-toolbar input:focus,
 .organization-field input:focus {
-  border-color: #185fa5;
-  box-shadow: 0 0 0 3px rgba(24, 95, 165, 0.1);
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
 }
 
 .organization-summary {
@@ -154,7 +154,7 @@
 .organization-company-card:hover,
 .organization-company-card.active {
   border-color: #8eb9de;
-  box-shadow: 0 0 0 2px rgba(24, 95, 165, 0.08);
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.08);
 }
 
 .organization-company-avatar {
@@ -163,8 +163,8 @@
   display: grid;
   place-items: center;
   border-radius: 10px;
-  color: #185fa5;
-  background: #edf6ff;
+  color: #f97316;
+  background: #fff7ed;
   font-weight: 800;
 }
 
@@ -212,7 +212,7 @@
 }
 
 .organization-company-header span {
-  color: #185fa5;
+  color: #f97316;
   font-size: 8px;
   font-weight: 800;
   text-transform: uppercase;
@@ -251,8 +251,8 @@
   display: grid;
   place-items: center;
   border-radius: 9px;
-  color: #185fa5;
-  background: #edf6ff;
+  color: #f97316;
+  background: #fff7ed;
   font-size: 9px;
   font-weight: 800;
 }
@@ -380,7 +380,7 @@
   place-items: center;
   border-radius: 13px;
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
   font-weight: 800;
 }
 
@@ -454,7 +454,7 @@
 
 .organization-check input {
   margin-top: 2px;
-  accent-color: #185fa5;
+  accent-color: #f97316;
 }
 
 .organization-check span {

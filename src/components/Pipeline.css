@@ -20,7 +20,7 @@
 .pipeline-eyebrow {
   display: block;
   margin-bottom: 7px;
-  color: #185fa5;
+  color: #f97316;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.13em;
@@ -51,13 +51,13 @@
 }
 
 .pipeline-primary-button {
-  border: 1px solid #185fa5;
+  border: 1px solid #f97316;
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
 }
 
 .pipeline-primary-button:hover:not(:disabled) {
-  background: #0c447c;
+  background: #c2410c;
 }
 
 .pipeline-secondary-button {
@@ -118,8 +118,8 @@
 .pipeline-field input:focus,
 .pipeline-field select:focus,
 .pipeline-field textarea:focus {
-  border-color: #185fa5;
-  box-shadow: 0 0 0 3px rgba(24, 95, 165, 0.1);
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
 }
 
 .pipeline-summary {
@@ -167,7 +167,7 @@
 
 .pipeline-view-switch button.active {
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
 }
 
 .pipeline-stage-navigation {
@@ -195,7 +195,7 @@
 }
 
 .pipeline-stage-navigation button:hover {
-  border-color: #185fa5;
+  border-color: #f97316;
   background: #f5faff;
 }
 
@@ -207,8 +207,8 @@
   min-width: 20px;
   padding: 2px 6px;
   border-radius: 20px;
-  color: #185fa5;
-  background: #edf6ff;
+  color: #f97316;
+  background: #fff7ed;
   font-size: 9px;
   font-weight: 800;
   text-align: center;
@@ -292,7 +292,7 @@
 }
 
 .pipeline-column.drag-active:hover {
-  border-color: #185fa5;
+  border-color: #f97316;
   background: #e3f0fb;
 }
 
@@ -346,11 +346,11 @@
 }
 
 .dot-em_analise {
-  background: #378add;
+  background: #fb923c;
 }
 
 .dot-entrevista_rh {
-  background: #185fa5;
+  background: #f97316;
 }
 
 .dot-entrevista_gestor {
@@ -416,7 +416,7 @@
 }
 
 .pipeline-candidate-code {
-  color: #185fa5;
+  color: #f97316;
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -511,9 +511,9 @@
   padding: 10px 11px;
   display: flex;
   flex-direction: column;
-  border-left: 4px solid #185fa5;
+  border-left: 4px solid #f97316;
   border-radius: 7px;
-  background: #edf6ff;
+  background: #fff7ed;
 }
 
 .pipeline-next-action span {
@@ -525,7 +525,7 @@
 
 .pipeline-next-action strong {
   margin-top: 4px;
-  color: #0c447c;
+  color: #c2410c;
   font-size: 10px;
 }
 
@@ -644,7 +644,7 @@
   place-items: center;
   border-radius: 13px;
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
   font-weight: 800;
 }
 
@@ -848,9 +848,9 @@
   display: flex;
   align-items: center;
   gap: 11px;
-  border: 1px solid #b9d7f4;
+  border: 1px solid #fed7aa;
   border-radius: 10px;
-  background: #edf6ff;
+  background: #fff7ed;
 }
 
 .pipeline-meet-fixed-icon {
@@ -861,7 +861,7 @@
   place-items: center;
   border-radius: 10px;
   color: #ffffff;
-  background: #185fa5;
+  background: #f97316;
   font-size: 12px;
   font-weight: 800;
 }
@@ -872,7 +872,7 @@
 }
 
 .pipeline-meet-fixed strong {
-  color: #0c447c;
+  color: #c2410c;
   font-size: 10px;
 }
 
@@ -892,17 +892,17 @@
 .pipeline-card-process-actions button {
   width: 100%;
   min-height: 32px;
-  border: 1px solid #b9d7f4;
+  border: 1px solid #fed7aa;
   border-radius: 8px;
-  color: #0c447c;
-  background: #edf6ff;
+  color: #c2410c;
+  background: #fff7ed;
   font-size: 9px;
   font-weight: 700;
   cursor: pointer;
 }
 
 .pipeline-card-process-actions button:hover {
-  border-color: #185fa5;
+  border-color: #f97316;
   background: #e2f0fc;
 }
 
