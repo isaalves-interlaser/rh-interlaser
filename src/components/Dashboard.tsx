@@ -11,7 +11,6 @@ import EmpresasFiliais from './EmpresasFiliais'
 import DocumentosConfiguracao from './DocumentosConfiguracao'
 import Contratos from './Contratos'
 import Relatorios from './Relatorios'
-import AppIcon, { type AppIconName } from './AppIcon'
 import './Dashboard.css'
 
 type PageId =
@@ -42,10 +41,23 @@ type DashboardProps = {
   onLogout: () => Promise<void>
 }
 
+type MenuIconName =
+  | 'dashboard'
+  | 'pipeline'
+  | 'candidates'
+  | 'vacancies'
+  | 'calendar'
+  | 'onboarding'
+  | 'reports'
+  | 'contracts'
+  | 'users'
+  | 'companies'
+  | 'documents'
+
 type MenuItem = {
   id: PageId
   label: string
-  icon: AppIconName
+  icon: MenuIconName
 }
 
 const roleLabels: Record<UserRole, string> = {
@@ -53,6 +65,20 @@ const roleLabels: Record<UserRole, string> = {
   rh: 'Recursos Humanos',
   gestor: 'Gestor',
   consulta: 'Consulta',
+}
+
+const menuIcons: Record<MenuIconName, string> = {
+  dashboard: '▦',
+  pipeline: '⇄',
+  candidates: '○',
+  vacancies: '▣',
+  calendar: '▤',
+  onboarding: '☑',
+  reports: '▥',
+  contracts: '▧',
+  users: '◉',
+  companies: '▨',
+  documents: '◫',
 }
 
 const mainMenuItems: MenuItem[] = [
@@ -124,10 +150,7 @@ function formatUserName(email: string) {
   return name
     .split(/[._-]/)
     .filter(Boolean)
-    .map(
-      (part) =>
-        part.charAt(0).toUpperCase() + part.slice(1),
-    )
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ')
 }
 
@@ -137,10 +160,8 @@ function Dashboard({
   loading,
   onLogout,
 }: DashboardProps) {
-  const [activePage, setActivePage] =
-    useState<PageId>('dashboard')
-  const [profile, setProfile] =
-    useState<UserProfile | null>(null)
+  const [activePage, setActivePage] = useState<PageId>('dashboard')
+  const [profile, setProfile] = useState<UserProfile | null>(null)
   const [profileError, setProfileError] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -162,10 +183,7 @@ function Dashboard({
       }
 
       if (error) {
-        console.error(
-          'Erro ao buscar perfil:',
-          error.message,
-        )
+        console.error('Erro ao buscar perfil:', error.message)
         setProfileError(
           'Não foi possível carregar seu perfil de usuário.',
         )
@@ -191,6 +209,7 @@ function Dashboard({
 
   const canManageHrSettings =
     profile?.role === 'admin' || profile?.role === 'rh'
+
   const canManageUsers = profile?.role === 'admin'
 
   const visibleMainItems = useMemo(() => {
@@ -222,8 +241,8 @@ function Dashboard({
     (item) => item.id === activePage,
   )
 
-  const userName =
-    profile?.full_name || formatUserName(userEmail)
+  const userName = profile?.full_name || formatUserName(userEmail)
+
   const roleName = profile
     ? roleLabels[profile.role]
     : 'Carregando...'
@@ -273,14 +292,8 @@ function Dashboard({
         <span>Acesso não autorizado</span>
         <h1>Não foi possível acessar o sistema</h1>
         <p>{profileError}</p>
-        <button
-          type="button"
-          onClick={onLogout}
-          disabled={loading}
-        >
-          {loading
-            ? 'Saindo...'
-            : 'Voltar para o login'}
+        <button type="button" onClick={onLogout} disabled={loading}>
+          {loading ? 'Saindo...' : 'Voltar para o login'}
         </button>
       </section>
     )
@@ -344,8 +357,8 @@ function Dashboard({
                 onClick={() => navigate(item.id)}
                 aria-pressed={activePage === item.id}
               >
-                <span className="menu-icon">
-                  <AppIcon name={item.icon} />
+                <span className="menu-icon" aria-hidden="true">
+                  {menuIcons[item.icon]}
                 </span>
                 <span>{item.label}</span>
               </button>
@@ -366,8 +379,8 @@ function Dashboard({
                 }
                 aria-expanded={settingsOpen}
               >
-                <span className="menu-icon">
-                  <AppIcon name="settings" />
+                <span className="menu-icon" aria-hidden="true">
+                  ⚙
                 </span>
 
                 <span>Configurações</span>
@@ -378,8 +391,9 @@ function Dashboard({
                       ? 'settings-chevron open'
                       : 'settings-chevron'
                   }
+                  aria-hidden="true"
                 >
-                  <AppIcon name="chevron" width={16} height={16} />
+                  ›
                 </span>
               </button>
 
@@ -403,12 +417,8 @@ function Dashboard({
                     aria-pressed={activePage === item.id}
                   >
                     <span className="submenu-line" />
-                    <span className="menu-icon">
-                      <AppIcon
-                        name={item.icon}
-                        width={17}
-                        height={17}
-                      />
+                    <span className="menu-icon" aria-hidden="true">
+                      {menuIcons[item.icon]}
                     </span>
                     <span>{item.label}</span>
                   </button>
@@ -436,7 +446,7 @@ function Dashboard({
             aria-label="Sair do sistema"
             title="Sair do sistema"
           >
-            <AppIcon name="logout" width={18} height={18} />
+            ↪
           </button>
         </div>
       </aside>
@@ -490,9 +500,7 @@ function Dashboard({
 
           {activePage === 'candidatos' && <Candidatos />}
 
-          {activePage === 'vagas' && (
-            <Vagas responsavelRhEmail={userEmail} />
-          )}
+          {activePage === 'vagas' && <Vagas />}
 
           {activePage === 'agenda' && <Agenda />}
 

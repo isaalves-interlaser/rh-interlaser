@@ -21,7 +21,7 @@
       transparent 28%
     ),
     linear-gradient(180deg, #9a3412 0%, #7c2d12 100%);
-  box-shadow: 8px 0 28px rgba(124, 45, 18, 0.10);
+  box-shadow: 8px 0 28px rgba(124, 45, 18, 0.1);
 }
 
 .sidebar-brand {
@@ -125,6 +125,13 @@
   flex: 0 0 auto;
   display: inline-grid;
   place-items: center;
+  font-size: 17px;
+  line-height: 1;
+}
+
+.menu-icon svg {
+  width: 20px;
+  height: 20px;
 }
 
 .sidebar-settings-group {
@@ -197,7 +204,7 @@
 
 .sidebar-submenu-item.active {
   color: #ffffff;
-  background: rgba(74, 153, 222, 0.22);
+  background: rgba(249, 115, 22, 0.22);
   font-weight: 700;
 }
 
@@ -308,7 +315,6 @@
   gap: 17px;
 }
 
-
 .header-user {
   padding: 5px 8px 5px 5px;
   display: flex;
@@ -399,7 +405,6 @@
   cursor: pointer;
 }
 
-/* Compatibilidade com cartões antigos do Dashboard. */
 .welcome-banner {
   padding: 24px 28px;
   display: flex;
@@ -433,6 +438,20 @@
   box-shadow: 0 5px 18px rgba(35, 56, 85, 0.04);
 }
 
+.mobile-menu-button,
+.sidebar-mobile-close,
+.mobile-menu-overlay {
+  display: none;
+}
+
+.sidebar-menu-item:focus,
+.sidebar-submenu-item:focus,
+.sidebar-logout:focus,
+.sidebar-mobile-close:focus,
+.mobile-menu-button:focus {
+  outline: none;
+}
+
 @media (max-width: 1050px) {
   .statistics-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -441,68 +460,143 @@
 
 @media (max-width: 760px) {
   .system-layout {
-    grid-template-columns: 1fr;
+    display: block;
+    min-height: 100vh;
   }
 
   .system-sidebar {
-    position: static;
-    min-height: auto;
-    height: auto;
-    padding: 14px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 80;
+    width: min(286px, 86vw);
+    min-height: 100vh;
+    height: 100vh;
+    padding: 24px 16px 18px;
+    transform: translateX(-105%);
+    transition: transform 0.22s ease;
+  }
+
+  .system-sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .mobile-menu-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    border: 0;
+    background: rgba(15, 23, 42, 0.42);
+    cursor: pointer;
+  }
+
+  .system-layout.menu-open .mobile-menu-overlay {
+    display: block;
+  }
+
+  .sidebar-mobile-close {
+    width: 34px;
+    height: 34px;
+    margin-left: auto;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 9px;
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.1);
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .mobile-menu-button {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    gap: 4px;
+    border: 1px solid #e4e9ef;
+    border-radius: 11px;
+    background: #ffffff;
+    cursor: pointer;
+  }
+
+  .mobile-menu-button span {
+    width: 18px;
+    height: 2px;
+    display: block;
+    border-radius: 999px;
+    background: #7c2d12;
   }
 
   .sidebar-brand {
-    padding-bottom: 14px;
+    padding-bottom: 24px;
   }
 
   .sidebar-navigation {
-    padding-top: 14px;
-    overflow: visible;
+    padding-top: 25px;
+    overflow-y: auto;
   }
 
   .sidebar-main-menu {
-    display: flex;
-    gap: 6px;
-    overflow-x: auto;
+    display: grid;
+    gap: 4px;
+    overflow: visible;
   }
 
   .sidebar-section-label {
-    display: none;
+    display: block;
   }
 
   .sidebar-menu-item {
-    width: auto;
-    flex: 0 0 auto;
+    width: 100%;
+    flex: initial;
   }
 
   .sidebar-settings-group {
-    margin-top: 8px;
+    margin-top: 9px;
   }
 
   .sidebar-submenu.open {
-    display: flex;
-    gap: 5px;
-    overflow-x: auto;
+    display: grid;
+    overflow: hidden;
   }
 
   .sidebar-submenu-item {
-    width: auto;
-    flex: 0 0 auto;
-    margin-left: 0;
-    padding-left: 11px;
+    width: calc(100% - 10px);
+    flex: initial;
+    margin-left: 10px;
+    padding-left: 22px;
   }
 
   .submenu-line {
-    display: none;
+    display: block;
   }
 
   .sidebar-user {
-    display: none;
+    display: flex;
+  }
+
+  .system-main {
+    min-width: 0;
   }
 
   .system-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
     min-height: auto;
-    padding: 17px 18px;
+    padding: 14px 18px;
+  }
+
+  .system-header-title {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .system-header h1 {
+    font-size: 19px;
   }
 
   .header-user > div:last-child {
@@ -516,7 +610,8 @@
 
 @media (max-width: 560px) {
   .system-header {
-    align-items: flex-start;
+    align-items: center;
+    gap: 12px;
   }
 
   .header-actions {
