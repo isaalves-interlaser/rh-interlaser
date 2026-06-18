@@ -173,6 +173,20 @@ function toLocalInput(value: string) {
   return local.toISOString().slice(0, 16)
 }
 
+function startOfToday() {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return today
+}
+
+function minInterviewInputValue() {
+  return toLocalInput(startOfToday().toISOString())
+}
+
+function isScheduledStatus(status: EntrevistaStatus) {
+  return status === 'agendada' || status === 'confirmada'
+}
+
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('pt-BR', {
     dateStyle: 'full',
@@ -268,6 +282,8 @@ function Agenda() {
     const now = new Date()
     return new Date(now.getFullYear(), now.getMonth(), 1)
   })
+
+  const minInterviewDate = useMemo(() => minInterviewInputValue(), [])
 
   const carregarDados = useCallback(async () => {
     setCarregando(true)
@@ -633,6 +649,18 @@ function Agenda() {
       fim <= inicio
     ) {
       setErro('O horário final deve ser posterior ao inicial.')
+      return
+    }
+
+    if (inicio < startOfToday()) {
+      setErro('Não é permitido marcar entrevista em data anterior a hoje.')
+      return
+    }
+
+    if (isScheduledStatus(form.status) && inicio < new Date()) {
+      setErro(
+        'Para entrevistas agendadas ou confirmadas, informe um horário a partir de agora.',
+      )
       return
     }
 
@@ -1475,6 +1503,7 @@ function Agenda() {
                     <input
                       id="agenda-inicio"
                       type="datetime-local"
+                      min={minInterviewDate}
                       value={form.inicio}
                       onChange={(event) =>
                         setForm((current) => ({
@@ -1496,6 +1525,7 @@ function Agenda() {
                     <input
                       id="agenda-fim"
                       type="datetime-local"
+                      min={form.inicio || minInterviewDate}
                       value={form.fim}
                       onChange={(event) =>
                         setForm((current) => ({

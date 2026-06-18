@@ -144,8 +144,11 @@
   border-radius: 9px;
   color: #f97316;
   background: #fff7ed;
-  font-size: 15px;
-  font-weight: 800;
+}
+
+.dashboard-home-metric-top svg,
+.dashboard-home-empty svg {
+  display: block;
 }
 
 .dashboard-home-metric > strong {

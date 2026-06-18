@@ -19,6 +19,94 @@ type DashboardHomeProps = {
   onNavigate: (page: DashboardPage) => void
 }
 
+
+
+type DashboardIconType =
+  | 'candidates'
+  | 'vacancies'
+  | 'interviews'
+  | 'onboarding'
+  | 'movement'
+  | 'calendar'
+
+function DashboardIcon({ type }: { type: DashboardIconType }) {
+  const commonProps = {
+    width: '18',
+    height: '18',
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    xmlns: 'http://www.w3.org/2000/svg',
+    'aria-hidden': true,
+  }
+
+  const strokeProps = {
+    stroke: 'currentColor',
+    strokeWidth: '2',
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+  }
+
+  switch (type) {
+    case 'candidates':
+      return (
+        <svg {...commonProps}>
+          <path {...strokeProps} d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" />
+          <circle {...strokeProps} cx="9.5" cy="7" r="4" />
+          <path {...strokeProps} d="M20 8v6" />
+          <path {...strokeProps} d="M23 11h-6" />
+        </svg>
+      )
+    case 'vacancies':
+      return (
+        <svg {...commonProps}>
+          <rect {...strokeProps} x="3" y="5" width="18" height="14" rx="2" />
+          <path {...strokeProps} d="M8 5V3h8v2" />
+          <path {...strokeProps} d="M3 11h18" />
+          <path {...strokeProps} d="M9 15h6" />
+        </svg>
+      )
+    case 'interviews':
+      return (
+        <svg {...commonProps}>
+          <rect {...strokeProps} x="3" y="4" width="18" height="17" rx="2" />
+          <path {...strokeProps} d="M8 2v4" />
+          <path {...strokeProps} d="M16 2v4" />
+          <path {...strokeProps} d="M3 10h18" />
+          <path {...strokeProps} d="M9 15h.01" />
+          <path {...strokeProps} d="M14 15h1" />
+        </svg>
+      )
+    case 'onboarding':
+      return (
+        <svg {...commonProps}>
+          <path {...strokeProps} d="M9 11l2 2 4-5" />
+          <path {...strokeProps} d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9" />
+          <path {...strokeProps} d="M18 3h3v3" />
+        </svg>
+      )
+    case 'movement':
+      return (
+        <svg {...commonProps}>
+          <path {...strokeProps} d="M17 3l4 4-4 4" />
+          <path {...strokeProps} d="M3 7h18" />
+          <path {...strokeProps} d="M7 21l-4-4 4-4" />
+          <path {...strokeProps} d="M21 17H3" />
+        </svg>
+      )
+    case 'calendar':
+      return (
+        <svg {...commonProps}>
+          <rect {...strokeProps} x="3" y="4" width="18" height="17" rx="2" />
+          <path {...strokeProps} d="M8 2v4" />
+          <path {...strokeProps} d="M16 2v4" />
+          <path {...strokeProps} d="M3 10h18" />
+          <path {...strokeProps} d="M12 14v3" />
+          <path {...strokeProps} d="M10.5 15.5h3" />
+        </svg>
+      )
+  }
+}
+
 type DashboardMetrics = {
   candidatosAtivos: number
   vagasAbertas: number
@@ -490,7 +578,7 @@ function DashboardHome({
         >
           <div className="dashboard-home-metric-top">
             <span>Candidatos ativos</span>
-            <div>♙</div>
+            <div><DashboardIcon type="candidates" /></div>
           </div>
           <strong>{metrics.candidatosAtivos}</strong>
           <small>Cadastros disponíveis no processo</small>
@@ -503,7 +591,7 @@ function DashboardHome({
         >
           <div className="dashboard-home-metric-top">
             <span>Vagas abertas</span>
-            <div>▣</div>
+            <div><DashboardIcon type="vacancies" /></div>
           </div>
           <strong>{metrics.vagasAbertas}</strong>
           <small>Abertas ou em seleção</small>
@@ -516,7 +604,7 @@ function DashboardHome({
         >
           <div className="dashboard-home-metric-top">
             <span>Próximas entrevistas</span>
-            <div>□</div>
+            <div><DashboardIcon type="interviews" /></div>
           </div>
           <strong>{metrics.entrevistasProximas}</strong>
           <small>Agendadas ou confirmadas</small>
@@ -529,7 +617,7 @@ function DashboardHome({
         >
           <div className="dashboard-home-metric-top">
             <span>Onboardings ativos</span>
-            <div>✓</div>
+            <div><DashboardIcon type="onboarding" /></div>
           </div>
           <strong>{metrics.onboardingsAtivos}</strong>
           <small>Não iniciados ou em andamento</small>
@@ -601,7 +689,7 @@ function DashboardHome({
 
             {recentProcesses.length === 0 && (
               <div className="dashboard-home-empty">
-                <div>⇄</div>
+                <div><DashboardIcon type="movement" /></div>
                 <strong>Nenhuma movimentação recente</strong>
                 <p>
                   As candidaturas movimentadas aparecerão aqui.
@@ -667,7 +755,7 @@ function DashboardHome({
 
             {upcomingInterviews.length === 0 && (
               <div className="dashboard-home-empty">
-                <div>□</div>
+                <div><DashboardIcon type="calendar" /></div>
                 <strong>Nenhuma entrevista próxima</strong>
                 <p>
                   Os próximos compromissos aparecerão aqui.
