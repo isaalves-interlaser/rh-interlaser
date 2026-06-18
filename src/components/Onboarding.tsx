@@ -231,6 +231,43 @@ function progressForTasks(tasks: OnboardingTask[]) {
   return Math.round((completed / relevant.length) * 100)
 }
 
+function getEffectiveOnboardingStatus(
+  onboarding: OnboardingRecord,
+  tasks: OnboardingTask[],
+): OnboardingStatus {
+  if (
+    onboarding.status === 'cancelado' ||
+    onboarding.status === 'bloqueado'
+  ) {
+    return onboarding.status
+  }
+
+  const relevantTasks = tasks.filter(
+    (task) => task.status !== 'nao_aplicavel',
+  )
+
+  if (relevantTasks.length === 0) {
+    return onboarding.status
+  }
+
+  const completedTasks = relevantTasks.filter(
+    (task) => task.status === 'concluida',
+  )
+
+  if (completedTasks.length === relevantTasks.length) {
+    return 'concluido'
+  }
+
+  if (
+    onboarding.status === 'concluido' ||
+    completedTasks.length > 0 ||
+    relevantTasks.some((task) => task.status === 'em_andamento')
+  ) {
+    return 'em_andamento'
+  }
+
+  return onboarding.status
+}
 
 function isTaskOverdue(task: OnboardingTask) {
   if (
@@ -475,17 +512,26 @@ function Onboarding() {
           return null
         }
 
-        return {
+        const onboardingTasks = tasks.filter(
+          (task) => task.onboarding_id === onboarding.id,
+        )
+        const effectiveStatus = getEffectiveOnboardingStatus(
           onboarding,
+          onboardingTasks,
+        )
+
+        return {
+          onboarding: {
+            ...onboarding,
+            status: effectiveStatus,
+          },
           candidatura: application,
           candidato: candidate,
           vaga: vacancy,
           responsavel: onboarding.responsavel_id
             ? profileMap.get(onboarding.responsavel_id) ?? null
             : null,
-          tasks: tasks.filter(
-            (task) => task.onboarding_id === onboarding.id,
-          ),
+          tasks: onboardingTasks,
         } satisfies OnboardingView
       })
       .filter((item): item is OnboardingView => item !== null)
@@ -739,9 +785,8 @@ function Onboarding() {
       .update({ status })
       .eq('id', task.id)
 
-    setUpdatingTaskId(null)
-
     if (updateError) {
+      setUpdatingTaskId(null)
       console.error(
         'Erro ao atualizar tarefa:',
         updateError.message,
@@ -750,6 +795,43 @@ function Onboarding() {
       return
     }
 
+    const relatedOnboarding = onboardings.find(
+      (item) => item.id === task.onboarding_id,
+    )
+
+    if (relatedOnboarding) {
+      const nextTasks = tasks
+        .filter((item) => item.onboarding_id === task.onboarding_id)
+        .map((item) =>
+          item.id === task.id ? { ...item, status } : item,
+        )
+      const nextStatus = getEffectiveOnboardingStatus(
+        relatedOnboarding,
+        nextTasks,
+      )
+
+      if (nextStatus !== relatedOnboarding.status) {
+        const { error: onboardingUpdateError } = await supabase
+          .from('onboardings')
+          .update({ status: nextStatus })
+          .eq('id', relatedOnboarding.id)
+
+        if (onboardingUpdateError) {
+          setUpdatingTaskId(null)
+          console.error(
+            'Erro ao atualizar status do onboarding:',
+            onboardingUpdateError.message,
+          )
+          setError(
+            'A tarefa foi atualizada, mas o status do onboarding não foi sincronizado.',
+          )
+          await loadData()
+          return
+        }
+      }
+    }
+
+    setUpdatingTaskId(null)
     setMessage('Tarefa atualizada.')
     await loadData()
   }
