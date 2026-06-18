@@ -135,6 +135,7 @@ function Dashboard({
     useState<UserProfile | null>(null)
   const [profileError, setProfileError] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     let componentMounted = true
@@ -229,8 +230,23 @@ function Dashboard({
     }
   }, [isSettingsPage])
 
+  useEffect(() => {
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setMobileMenuOpen(false)
+      }
+    }
+
+    window.addEventListener('keydown', closeOnEscape)
+
+    return () => {
+      window.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [])
+
   function navigate(page: PageId) {
     setActivePage(page)
+    setMobileMenuOpen(false)
   }
 
   if (!profile && !profileError) {
@@ -263,8 +279,27 @@ function Dashboard({
   }
 
   return (
-    <div className="system-layout">
-      <aside className="system-sidebar">
+    <div
+      className={
+        mobileMenuOpen
+          ? 'system-layout menu-open'
+          : 'system-layout'
+      }
+    >
+      <button
+        className="mobile-menu-overlay"
+        type="button"
+        aria-label="Fechar menu"
+        onClick={() => setMobileMenuOpen(false)}
+      />
+
+      <aside
+        className={
+          mobileMenuOpen
+            ? 'system-sidebar mobile-open'
+            : 'system-sidebar'
+        }
+      >
         <div className="sidebar-brand">
           <div className="sidebar-brand-icon">RH</div>
 
@@ -272,6 +307,15 @@ function Dashboard({
             <strong>Interlaser</strong>
             <span>Gestão de pessoas</span>
           </div>
+
+          <button
+            className="sidebar-mobile-close"
+            type="button"
+            aria-label="Fechar menu"
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            ×
+          </button>
         </div>
 
         <nav className="sidebar-navigation">
@@ -391,7 +435,19 @@ function Dashboard({
 
       <main className="system-main">
         <header className="system-header">
-          <div>
+          <button
+            className="mobile-menu-button"
+            type="button"
+            aria-label="Abrir menu"
+            aria-expanded={mobileMenuOpen}
+            onClick={() => setMobileMenuOpen(true)}
+          >
+            <span />
+            <span />
+            <span />
+          </button>
+
+          <div className="system-header-title">
             <span className="header-eyebrow">
               Sistema de Recursos Humanos
             </span>

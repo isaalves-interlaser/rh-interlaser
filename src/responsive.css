@@ -1,0 +1,624 @@
+/* Ajustes responsivos globais do sistema RH Interlaser. */
+html,
+body,
+#root {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  max-width: 100%;
+}
+
+.mobile-menu-button,
+.sidebar-mobile-close,
+.mobile-menu-overlay {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .system-layout {
+    display: block;
+    min-height: 100dvh;
+  }
+
+  .system-main {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .mobile-menu-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 240;
+    border: 0;
+    background: rgba(15, 23, 42, 0.48);
+    backdrop-filter: blur(2px);
+  }
+
+  .menu-open .mobile-menu-overlay {
+    display: block;
+  }
+
+  .system-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 260;
+    width: min(86vw, 320px);
+    height: 100dvh;
+    min-height: 100dvh;
+    padding: 18px 14px;
+    overflow-y: auto;
+    transform: translateX(-105%);
+    transition: transform 0.22s ease;
+    box-shadow: 16px 0 45px rgba(15, 23, 42, 0.26);
+  }
+
+  .system-sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-brand {
+    padding: 0 4px 18px;
+    justify-content: space-between;
+  }
+
+  .sidebar-mobile-close {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 10px;
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.08);
+    font-size: 26px;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .sidebar-navigation {
+    padding-top: 18px;
+    overflow-y: visible;
+  }
+
+  .sidebar-section-label {
+    display: block;
+    margin-top: 0;
+  }
+
+  .sidebar-main-menu {
+    display: grid;
+    gap: 5px;
+    overflow: visible;
+  }
+
+  .sidebar-menu-item {
+    width: 100%;
+    min-height: 46px;
+    flex: none;
+  }
+
+  .sidebar-submenu.open {
+    display: grid;
+    gap: 4px;
+    overflow: visible;
+  }
+
+  .sidebar-submenu-item {
+    width: calc(100% - 10px);
+    flex: none;
+    margin-left: 10px;
+    padding-left: 22px;
+  }
+
+  .submenu-line {
+    display: block;
+  }
+
+  .sidebar-user {
+    display: flex;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .system-header {
+    position: sticky;
+    top: 0;
+    z-index: 120;
+    min-height: 66px;
+    padding: 12px 16px;
+    gap: 12px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  }
+
+  .mobile-menu-button {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 5px;
+    border: 1px solid #fed7aa;
+    border-radius: 11px;
+    color: #c2410c;
+    background: #fff7ed;
+    cursor: pointer;
+  }
+
+  .mobile-menu-button span {
+    width: 18px;
+    height: 2px;
+    border-radius: 999px;
+    background: currentColor;
+  }
+
+  .system-header-title {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .system-header h1 {
+    overflow: hidden;
+    font-size: 21px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .header-actions {
+    flex: 0 0 auto;
+  }
+
+  .header-user {
+    padding: 0;
+  }
+
+  .header-user > div:last-child {
+    display: none;
+  }
+
+  .system-content {
+    width: 100%;
+    padding: 18px 16px 32px;
+  }
+}
+
+@media (max-width: 760px) {
+  body {
+    background: #f5f7fa;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  button {
+    min-height: 42px;
+  }
+
+  .login-area,
+  .documents-public-page,
+  .profile-state {
+    padding: 16px;
+  }
+
+  .login-card,
+  .loading-box,
+  .authenticated-card {
+    padding: 28px 20px;
+    border-radius: 16px;
+  }
+
+  .form-options {
+    align-items: stretch;
+  }
+
+  .forgot-password,
+  .back-to-login {
+    min-height: auto;
+  }
+
+  .pipeline-panel,
+  .candidates-panel,
+  .vacancies-panel,
+  .agenda-panel,
+  .onboarding-shell,
+  .users-panel,
+  .contracts-panel,
+  .organization-panel,
+  .documents-settings-panel,
+  .admission-documents-panel {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .pipeline-header,
+  .candidates-header,
+  .vacancies-header,
+  .agenda-header,
+  .onboarding-page-header,
+  .users-header,
+  .contracts-header,
+  .organization-header,
+  .documents-settings-header,
+  .admission-documents-header,
+  .documents-public-header,
+  .dashboard-home-panel > header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .pipeline-header-actions,
+  .candidates-header-actions,
+  .vacancies-header-actions,
+  .agenda-header-actions,
+  .onboarding-header-actions,
+  .users-header-actions,
+  .contracts-header > button,
+  .organization-header-actions,
+  .documents-settings-header-actions,
+  .admission-documents-actions,
+  .dashboard-home-panel > header button {
+    width: 100%;
+  }
+
+  .pipeline-header-actions,
+  .candidates-header-actions,
+  .vacancies-header-actions,
+  .agenda-header-actions,
+  .onboarding-header-actions,
+  .users-header-actions,
+  .organization-header-actions,
+  .documents-settings-header-actions,
+  .admission-documents-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .pipeline-header-actions button,
+  .candidates-header-actions button,
+  .vacancies-header-actions button,
+  .agenda-header-actions button,
+  .onboarding-header-actions button,
+  .users-header-actions button,
+  .organization-header-actions button,
+  .documents-settings-header-actions button,
+  .admission-documents-actions button,
+  .dashboard-home-panel > header button {
+    width: 100%;
+  }
+
+  .pipeline-toolbar,
+  .candidates-toolbar,
+  .vacancies-toolbar,
+  .agenda-toolbar,
+  .onboarding-toolbar,
+  .users-toolbar,
+  .contracts-toolbar,
+  .organization-toolbar,
+  .documents-settings-summary,
+  .dashboard-home-metrics,
+  .dashboard-home-grid,
+  .onboarding-layout,
+  .organization-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-home-welcome {
+    min-height: auto;
+    padding: 22px 18px;
+    border-radius: 14px;
+  }
+
+  .dashboard-home-welcome h2 {
+    font-size: clamp(22px, 7vw, 28px);
+    line-height: 1.1;
+  }
+
+  .dashboard-home-welcome-actions,
+  .dashboard-home-panel > header,
+  .dashboard-home-process,
+  .dashboard-home-interview {
+    width: 100%;
+  }
+
+  .dashboard-home-panel,
+  .dashboard-home-metric {
+    border-radius: 13px;
+  }
+
+  .dashboard-home-panel > header {
+    padding: 16px;
+  }
+
+  .dashboard-home-process,
+  .dashboard-home-interview,
+  .agenda-card,
+  .candidate-card,
+  .onboarding-list-card,
+  .document-setting-card,
+  .organization-branch-card,
+  .admission-document-row {
+    padding: 14px;
+  }
+
+  .candidate-card,
+  .agenda-card,
+  .onboarding-list-card {
+    align-items: flex-start;
+  }
+
+  .candidate-actions,
+  .vacancy-actions,
+  .agenda-actions,
+  .onboarding-detail-actions,
+  .onboarding-task-actions,
+  .document-setting-actions,
+  .admission-document-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .candidate-actions button,
+  .vacancy-actions button,
+  .agenda-actions button,
+  .onboarding-detail-actions button,
+  .onboarding-task-actions button,
+  .document-setting-actions button,
+  .admission-document-actions button {
+    flex: 1 1 140px;
+  }
+
+  .pipeline-board-wrapper,
+  .agenda-calendar,
+  .vacancies-table-wrapper,
+  .users-table-wrapper,
+  .contracts-table-wrapper {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .vacancies-table,
+  .users-table,
+  .contracts-table {
+    min-width: 720px;
+  }
+
+  .pipeline-board-wrapper {
+    padding-bottom: 10px;
+  }
+
+  .pipeline-board {
+    min-width: 1840px;
+    grid-template-columns: repeat(8, 220px);
+  }
+
+  .mode-compacta .pipeline-board {
+    min-width: 1560px;
+    grid-template-columns: repeat(8, 190px);
+  }
+
+  .pipeline-stage-navigation {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .pipeline-stage-navigation button {
+    min-width: 138px;
+  }
+
+  .agenda-calendar-header,
+  .agenda-calendar-weekdays,
+  .agenda-calendar-grid {
+    min-width: 700px;
+  }
+
+  .pipeline-summary,
+  .candidates-summary,
+  .vacancies-summary,
+  .agenda-summary,
+  .onboarding-summary,
+  .users-total,
+  .contracts-summary,
+  .documents-public-summary,
+  .admission-documents-overview {
+    grid-template-columns: 1fr;
+  }
+
+  .pipeline-modal-overlay,
+  .candidates-modal-overlay,
+  .vacancies-modal-overlay,
+  .agenda-modal-overlay,
+  .hire-modal-overlay,
+  .users-modal-overlay,
+  .contracts-modal-overlay,
+  .organization-modal-overlay,
+  .documents-settings-modal-overlay,
+  .document-refusal-overlay,
+  .pipeline-add-modal-overlay {
+    padding: 0;
+    align-items: stretch;
+    place-items: stretch;
+  }
+
+  .pipeline-modal,
+  .pipeline-process-modal,
+  .candidates-modal,
+  .candidates-modal.small,
+  .vacancies-modal,
+  .agenda-modal,
+  .hire-modal,
+  .users-modal,
+  .contracts-modal,
+  .organization-modal,
+  .documents-settings-modal,
+  .document-refusal-modal,
+  .pipeline-add-modal {
+    width: 100%;
+    max-width: none;
+    min-height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+
+  .pipeline-modal-header,
+  .candidates-modal-header,
+  .vacancies-modal-header,
+  .agenda-modal-header,
+  .hire-modal-header,
+  .users-modal-header,
+  .contracts-modal > header,
+  .organization-modal > header,
+  .documents-settings-modal > header,
+  .document-refusal-modal > header,
+  .pipeline-add-modal > header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #ffffff;
+  }
+
+  .pipeline-modal-actions,
+  .candidates-modal-actions,
+  .vacancies-modal-actions,
+  .agenda-modal-actions,
+  .hire-modal-actions,
+  .users-modal-actions,
+  .contracts-modal footer,
+  .organization-modal footer,
+  .documents-settings-modal footer,
+  .document-refusal-modal > footer,
+  .pipeline-add-modal footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+    background: #ffffff;
+  }
+
+  .pipeline-modal-actions button,
+  .candidates-modal-actions button,
+  .vacancies-modal-actions button,
+  .agenda-modal-actions button,
+  .hire-modal-actions button,
+  .users-modal-actions button,
+  .contracts-modal footer button,
+  .organization-modal footer button,
+  .documents-settings-modal footer button,
+  .document-refusal-modal > footer button,
+  .pipeline-add-modal footer button {
+    width: 100%;
+  }
+
+  .pipeline-toast,
+  .candidates-toast,
+  .vacancies-toast,
+  .agenda-toast,
+  .contracts-toast,
+  .documents-settings-toast {
+    right: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    width: calc(100vw - 24px);
+  }
+}
+
+@media (max-width: 560px) {
+  .system-header {
+    padding: 10px 12px;
+  }
+
+  .mobile-menu-button,
+  .header-user-avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .header-eyebrow {
+    font-size: 9px;
+  }
+
+  .system-header h1 {
+    font-size: 19px;
+  }
+
+  .system-content {
+    padding: 14px 12px 28px;
+  }
+
+  .pipeline-header h2,
+  .candidates-header h2,
+  .vacancies-header h2,
+  .agenda-header h2,
+  .onboarding-page-header h2,
+  .users-header h2,
+  .contracts-header h2,
+  .organization-header h2,
+  .documents-settings-header h2,
+  .admission-documents-header h2 {
+    font-size: 22px;
+    line-height: 1.15;
+  }
+
+  .dashboard-home-empty,
+  .agenda-empty,
+  .vacancies-empty,
+  .candidates-empty,
+  .users-empty,
+  .contracts-empty,
+  .documents-settings-empty {
+    min-height: 180px;
+    padding: 24px 16px;
+  }
+
+  .documents-public-card {
+    border-radius: 0;
+  }
+}
+
+@media (max-width: 380px) {
+  .system-sidebar {
+    width: min(92vw, 304px);
+  }
+
+  .system-content {
+    padding-inline: 10px;
+  }
+
+  .dashboard-home-welcome,
+  .dashboard-home-metric,
+  .dashboard-home-panel,
+  .pipeline-panel,
+  .candidates-panel,
+  .vacancies-panel,
+  .agenda-panel,
+  .onboarding-shell,
+  .users-panel,
+  .contracts-panel,
+  .organization-panel,
+  .documents-settings-panel,
+  .admission-documents-panel {
+    border-radius: 12px;
+  }
+}

@@ -456,8 +456,8 @@
 
 .documents-settings-header-actions .primary:hover:not(:disabled),
 .documents-settings-modal footer button.primary:hover:not(:disabled) {
-  border-color: #0c4f8c;
-  background: #0c4f8c;
+  border-color: #c2410c;
+  background: #c2410c;
 }
 
 .documents-settings-field small {
