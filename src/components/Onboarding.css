@@ -372,7 +372,7 @@
   padding: 16px;
   border: 1px solid #dce7f2;
   border-radius: 12px;
-  background: #f8fbfe;
+  background: #fff7ed;
 }
 
 .onboarding-progress-top {
@@ -1013,7 +1013,7 @@
 
 .onboarding-list-card.active {
   border-color: #f97316;
-  background: #f7fbff;
+  background: #fff7ed;
   box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.11);
 }
 
@@ -1077,7 +1077,7 @@
       rgba(249, 115, 22, 0.1),
       transparent 27%
     ),
-    linear-gradient(135deg, #ffffff, #f7fbff);
+    linear-gradient(135deg, #ffffff, #fff7ed);
 }
 
 .onboarding-detail-identity {
@@ -1159,7 +1159,7 @@
   margin: 0;
   padding: 18px;
   border-color: #cfe0ef;
-  background: linear-gradient(135deg, #f8fbfe, #fff7ed);
+  background: linear-gradient(135deg, #fff7ed, #fff7ed);
 }
 
 .onboarding-progress-card.v2 .onboarding-progress-top {

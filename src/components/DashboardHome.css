@@ -19,8 +19,8 @@
       rgba(255, 255, 255, 0.16),
       transparent 24%
     ),
-    linear-gradient(120deg, #174c7f, #1d69aa);
-  box-shadow: 0 10px 28px rgba(20, 77, 128, 0.16);
+    linear-gradient(120deg, #9a3412, #f97316);
+  box-shadow: 0 10px 28px rgba(124, 45, 18, 0.18);
 }
 
 .dashboard-home-welcome > div:first-child > span {
