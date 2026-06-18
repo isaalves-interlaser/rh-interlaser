@@ -128,7 +128,48 @@ function formatDate(value: string | null) {
   )
 }
 
-function Vagas() {
+
+type NotificarVagaRhParams = {
+  vaga: Vaga
+  emailResponsavel: string
+  empresaNome: string
+  filialNome: string
+}
+
+async function notificarResponsavelRh({
+  vaga,
+  emailResponsavel,
+  empresaNome,
+  filialNome,
+}: NotificarVagaRhParams) {
+  const { error } = await supabase.functions.invoke('notificar-vaga-rh', {
+    body: {
+      to: emailResponsavel,
+      vaga: {
+        codigo: `VAG-${String(vaga.numero).padStart(6, '0')}`,
+        cargo: vaga.cargo,
+        setor: vaga.setor,
+        empresa: empresaNome,
+        filial: filialNome,
+        contrato: contratoLabels[vaga.tipo_contrato],
+        modalidade: modalidadeLabels[vaga.modalidade],
+        prioridade: prioridadeLabels[vaga.prioridade],
+        status: statusLabels[vaga.status],
+        dataLimite: formatDate(vaga.data_limite),
+      },
+    },
+  })
+
+  if (error) {
+    throw error
+  }
+}
+
+type VagasProps = {
+  responsavelRhEmail: string
+}
+
+function Vagas({ responsavelRhEmail }: VagasProps) {
   const [vagas, setVagas] = useState<Vaga[]>([])
   const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [filiais, setFiliais] = useState<Filial[]>([])
@@ -332,7 +373,7 @@ function Vagas() {
       prioridade: vaga.prioridade,
       status: vaga.status,
       data_limite: vaga.data_limite ?? '',
-    })
+        })
     setEditandoId(vaga.id)
     setErro('')
     setMensagem('')
@@ -368,7 +409,14 @@ function Vagas() {
       return
     }
 
+    const emailResponsavelRh = responsavelRhEmail.trim().toLowerCase()
 
+    if (!editandoId && !emailResponsavelRh) {
+      setErro(
+        'Não foi possível localizar o e-mail do usuário logado. Verifique o cadastro do usuário do RH.',
+      )
+      return
+    }
 
     setSalvando(true)
 
@@ -414,13 +462,44 @@ function Vagas() {
       return
     }
 
+    let avisoEmail = ''
+
+    if (!editandoId && emailResponsavelRh) {
+      const vagaCriada = result.data as Vaga
+      const empresaNome =
+        empresas.find((item) => item.id === form.empresa_id)
+          ?.nome_fantasia ?? 'Empresa não informada'
+      const filial = filiais.find(
+        (item) => item.id === form.filial_id,
+      )
+      const filialNome = filial
+        ? `${filial.codigo} — ${filial.nome}`
+        : 'Filial não informada'
+
+      try {
+        await notificarResponsavelRh({
+          vaga: vagaCriada,
+          emailResponsavel: emailResponsavelRh,
+          empresaNome,
+          filialNome,
+        })
+      } catch (notificationError) {
+        console.error(
+          'Erro ao enviar e-mail da vaga ao RH:',
+          notificationError,
+        )
+        avisoEmail =
+          ' A vaga foi salva, mas o e-mail ao responsável do RH não foi enviado.'
+      }
+    }
+
     setModalAberto(false)
     setEditandoId(null)
     setForm(initialForm)
     setMensagem(
       editandoId
         ? 'Vaga atualizada com sucesso.'
-        : 'Vaga criada com sucesso.',
+        : `Vaga criada com sucesso.${avisoEmail}`,
     )
 
     await carregarDados()
@@ -1064,6 +1143,20 @@ function Vagas() {
                     disabled={salvando}
                   />
                 </div>
+
+                {!editandoId && (
+                  <div className="vacancies-form-group full">
+                    <label>E-mail de notificação do RH</label>
+                    <div className="vacancies-email-preview">
+                      <strong>{responsavelRhEmail || 'E-mail não localizado'}</strong>
+                      <span>
+                        A notificação da nova vaga será enviada
+                        automaticamente para o e-mail cadastrado no usuário
+                        logado.
+                      </span>
+                    </div>
+                  </div>
+                )}
 
               </div>
 

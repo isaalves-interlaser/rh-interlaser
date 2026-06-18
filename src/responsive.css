@@ -622,3 +622,82 @@ textarea {
     border-radius: 12px;
   }
 }
+
+/* Correção da rolagem longa em desktop.
+   A sidebar deixa de depender da altura do conteúdo da página e permanece fixa,
+   evitando o espaço em branco ao chegar ao final da Agenda e do Onboarding. */
+@media (min-width: 901px) {
+  .system-layout {
+    display: block;
+    min-height: 100dvh;
+    padding-left: 272px;
+    background: #f4f7fa;
+  }
+
+  .system-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 90;
+    width: 272px;
+    height: 100dvh;
+    min-height: 100dvh;
+  }
+
+  .system-main {
+    min-width: 0;
+    min-height: 100dvh;
+  }
+}
+
+/* Estabiliza telas longas com calendário/checklist para não estourarem a área útil. */
+.agenda-panel,
+.onboarding-shell {
+  min-width: 0;
+}
+
+.agenda-calendar,
+.onboarding-detail-panel,
+.onboarding-overview-grid,
+.onboarding-info-section,
+.onboarding-checklist,
+.onboarding-task-groups,
+.onboarding-task-group,
+.onboarding-collapsible-section {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.agenda-calendar {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.onboarding-detail-hero,
+.onboarding-task-card,
+.onboarding-task-heading,
+.onboarding-task-main,
+.onboarding-collapsible-trigger,
+.onboarding-task-group-trigger {
+  min-width: 0;
+}
+
+.onboarding-detail-identity,
+.onboarding-detail-identity > div,
+.onboarding-task-heading > div:first-child,
+.onboarding-collapsible-trigger > div,
+.onboarding-task-group-trigger > div {
+  min-width: 0;
+}
+
+.onboarding-detail-identity h3,
+.onboarding-task-heading strong,
+.onboarding-collapsible-trigger strong,
+.onboarding-task-group-trigger h5 {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+  .system-layout {
+    padding-left: 0;
+  }
+}
