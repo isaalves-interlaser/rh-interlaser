@@ -7,6 +7,7 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
 import Dashboard from './components/Dashboard'
 import EnvioDocumentos from './components/EnvioDocumentos'
+import PortalVagas from './components/PortalVagas'
 import './App.css'
 
 type AuthView = 'login' | 'forgot-password' | 'update-password'
@@ -15,6 +16,17 @@ function hasRecoveryUrl() {
   return (
     window.location.search.includes('recovery=1') ||
     window.location.hash.includes('type=recovery')
+  )
+}
+
+function isPortalVagasRoute(pathname: string) {
+  const normalizedPath = pathname.replace(/\/+$/, '') || '/'
+
+  return (
+    normalizedPath === '/vagas' ||
+    normalizedPath.startsWith('/vagas/') ||
+    normalizedPath.startsWith('/candidatar/') ||
+    normalizedPath === '/candidatura-espontanea'
   )
 }
 
@@ -281,6 +293,10 @@ function App() {
 
   if (documentToken) {
     return <EnvioDocumentos token={documentToken} />
+  }
+
+  if (isPortalVagasRoute(window.location.pathname)) {
+    return <PortalVagas />
   }
 
   if (verificandoSessao) {
@@ -590,6 +606,10 @@ function App() {
             {carregando ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
+
+        <a className="public-jobs-link" href="/vagas">
+          Ver vagas abertas
+        </a>
 
         <p className="login-support">
           Problemas para acessar? Entre em contato com o

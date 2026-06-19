@@ -421,3 +421,30 @@ button:disabled {
     gap: 12px;
   }
 }
+
+.public-jobs-link {
+  width: 100%;
+  min-height: 46px;
+  margin-top: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #fed7aa;
+  border-radius: 10px;
+  color: #c2410c;
+  background: #fff7ed;
+  font-size: 13px;
+  font-weight: 900;
+  text-decoration: none;
+  transition:
+    background 0.2s,
+    transform 0.2s;
+}
+
+.public-jobs-link:hover {
+  background: #ffedd5;
+}
+
+.public-jobs-link:active {
+  transform: translateY(1px);
+}
