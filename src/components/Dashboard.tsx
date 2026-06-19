@@ -500,8 +500,10 @@ function Dashboard({
 
           {activePage === 'candidatos' && <Candidatos />}
 
-          {activePage === 'vagas' && <Vagas />}
-
+          {activePage === 'vagas' && (
+         <Vagas responsavelRhEmail={userEmail} />
+          )}
+          
           {activePage === 'agenda' && <Agenda />}
 
           {activePage === 'onboarding' && <Onboarding />}
