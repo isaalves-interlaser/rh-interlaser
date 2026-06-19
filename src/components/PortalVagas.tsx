@@ -7,6 +7,7 @@ import {
   type FormEvent,
 } from 'react'
 import { supabase } from '../lib/supabase'
+import { enviarCurriculoParaDrive } from '../lib/googleDriveRh'
 import './PortalVagas.css'
 
 type VagaStatus =
@@ -51,6 +52,8 @@ type VagaPublica = {
   status: VagaStatus
   data_limite: string | null
   created_at: string
+  drive_folder_id: string | null
+  drive_folder_url: string | null
 }
 
 type FormularioCandidatura = {
@@ -94,7 +97,6 @@ const modalidadeLabels: Record<VagaModalidade, string> = {
   remoto: 'Remoto',
 }
 
-const CURRICULOS_BUCKET = 'curriculos'
 const MAX_FILE_SIZE_MB = 10
 const acceptedExtensions = ['pdf', 'doc', 'docx']
 
@@ -141,27 +143,6 @@ function formatDate(value: string | null) {
 
 function buildVacancyCode(numero: number) {
   return `VAG-${String(numero).padStart(6, '0')}`
-}
-
-function removeAccents(value: string) {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-}
-
-function slugify(value: string) {
-  return removeAccents(value)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '')
-    .slice(0, 70)
-}
-
-function sanitizeFileName(value: string) {
-  return removeAccents(value)
-    .replace(/[^a-zA-Z0-9._-]+/g, '-')
-    .replace(/-+/g, '-')
-    .toLowerCase()
 }
 
 function getFileExtension(fileName: string) {
@@ -229,7 +210,7 @@ function PortalVagas() {
         supabase
           .from('vagas')
           .select(
-            'id, numero, empresa_id, filial_id, cargo, setor, tipo_contrato, modalidade, status, data_limite, created_at',
+            'id, numero, empresa_id, filial_id, cargo, setor, tipo_contrato, modalidade, status, data_limite, created_at, drive_folder_id, drive_folder_url',
           )
           .eq('status', 'aberta')
           .order('created_at', { ascending: false }),
@@ -342,30 +323,23 @@ function PortalVagas() {
     setMensagem('')
   }
 
-  async function uploadCurriculo(file: File, nomeCompleto: string) {
-    const extension = getFileExtension(file.name)
-    const safeOriginalName = sanitizeFileName(file.name)
-    const candidateSlug = slugify(nomeCompleto) || 'candidato'
-    const uniqueId =
-      window.crypto.randomUUID?.() ?? `${Date.now()}`
-    const path = `portal-vagas/${candidateSlug}/${uniqueId}-${safeOriginalName || `curriculo.${extension}`}`
-
-    const { error: uploadError } = await supabase.storage
-      .from(CURRICULOS_BUCKET)
-      .upload(path, file, {
-        cacheControl: '3600',
-        contentType: file.type || undefined,
-        upsert: false,
-      })
-
-    if (uploadError) {
-      console.error('Erro ao enviar currículo:', uploadError.message)
-      throw new Error(
-        'Não foi possível enviar o currículo. Verifique se o bucket “curriculos” e as políticas públicas foram criados no Supabase.',
-      )
-    }
-
-    return path
+  async function uploadCurriculoDrive(
+    file: File,
+    nomeCompleto: string,
+    email: string,
+    whatsapp: string,
+  ) {
+    return enviarCurriculoParaDrive({
+      arquivo: file,
+      nomeCompleto,
+      email,
+      whatsapp,
+      vagaId:
+        view.type === 'apply' && vagaSelecionada
+          ? vagaSelecionada.id
+          : null,
+      destino: view.type === 'talent-bank' ? 'banco_talentos' : 'vaga',
+    })
   }
 
   async function enviarCandidatura(
@@ -422,9 +396,11 @@ function PortalVagas() {
     setEnviando(true)
 
     try {
-      const curriculoPath = await uploadCurriculo(
+      const curriculoDrive = await uploadCurriculoDrive(
         curriculo,
         nomeCompleto,
+        email,
+        whatsapp,
       )
 
       const observacoesPortal = [
@@ -450,7 +426,11 @@ function PortalVagas() {
                 ? 'banco_talentos'
                 : 'site',
             observacoes: observacoesPortal,
-            curriculo_path: curriculoPath,
+            curriculo_path: curriculoDrive.fileUrl,
+            curriculo_drive_file_id: curriculoDrive.fileId,
+            curriculo_drive_url: curriculoDrive.fileUrl,
+            curriculo_drive_nome: curriculoDrive.fileName,
+            curriculo_drive_folder_id: curriculoDrive.folderId,
             active: true,
           })
           .select('id')
@@ -481,7 +461,7 @@ function PortalVagas() {
             vaga_id: vagaSelecionada.id,
             etapa: 'recebido',
             status: 'ativo',
-            observacoes: 'Candidatura enviada pelo portal público.',
+            observacoes: 'Candidatura enviada pelo portal público. Currículo armazenado no Google Drive.',
           })
 
         if (candidaturaError) {
@@ -571,7 +551,7 @@ function PortalVagas() {
           <h1>{title}</h1>
           <p>
             Preencha seus dados e anexe seu currículo. O RH da
-            Interlaser receberá as informações no sistema interno.
+            Interlaser receberá as informações no sistema interno e o currículo será armazenado no Google Drive do RH.
           </p>
         </div>
 
@@ -664,7 +644,7 @@ function PortalVagas() {
                 onChange={handleCurriculoChange}
                 disabled={enviando}
               />
-              <small>PDF, DOC ou DOCX até {MAX_FILE_SIZE_MB} MB.</small>
+              <small>PDF, DOC ou DOCX até {MAX_FILE_SIZE_MB} MB. O arquivo será salvo no Google Drive do RH.</small>
             </label>
 
             <label className="full">

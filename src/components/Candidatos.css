@@ -896,3 +896,20 @@
     bottom: 16px;
   }
 }
+
+.candidate-resume-link {
+  border: 1px solid #c7d2fe;
+  border-radius: 12px;
+  padding: 10px 14px;
+  color: #3730a3;
+  background: #eef2ff;
+  font-size: 0.86rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: 0.2s ease;
+}
+
+.candidate-resume-link:hover {
+  border-color: #818cf8;
+  background: #e0e7ff;
+}

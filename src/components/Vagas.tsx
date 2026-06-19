@@ -6,6 +6,7 @@ import {
   type FormEvent,
 } from 'react'
 import { supabase } from '../lib/supabase'
+import { criarPastaVagaDrive } from '../lib/googleDriveRh'
 import './Vagas.css'
 
 type VagaStatus =
@@ -65,6 +66,8 @@ type Vaga = {
   status: VagaStatus
   data_limite: string | null
   created_at: string
+  drive_folder_id: string | null
+  drive_folder_url: string | null
 }
 
 type VagaForm = {
@@ -166,10 +169,10 @@ async function notificarResponsavelRh({
 }
 
 type VagasProps = {
-  responsavelRhEmail: string
+  responsavelRhEmail?: string
 }
 
-function Vagas({ responsavelRhEmail }: VagasProps) {
+function Vagas({ responsavelRhEmail = '' }: VagasProps) {
   const [vagas, setVagas] = useState<Vaga[]>([])
   const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [filiais, setFiliais] = useState<Filial[]>([])
@@ -212,7 +215,7 @@ function Vagas({ responsavelRhEmail }: VagasProps) {
         supabase
           .from('vagas')
           .select(
-            'id, numero, empresa_id, filial_id, cargo, setor, tipo_contrato, modalidade, prioridade, status, data_limite, created_at',
+            'id, numero, empresa_id, filial_id, cargo, setor, tipo_contrato, modalidade, prioridade, status, data_limite, created_at, drive_folder_id, drive_folder_url',
           )
           .order('created_at', { ascending: false }),
         supabase
@@ -463,6 +466,23 @@ function Vagas({ responsavelRhEmail }: VagasProps) {
     }
 
     let avisoEmail = ''
+    let avisoDrive = ''
+
+    if (!editandoId) {
+      const vagaCriada = result.data as Vaga
+
+      try {
+        await criarPastaVagaDrive(vagaCriada.id)
+        avisoDrive = ' Pasta do Google Drive criada.'
+      } catch (driveError) {
+        console.error(
+          'Erro ao criar pasta da vaga no Google Drive:',
+          driveError,
+        )
+        avisoDrive =
+          ' A vaga foi salva, mas a pasta do Google Drive não foi criada.'
+      }
+    }
 
     if (!editandoId && emailResponsavelRh) {
       const vagaCriada = result.data as Vaga
@@ -499,7 +519,7 @@ function Vagas({ responsavelRhEmail }: VagasProps) {
     setMensagem(
       editandoId
         ? 'Vaga atualizada com sucesso.'
-        : `Vaga criada com sucesso.${avisoEmail}`,
+        : `Vaga criada com sucesso.${avisoDrive}${avisoEmail}`,
     )
 
     await carregarDados()
@@ -635,6 +655,7 @@ function Vagas({ responsavelRhEmail }: VagasProps) {
                 <th>Empresa / filial</th>
                 <th>Contrato</th>
                 <th>Candidatos</th>
+                <th>Drive</th>
                 <th>Contratado</th>
                 <th>Status</th>
                 <th>Prioridade</th>
@@ -692,6 +713,20 @@ function Vagas({ responsavelRhEmail }: VagasProps) {
                       >
                         {candidaturasPorVaga.get(vaga.id)?.length ?? 0}
                       </button>
+                    </td>
+                    <td>
+                      {vaga.drive_folder_url ? (
+                        <a
+                          className="vacancy-drive-link"
+                          href={vaga.drive_folder_url}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Abrir pasta
+                        </a>
+                      ) : (
+                        <span className="vacancy-no-hire">—</span>
+                      )}
                     </td>
                     <td>
                       {contratado ? (
@@ -772,7 +807,7 @@ function Vagas({ responsavelRhEmail }: VagasProps) {
 
               {vagasFiltradas.length === 0 && (
                 <tr>
-                  <td colSpan={10}>
+                  <td colSpan={11}>
                     <div className="vacancies-empty">
                       <div>VG</div>
                       <strong>Nenhuma vaga encontrada</strong>

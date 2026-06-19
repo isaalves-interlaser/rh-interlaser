@@ -49,7 +49,9 @@ type Candidato = {
   origem: CandidatoOrigem
   observacoes: string | null
   curriculo_path: string | null
-  drive_folder_url: string | null
+  curriculo_drive_url: string | null
+  curriculo_drive_nome: string | null
+  curriculo_drive_folder_id: string | null
   active: boolean
   created_at: string
   updated_at: string
@@ -248,7 +250,9 @@ function Candidatos() {
               origem,
               observacoes,
               curriculo_path,
-              drive_folder_url,
+              curriculo_drive_url,
+              curriculo_drive_nome,
+              curriculo_drive_folder_id,
               active,
               created_at,
               updated_at
@@ -929,6 +933,17 @@ function Candidatos() {
                 </div>
 
                 <div className="candidate-actions">
+                  {(candidato.curriculo_drive_url || candidato.curriculo_path) && (
+                    <a
+                      className="candidate-resume-link"
+                      href={candidato.curriculo_drive_url ?? candidato.curriculo_path ?? '#'}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Currículo
+                    </a>
+                  )}
+
                   <button
                     className="primary"
                     type="button"
@@ -1104,6 +1119,28 @@ function Candidatos() {
                     <strong>
                       {formatCurrency(
                         candidatoSelecionado.pretensao_salarial,
+                      )}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Currículo</span>
+                    <strong>
+                      {candidatoSelecionado.curriculo_drive_url ||
+                      candidatoSelecionado.curriculo_path ? (
+                        <a
+                          href={
+                            candidatoSelecionado.curriculo_drive_url ??
+                            candidatoSelecionado.curriculo_path ??
+                            '#'
+                          }
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Abrir no Google Drive
+                        </a>
+                      ) : (
+                        'Não informado'
                       )}
                     </strong>
                   </div>

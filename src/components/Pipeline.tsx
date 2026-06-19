@@ -5,6 +5,7 @@ import {
   useState,
 } from 'react'
 import { supabase } from '../lib/supabase'
+import { moverCurriculoDrive } from '../lib/googleDriveRh'
 import SolicitacaoDocumentosModal from './SolicitacaoDocumentosModal'
 import AdicionarCandidatoPipelineModal from './AdicionarCandidatoPipelineModal'
 import './Pipeline.css'
@@ -1406,6 +1407,31 @@ function Pipeline() {
       return
     }
 
+    let avisoDrive = ''
+
+    if (
+      statusModal.status === 'reprovado' ||
+      statusModal.status === 'banco_talentos'
+    ) {
+      try {
+        await moverCurriculoDrive({
+          candidaturaId: statusModal.candidaturaId,
+          destino:
+            statusModal.status === 'reprovado'
+              ? 'reprovados'
+              : 'banco_talentos',
+        })
+        avisoDrive = ' Currículo movido no Google Drive.'
+      } catch (driveError) {
+        console.error(
+          'Erro ao mover currículo no Google Drive:',
+          driveError,
+        )
+        avisoDrive =
+          ' A situação foi atualizada, mas o currículo não foi movido no Google Drive.'
+      }
+    }
+
     setCandidaturas((current) =>
       current.map((item) =>
         item.id === statusModal.candidaturaId
@@ -1416,7 +1442,7 @@ function Pipeline() {
 
     setStatusModal(null)
     setStatusObservacao('')
-    setMensagem('Situação atualizada com sucesso.')
+    setMensagem(`Situação atualizada com sucesso.${avisoDrive}`)
   }
 
   function irParaEtapa(etapaId: CandidaturaEtapa) {
