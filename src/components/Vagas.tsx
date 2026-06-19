@@ -26,14 +26,15 @@ type VagaContrato =
 type VagaModalidade = 'presencial' | 'hibrido' | 'remoto'
 type Empresa = {
   id: string
-  nome_fantasia: string
+  razao_social: string | null
+  nome_fantasia: string | null
 }
 
 type Filial = {
   id: string
   empresa_id: string
-  codigo: string
-  nome: string
+  codigo: string | null
+  nome: string | null
 }
 
 type Candidatura = {
@@ -132,41 +133,27 @@ function formatDate(value: string | null) {
 }
 
 
-type NotificarVagaRhParams = {
-  vaga: Vaga
-  emailResponsavel: string
-  empresaNome: string
-  filialNome: string
+function nomeEmpresa(empresa: Empresa | null | undefined) {
+  return (
+    empresa?.nome_fantasia?.trim() ||
+    empresa?.razao_social?.trim() ||
+    'Empresa não encontrada'
+  )
 }
 
-async function notificarResponsavelRh({
-  vaga,
-  emailResponsavel,
-  empresaNome,
-  filialNome,
-}: NotificarVagaRhParams) {
-  const { error } = await supabase.functions.invoke('notificar-vaga-rh', {
-    body: {
-      to: emailResponsavel,
-      vaga: {
-        codigo: `VAG-${String(vaga.numero).padStart(6, '0')}`,
-        cargo: vaga.cargo,
-        setor: vaga.setor,
-        empresa: empresaNome,
-        filial: filialNome,
-        contrato: contratoLabels[vaga.tipo_contrato],
-        modalidade: modalidadeLabels[vaga.modalidade],
-        prioridade: prioridadeLabels[vaga.prioridade],
-        status: statusLabels[vaga.status],
-        dataLimite: formatDate(vaga.data_limite),
-      },
-    },
-  })
+function nomeFilial(filial: Filial | null | undefined) {
+  if (!filial) return 'Filial não encontrada'
 
-  if (error) {
-    throw error
-  }
+  const codigo = filial.codigo?.trim()
+  const nome = filial.nome?.trim()
+
+  if (codigo && nome) return `${codigo} — ${nome}`
+  if (nome) return nome
+  if (codigo) return codigo
+
+  return 'Filial não encontrada'
 }
+
 
 type VagasProps = {
   responsavelRhEmail?: string
@@ -204,13 +191,11 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
     ] = await Promise.all([
         supabase
           .from('empresas')
-          .select('id, nome_fantasia')
-          .eq('active', true)
+          .select('id, razao_social, nome_fantasia')
           .order('nome_fantasia'),
         supabase
           .from('filiais')
           .select('id, empresa_id, codigo, nome')
-          .eq('active', true)
           .order('nome'),
         supabase
           .from('vagas')
@@ -287,11 +272,12 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
     const termo = pesquisa.trim().toLowerCase()
 
     return vagas.filter((vaga) => {
-      const empresa =
-        empresas.find((item) => item.id === vaga.empresa_id)
-          ?.nome_fantasia ?? ''
-      const filial =
-        filiais.find((item) => item.id === vaga.filial_id)?.nome ?? ''
+      const empresa = nomeEmpresa(
+        empresas.find((item) => item.id === vaga.empresa_id),
+      )
+      const filial = nomeFilial(
+        filiais.find((item) => item.id === vaga.filial_id),
+      )
 
       const atendePesquisa =
         !termo ||
@@ -412,14 +398,6 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
       return
     }
 
-    const emailResponsavelRh = responsavelRhEmail.trim().toLowerCase()
-
-    if (!editandoId && !emailResponsavelRh) {
-      setErro(
-        'Não foi possível localizar o e-mail do usuário logado. Verifique o cadastro do usuário do RH.',
-      )
-      return
-    }
 
     setSalvando(true)
 
@@ -465,7 +443,6 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
       return
     }
 
-    let avisoEmail = ''
     let avisoDrive = ''
 
     if (!editandoId) {
@@ -484,42 +461,13 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
       }
     }
 
-    if (!editandoId && emailResponsavelRh) {
-      const vagaCriada = result.data as Vaga
-      const empresaNome =
-        empresas.find((item) => item.id === form.empresa_id)
-          ?.nome_fantasia ?? 'Empresa não informada'
-      const filial = filiais.find(
-        (item) => item.id === form.filial_id,
-      )
-      const filialNome = filial
-        ? `${filial.codigo} — ${filial.nome}`
-        : 'Filial não informada'
-
-      try {
-        await notificarResponsavelRh({
-          vaga: vagaCriada,
-          emailResponsavel: emailResponsavelRh,
-          empresaNome,
-          filialNome,
-        })
-      } catch (notificationError) {
-        console.error(
-          'Erro ao enviar e-mail da vaga ao RH:',
-          notificationError,
-        )
-        avisoEmail =
-          ' A vaga foi salva, mas o e-mail ao responsável do RH não foi enviado.'
-      }
-    }
-
     setModalAberto(false)
     setEditandoId(null)
     setForm(initialForm)
     setMensagem(
       editandoId
         ? 'Vaga atualizada com sucesso.'
-        : `Vaga criada com sucesso.${avisoDrive}${avisoEmail}`,
+        : `Vaga criada com sucesso.${avisoDrive}`, 
     )
 
     await carregarDados()
@@ -690,12 +638,10 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
                     <td>
                       <div className="vacancy-main-cell">
                         <strong>
-                          {empresa?.nome_fantasia ?? 'Empresa não encontrada'}
+                          {nomeEmpresa(empresa)}
                         </strong>
                         <span>
-                          {filial
-                            ? `${filial.codigo} — ${filial.nome}`
-                            : 'Filial não encontrada'}
+                          {nomeFilial(filial)}
                         </span>
                       </div>
                     </td>
@@ -1017,7 +963,7 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
                     <option value="">Selecione</option>
                     {empresas.map((empresa) => (
                       <option key={empresa.id} value={empresa.id}>
-                        {empresa.nome_fantasia}
+                        {nomeEmpresa(empresa)}
                       </option>
                     ))}
                   </select>
@@ -1039,7 +985,7 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
                     <option value="">Selecione</option>
                     {filiaisDisponiveis.map((filial) => (
                       <option key={filial.id} value={filial.id}>
-                        {filial.codigo} — {filial.nome}
+                        {nomeFilial(filial)}
                       </option>
                     ))}
                   </select>
@@ -1185,9 +1131,8 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
                     <div className="vacancies-email-preview">
                       <strong>{responsavelRhEmail || 'E-mail não localizado'}</strong>
                       <span>
-                        A notificação da nova vaga será enviada
-                        automaticamente para o e-mail cadastrado no usuário
-                        logado.
+                        E-mail do usuário logado. A pasta da vaga será criada
+                        automaticamente no Google Drive após salvar.
                       </span>
                     </div>
                   </div>

@@ -1,73 +1,76 @@
-# React + TypeScript + Vite
+# RH Interlaser
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Sistema de RH com área interna protegida por login e portal público de vagas.
 
-Currently, two official plugins are available:
+## Rodar localmente
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Acesse:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```txt
+http://localhost:5173
+```
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Portal público:
+
+```txt
+http://localhost:5173/vagas
+```
+
+## Variáveis locais
+
+Crie um arquivo `.env.local` baseado em `.env.example`:
+
+```env
+VITE_SUPABASE_URL=https://SEU_PROJETO.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=SUA_CHAVE_PUBLICA_ANON
+```
+
+## Google Drive
+
+A integração do Drive roda pelas Supabase Edge Functions. As credenciais do Google não ficam no React.
+
+Secrets necessárias no Supabase:
+
+```txt
+GOOGLE_CLIENT_ID
+GOOGLE_CLIENT_SECRET
+GOOGLE_REFRESH_TOKEN
+GOOGLE_DRIVE_VAGAS_FOLDER_ID
+GOOGLE_DRIVE_BANCO_TALENTOS_FOLDER_ID
+GOOGLE_DRIVE_REPROVADOS_FOLDER_ID
+```
+
+Deploy das funções:
+
+```bash
+supabase functions deploy rh-drive-vagas
+supabase functions deploy rh-drive-curriculos
+```
+
+## Banco de dados
+
+Execute no Supabase SQL Editor:
+
+```txt
+docs/portal-vagas-fase1-supabase.sql
+```
+
+## Build
+
+```bash
+npm run build
+```
+
+Não envie para GitHub:
+
+```txt
+node_modules
+dist
+.env.local
+supabase/.temp
 ```

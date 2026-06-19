@@ -28,14 +28,15 @@ type VagaModalidade = 'presencial' | 'hibrido' | 'remoto'
 
 type Empresa = {
   id: string
-  nome_fantasia: string
+  razao_social: string | null
+  nome_fantasia: string | null
 }
 
 type Filial = {
   id: string
   empresa_id: string
-  codigo: string
-  nome: string
+  codigo: string | null
+  nome: string | null
   cidade: string | null
   uf: string | null
 }
@@ -141,6 +142,18 @@ function formatDate(value: string | null) {
   )
 }
 
+function nomeEmpresa(empresa: Empresa | null | undefined) {
+  return (
+    empresa?.nome_fantasia?.trim() ||
+    empresa?.razao_social?.trim() ||
+    'Interlaser'
+  )
+}
+
+function nomeFilial(filial: Filial | null | undefined) {
+  return filial?.nome?.trim() || filial?.codigo?.trim() || 'Local não informado'
+}
+
 function buildVacancyCode(numero: number) {
   return `VAG-${String(numero).padStart(6, '0')}`
 }
@@ -174,7 +187,7 @@ function vacancyLocation(filial: Filial | null | undefined) {
     .filter(Boolean)
     .join('/')
 
-  return cityUf || filial.nome
+  return cityUf || nomeFilial(filial)
 }
 
 function PortalVagas() {
@@ -216,13 +229,11 @@ function PortalVagas() {
           .order('created_at', { ascending: false }),
         supabase
           .from('empresas')
-          .select('id, nome_fantasia')
-          .eq('active', true)
+          .select('id, razao_social, nome_fantasia')
           .order('nome_fantasia'),
         supabase
           .from('filiais')
           .select('id, empresa_id, codigo, nome, cidade, uf')
-          .eq('active', true)
           .order('nome'),
       ])
 
@@ -278,8 +289,8 @@ function PortalVagas() {
       return (
         vaga.cargo.toLowerCase().includes(termo) ||
         vaga.setor.toLowerCase().includes(termo) ||
-        empresa?.nome_fantasia.toLowerCase().includes(termo) ||
-        filial?.nome.toLowerCase().includes(termo) ||
+        nomeEmpresa(empresa).toLowerCase().includes(termo) ||
+        nomeFilial(filial).toLowerCase().includes(termo) ||
         filial?.cidade?.toLowerCase().includes(termo)
       )
     })
@@ -512,7 +523,7 @@ function PortalVagas() {
         <p>{vaga.setor}</p>
 
         <div className="jobs-card-meta">
-          <span>{empresa?.nome_fantasia ?? 'Interlaser'}</span>
+          <span>{nomeEmpresa(empresa)}</span>
           <span>{vacancyLocation(filial)}</span>
           <span>{contratoLabels[vaga.tipo_contrato]}</span>
           <span>Prazo: {formatDate(vaga.data_limite)}</span>
@@ -749,7 +760,7 @@ function PortalVagas() {
             <div>
               <small>Empresa</small>
               <strong>
-                {empresaSelecionada?.nome_fantasia ?? 'Interlaser'}
+                {nomeEmpresa(empresaSelecionada)}
               </strong>
             </div>
             <div>
