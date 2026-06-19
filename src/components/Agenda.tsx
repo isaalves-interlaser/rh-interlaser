@@ -37,6 +37,11 @@ type EntrevistaResultado =
   | 'aprovado_ressalvas'
   | 'reprovado'
 
+type AgendaEventoTipo =
+  | 'entrevista'
+  | 'teste_pratico'
+  | 'exame_admissional'
+
 type Entrevista = {
   id: string
   candidatura_id: string
@@ -67,6 +72,11 @@ type Candidatura = {
   candidato_id: string
   vaga_id: string
   status: string
+  teste_inicio: string | null
+  teste_local: string | null
+  exame_inicio: string | null
+  exame_local: string | null
+  exame_status: 'em_andamento' | 'apto' | 'inapto' | null
 }
 
 type Candidato = {
@@ -88,10 +98,20 @@ type Perfil = {
 }
 
 type AgendaCard = {
-  entrevista: Entrevista
+  id: string
+  tipoAgenda: AgendaEventoTipo
+  titulo: string
+  detalhe: string
+  inicio: string
+  fim: string | null
+  local: string | null
+  observacoes: string | null
+  statusLabel: string
+  statusClass: string
   candidato: Candidato
   vaga: Vaga
   entrevistador: Perfil | null
+  entrevista: Entrevista | null
 }
 
 type EntrevistaForm = {
@@ -135,8 +155,26 @@ const tipoLabels: Record<EntrevistaTipo, string> = {
   gestor: 'Entrevista com gestor',
   tecnica: 'Entrevista técnica',
   pratica: 'Teste prático',
-  admissional: 'Admissional',
-  outro: 'Outro',
+  admissional: 'Exame admissional',
+  outro: 'Entrevista',
+}
+
+const agendaTipoLabels: Record<AgendaEventoTipo, string> = {
+  entrevista: 'Entrevista',
+  teste_pratico: 'Teste prático',
+  exame_admissional: 'Exame admissional',
+}
+
+const agendaTipoHelp: Record<AgendaEventoTipo, string> = {
+  entrevista: 'Compromissos de entrevista com candidato.',
+  teste_pratico: 'Testes práticos agendados pela pipeline.',
+  exame_admissional: 'Exames admissionais agendados pela pipeline.',
+}
+
+const agendaTipoClass: Record<AgendaEventoTipo, string> = {
+  entrevista: 'kind-entrevista',
+  teste_pratico: 'kind-teste',
+  exame_admissional: 'kind-exame',
 }
 
 const statusLabels: Record<EntrevistaStatus, string> = {
@@ -185,6 +223,58 @@ function minInterviewInputValue() {
 
 function isScheduledStatus(status: EntrevistaStatus) {
   return status === 'agendada' || status === 'confirmada'
+}
+
+function toAgendaTipoFromEntrevista(
+  tipo: EntrevistaTipo,
+): AgendaEventoTipo {
+  if (tipo === 'pratica') {
+    return 'teste_pratico'
+  }
+
+  if (tipo === 'admissional') {
+    return 'exame_admissional'
+  }
+
+  return 'entrevista'
+}
+
+function addMinutesIso(value: string, minutes: number) {
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return null
+  }
+
+  return new Date(date.getTime() + minutes * 60_000).toISOString()
+}
+
+function exameStatusLabel(
+  status: Candidatura['exame_status'],
+) {
+  if (status === 'apto') {
+    return 'Apto'
+  }
+
+  if (status === 'inapto') {
+    return 'Inapto'
+  }
+
+  return 'Agendado'
+}
+
+function exameStatusClass(
+  status: Candidatura['exame_status'],
+) {
+  if (status === 'apto') {
+    return 'status-realizada'
+  }
+
+  if (status === 'inapto') {
+    return 'status-cancelada'
+  }
+
+  return 'status-confirmada'
 }
 
 function formatDate(value: string) {
@@ -273,6 +363,9 @@ function Agenda() {
   const [filtroStatus, setFiltroStatus] = useState<
     'todos' | EntrevistaStatus
   >('todos')
+  const [filtroTipo, setFiltroTipo] = useState<
+    'todos' | AgendaEventoTipo
+  >('todos')
   const [erro, setErro] = useState('')
   const [mensagem, setMensagem] = useState('')
   const [modoVisualizacao, setModoVisualizacao] = useState<
@@ -328,7 +421,9 @@ function Agenda() {
 
       supabase
         .from('candidaturas')
-        .select('id, candidato_id, vaga_id, status'),
+        .select(
+          'id, candidato_id, vaga_id, status, teste_inicio, teste_local, exame_inicio, exame_local, exame_status',
+        ),
 
       supabase
         .from('candidatos')
@@ -391,7 +486,7 @@ function Agenda() {
     return () => window.clearTimeout(timer)
   }, [erro, mensagem])
 
-  const cards = useMemo(() => {
+  const cards = useMemo<AgendaCard[]>(() => {
     const candidatureMap = new Map(
       candidaturas.map((item) => [item.id, item]),
     )
@@ -403,14 +498,14 @@ function Agenda() {
       perfis.map((item) => [item.id, item]),
     )
 
-    return entrevistas
-      .map((entrevista) => {
+    const interviewCards: AgendaCard[] = entrevistas.flatMap(
+      (entrevista) => {
         const candidatura = candidatureMap.get(
           entrevista.candidatura_id,
         )
 
         if (!candidatura) {
-          return null
+          return []
         }
 
         const candidato = candidateMap.get(
@@ -419,19 +514,91 @@ function Agenda() {
         const vaga = vacancyMap.get(candidatura.vaga_id)
 
         if (!candidato || !vaga) {
-          return null
+          return []
         }
 
-        return {
+        const tipoAgenda = toAgendaTipoFromEntrevista(
+          entrevista.tipo,
+        )
+
+        const card: AgendaCard = {
+          id: `entrevista-${entrevista.id}`,
+          tipoAgenda,
+          titulo: agendaTipoLabels[tipoAgenda],
+          detalhe: tipoLabels[entrevista.tipo],
+          inicio: entrevista.inicio,
+          fim: entrevista.fim,
+          local: entrevista.local,
+          observacoes: entrevista.observacoes,
+          statusLabel: statusLabels[entrevista.status],
+          statusClass: `status-${entrevista.status}`,
           entrevista,
           candidato,
           vaga,
           entrevistador: entrevista.entrevistador_id
             ? profileMap.get(entrevista.entrevistador_id) ?? null
             : null,
-        } satisfies AgendaCard
-      })
-      .filter((item): item is AgendaCard => item !== null)
+        }
+
+        return [card]
+      },
+    )
+
+    const processCards: AgendaCard[] = candidaturas.flatMap((candidatura) => {
+      const candidato = candidateMap.get(candidatura.candidato_id)
+      const vaga = vacancyMap.get(candidatura.vaga_id)
+
+      if (!candidato || !vaga) {
+        return []
+      }
+
+      const eventos: AgendaCard[] = []
+
+      if (candidatura.teste_inicio) {
+        eventos.push({
+          id: `teste-${candidatura.id}`,
+          tipoAgenda: 'teste_pratico',
+          titulo: 'Teste prático',
+          detalhe: 'Teste prático agendado pela pipeline',
+          inicio: candidatura.teste_inicio,
+          fim: addMinutesIso(candidatura.teste_inicio, 60),
+          local: candidatura.teste_local,
+          observacoes: null,
+          statusLabel: 'Agendado',
+          statusClass: 'status-confirmada',
+          entrevista: null,
+          candidato,
+          vaga,
+          entrevistador: null,
+        })
+      }
+
+      if (candidatura.exame_inicio) {
+        eventos.push({
+          id: `exame-${candidatura.id}`,
+          tipoAgenda: 'exame_admissional',
+          titulo: 'Exame admissional',
+          detalhe: 'Exame admissional agendado pela pipeline',
+          inicio: candidatura.exame_inicio,
+          fim: addMinutesIso(candidatura.exame_inicio, 60),
+          local: candidatura.exame_local,
+          observacoes: null,
+          statusLabel: exameStatusLabel(candidatura.exame_status),
+          statusClass: exameStatusClass(candidatura.exame_status),
+          entrevista: null,
+          candidato,
+          vaga,
+          entrevistador: null,
+        })
+      }
+
+      return eventos
+    })
+
+    return [...interviewCards, ...processCards].sort(
+      (a, b) =>
+        new Date(a.inicio).getTime() - new Date(b.inicio).getTime(),
+    )
   }, [
     candidatos,
     candidaturas,
@@ -440,13 +607,16 @@ function Agenda() {
     vagas,
   ])
 
-  const cardsFiltrados = useMemo(() => {
+  const cardsFiltrados = useMemo<AgendaCard[]>(() => {
     const termo = pesquisa.trim().toLowerCase()
 
     return cards.filter((card) => {
       const atendeStatus =
         filtroStatus === 'todos' ||
-        card.entrevista.status === filtroStatus
+        card.entrevista?.status === filtroStatus
+
+      const atendeTipo =
+        filtroTipo === 'todos' || card.tipoAgenda === filtroTipo
 
       const atendePesquisa =
         !termo ||
@@ -455,19 +625,21 @@ function Agenda() {
           .includes(termo) ||
         card.vaga.cargo.toLowerCase().includes(termo) ||
         card.vaga.setor.toLowerCase().includes(termo) ||
+        card.titulo.toLowerCase().includes(termo) ||
+        card.local?.toLowerCase().includes(termo) ||
         card.entrevistador?.full_name
           .toLowerCase()
           .includes(termo)
 
-      return atendeStatus && atendePesquisa
+      return atendeStatus && atendeTipo && atendePesquisa
     })
-  }, [cards, filtroStatus, pesquisa])
+  }, [cards, filtroStatus, filtroTipo, pesquisa])
 
-  const grupos = useMemo(() => {
+  const grupos = useMemo<[string, AgendaCard[]][]>(() => {
     const map = new Map<string, AgendaCard[]>()
 
     for (const card of cardsFiltrados) {
-      const key = new Date(card.entrevista.inicio)
+      const key = new Date(card.inicio)
         .toISOString()
         .slice(0, 10)
 
@@ -481,7 +653,7 @@ function Agenda() {
     )
   }, [cardsFiltrados])
 
-  const calendarDays = useMemo(() => {
+  const calendarDays = useMemo<Array<{ date: Date; key: string; currentMonth: boolean; cards: AgendaCard[] }>>(() => {
     const year = mesReferencia.getFullYear()
     const month = mesReferencia.getMonth()
     const first = new Date(year, month, 1)
@@ -497,7 +669,7 @@ function Agenda() {
         key,
         currentMonth: date.getMonth() === month,
         cards: cardsFiltrados.filter(
-          (card) => dateKey(card.entrevista.inicio) === key,
+          (card) => dateKey(card.inicio) === key,
         ),
       }
     })
@@ -928,10 +1100,10 @@ function Agenda() {
         <header className="agenda-header">
           <div>
             <span className="agenda-eyebrow">Recrutamento</span>
-            <h2>Agenda de entrevistas</h2>
+            <h2>Agenda do RH</h2>
             <p>
-              Agende entrevistas, registre confirmações e salve os
-              resultados.
+              Acompanhe entrevistas, testes práticos e exames admissionais
+              com cores e filtros por tipo.
             </p>
           </div>
 
@@ -990,6 +1162,30 @@ function Agenda() {
             </select>
           </div>
 
+          <div className="agenda-field">
+            <label htmlFor="agenda-tipo-filtro">Tipo</label>
+            <select
+              id="agenda-tipo-filtro"
+              value={filtroTipo}
+              onChange={(event) =>
+                setFiltroTipo(
+                  event.target.value as
+                    | 'todos'
+                    | AgendaEventoTipo,
+                )
+              }
+            >
+              <option value="todos">Todos</option>
+              {Object.entries(agendaTipoLabels).map(
+                ([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ),
+              )}
+            </select>
+          </div>
+
           <div className="agenda-view-switch">
             <span>Visualização</span>
             <div>
@@ -1022,20 +1218,38 @@ function Agenda() {
 
           <div className="agenda-summary">
             <span>Total</span>
-            <strong>{cards.length}</strong>
+            <strong>{cardsFiltrados.length}</strong>
           </div>
 
           <div className="agenda-summary">
             <span>Confirmadas</span>
             <strong>
               {
-                cards.filter(
+                cardsFiltrados.filter(
                   (card) =>
-                    card.entrevista.status === 'confirmada',
+                    card.entrevista?.status === 'confirmada' ||
+                    card.statusClass === 'status-confirmada',
                 ).length
               }
             </strong>
           </div>
+        </div>
+
+        <div className="agenda-legend" aria-label="Legenda da agenda">
+          {Object.entries(agendaTipoLabels).map(([value, label]) => {
+            const tipo = value as AgendaEventoTipo
+
+            return (
+              <span
+                className={`agenda-legend-item ${agendaTipoClass[tipo]}`}
+                key={value}
+                title={agendaTipoHelp[tipo]}
+              >
+                <i aria-hidden="true" />
+                {label}
+              </span>
+            )
+          })}
         </div>
 
         {modoVisualizacao === 'lista' ? (
@@ -1043,22 +1257,22 @@ function Agenda() {
           {grupos.map(([date, group]) => (
             <section className="agenda-day" key={date}>
               <header className="agenda-day-header">
-                <h3>{formatDate(group[0].entrevista.inicio)}</h3>
-                <span>{group.length} entrevista(s)</span>
+                <h3>{formatDate(group[0].inicio)}</h3>
+                <span>{group.length} compromisso(s)</span>
               </header>
 
               <div className="agenda-list">
                 {group.map((card) => (
                   <article
-                    className="agenda-card"
-                    key={card.entrevista.id}
+                    className={`agenda-card ${agendaTipoClass[card.tipoAgenda]}`}
+                    key={card.id}
                   >
-                    <div className="agenda-time">
+                    <div className={`agenda-time ${agendaTipoClass[card.tipoAgenda]}`}>
                       <strong>
-                        {formatTime(card.entrevista.inicio)}
+                        {formatTime(card.inicio)}
                       </strong>
                       <span>
-                        até {formatTime(card.entrevista.fim)}
+                        {card.fim ? `até ${formatTime(card.fim)}` : 'horário único'}
                       </span>
                     </div>
 
@@ -1066,6 +1280,9 @@ function Agenda() {
                       <div className="agenda-card-title">
                         <div>
                           <h4>{card.candidato.nome_completo}</h4>
+                          <span className={`agenda-kind-badge ${agendaTipoClass[card.tipoAgenda]}`}>
+                            {card.titulo}
+                          </span>
                           <span>
                             VAG-
                             {String(card.vaga.numero).padStart(
@@ -1077,48 +1294,53 @@ function Agenda() {
                         </div>
 
                         <span
-                          className={`agenda-status status-${card.entrevista.status}`}
+                          className={`agenda-status ${card.statusClass}`}
                         >
-                          {
-                            statusLabels[
-                              card.entrevista.status
-                            ]
-                          }
+                          {card.statusLabel}
                         </span>
                       </div>
 
                       <div className="agenda-card-info">
                         <span>
-                          {tipoLabels[card.entrevista.tipo]}
+                          {card.detalhe}
                         </span>
-                        <span>Google Meet</span>
-                        <span>
-                          Entrevistador:{' '}
-                          {card.entrevistador?.full_name ??
-                            'Não definido'}
-                        </span>
-                        {card.entrevista.tipo === 'gestor' &&
-                          card.entrevista.gestor_nome && (
+                        {card.entrevista ? (
+                          <>
+                            <span>Google Meet</span>
                             <span>
-                              Gestor:{' '}
-                              {card.entrevista.gestor_nome}
+                              Entrevistador:{' '}
+                              {card.entrevistador?.full_name ??
+                                'Não definido'}
                             </span>
-                          )}
+                            {card.entrevista.tipo === 'gestor' &&
+                              card.entrevista.gestor_nome && (
+                                <span>
+                                  Gestor:{' '}
+                                  {card.entrevista.gestor_nome}
+                                </span>
+                              )}
+                          </>
+                        ) : (
+                          <span>Gerenciado pela Pipeline</span>
+                        )}
                       </div>
 
-                      {card.entrevista.link_reuniao && (
+                      {(card.local || card.entrevista?.link_reuniao) && (
                         <div className="agenda-location">
-                          <a
-                            href={card.entrevista.link_reuniao}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            Abrir Google Meet
-                          </a>
+                          {card.local && <span>{card.local}</span>}
+                          {card.entrevista?.link_reuniao && (
+                            <a
+                              href={card.entrevista.link_reuniao}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              Abrir Google Meet
+                            </a>
+                          )}
                         </div>
                       )}
 
-                      {card.entrevista.status === 'realizada' && (
+                      {card.entrevista?.status === 'realizada' && (
                         <div className="agenda-result">
                           <span>
                             Resultado:{' '}
@@ -1142,84 +1364,92 @@ function Agenda() {
                     </div>
 
                     <div className="agenda-actions">
-                      {!card.entrevista.link_reuniao &&
-                        !['cancelada', 'realizada'].includes(
-                          card.entrevista.status,
-                        ) && (
+                      {card.entrevista ? (
+                        <>
+                          {!card.entrevista.link_reuniao &&
+                            !['cancelada', 'realizada'].includes(
+                              card.entrevista.status,
+                            ) && (
+                              <button
+                                className="primary"
+                                type="button"
+                                onClick={() =>
+                                  gerarGoogleMeet(card.entrevista!)
+                                }
+                                disabled={
+                                  sincronizandoId ===
+                                  card.entrevista.id
+                                }
+                              >
+                                {sincronizandoId ===
+                                card.entrevista.id
+                                  ? 'Gerando...'
+                                  : 'Gerar Google Meet'}
+                              </button>
+                            )}
+
                           <button
-                            className="primary"
                             type="button"
                             onClick={() =>
-                              gerarGoogleMeet(card.entrevista)
-                            }
-                            disabled={
-                              sincronizandoId ===
-                              card.entrevista.id
+                              abrirEdicao(card.entrevista!)
                             }
                           >
-                            {sincronizandoId ===
-                            card.entrevista.id
-                              ? 'Gerando...'
-                              : 'Gerar Google Meet'}
+                            Editar
                           </button>
-                        )}
 
-                      <button
-                        type="button"
-                        onClick={() =>
-                          abrirEdicao(card.entrevista)
-                        }
-                      >
-                        Editar
-                      </button>
+                          {card.entrevista.status === 'agendada' && (
+                            <button
+                              className="primary"
+                              type="button"
+                              onClick={() =>
+                                atualizarStatus(
+                                  card.entrevista!,
+                                  'confirmada',
+                                )
+                              }
+                            >
+                              Confirmar
+                            </button>
+                          )}
 
-                      {card.entrevista.status === 'agendada' && (
-                        <button
-                          className="primary"
-                          type="button"
-                          onClick={() =>
-                            atualizarStatus(
-                              card.entrevista,
-                              'confirmada',
-                            )
-                          }
-                        >
-                          Confirmar
-                        </button>
+                          {![
+                            'realizada',
+                            'cancelada',
+                            'nao_compareceu',
+                          ].includes(card.entrevista.status) && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                atualizarStatus(
+                                  card.entrevista!,
+                                  'cancelada',
+                                )
+                              }
+                            >
+                              Cancelar
+                            </button>
+                          )}
+
+                          <button
+                            className="danger"
+                            type="button"
+                            onClick={() =>
+                              excluirEntrevista(card.entrevista!)
+                            }
+                            disabled={
+                              excluindoId === card.entrevista.id
+                            }
+                          >
+                            {excluindoId === card.entrevista.id
+                              ? 'Excluindo...'
+                              : 'Excluir'}
+                          </button>
+                        </>
+                      ) : (
+                        <span className="agenda-pipeline-note">
+                          Ajuste pela Pipeline
+                        </span>
                       )}
-
-                      {![
-                        'realizada',
-                        'cancelada',
-                        'nao_compareceu',
-                      ].includes(card.entrevista.status) && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            atualizarStatus(
-                              card.entrevista,
-                              'cancelada',
-                            )
-                          }
-                        >
-                          Cancelar
-                        </button>
-                      )}
-
-                      <button
-                        className="danger"
-                        type="button"
-                        onClick={() =>
-                          excluirEntrevista(card.entrevista)
-                        }
-                        disabled={
-                          excluindoId === card.entrevista.id
-                        }
-                      >
-                        {excluindoId === card.entrevista.id
-                          ? 'Excluindo...'
-                          : 'Excluir'}
-                      </button>
                     </div>
                   </article>
                 ))}
@@ -1230,9 +1460,9 @@ function Agenda() {
           {grupos.length === 0 && (
             <div className="agenda-empty">
               <div>AG</div>
-              <strong>Nenhuma entrevista encontrada</strong>
+              <strong>Nenhum compromisso encontrado</strong>
               <p>
-                Agende uma entrevista ou altere os filtros.
+                Agende uma entrevista ou altere os filtros de tipo e situação.
               </p>
             </div>
           )}
@@ -1311,20 +1541,20 @@ function Agenda() {
                     {day.cards.slice(0, 3).map((card) => (
                       <button
                         type="button"
-                        className={`agenda-calendar-event status-${card.entrevista.status}`}
-                        key={card.entrevista.id}
+                        className={`agenda-calendar-event ${agendaTipoClass[card.tipoAgenda]} ${card.statusClass}`}
+                        key={card.id}
                         onClick={() =>
-                          abrirEdicao(card.entrevista)
+                          card.entrevista && abrirEdicao(card.entrevista)
                         }
                         title={`${formatTime(
-                          card.entrevista.inicio,
+                          card.inicio,
                         )} — ${
                           card.candidato.nome_completo
-                        }`}
+                        } — ${card.titulo}`}
                       >
                         <strong>
                           {formatTime(
-                            card.entrevista.inicio,
+                            card.inicio,
                           )}
                         </strong>
                         <span>
@@ -1335,7 +1565,7 @@ function Agenda() {
 
                     {day.cards.length > 3 && (
                       <small className="agenda-calendar-more">
-                        +{day.cards.length - 3} entrevista(s)
+                        +{day.cards.length - 3} compromisso(s)
                       </small>
                     )}
                   </div>
@@ -1475,7 +1705,11 @@ function Agenda() {
                       }
                       disabled={salvando}
                     >
-                      {Object.entries(tipoLabels).map(
+                      {([
+                        ['rh', 'Entrevista'],
+                        ['pratica', 'Teste prático'],
+                        ['admissional', 'Exame admissional'],
+                      ] as Array<[EntrevistaTipo, string]>).map(
                         ([value, label]) => (
                           <option key={value} value={value}>
                             {label}

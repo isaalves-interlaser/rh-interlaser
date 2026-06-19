@@ -76,8 +76,9 @@
   padding: 18px 24px;
   display: grid;
   grid-template-columns:
-    minmax(260px, 1fr)
-    200px
+    minmax(240px, 1fr)
+    180px
+    190px
     210px
     105px
     120px;
@@ -891,4 +892,118 @@
     bottom: 14px;
     width: calc(100vw - 28px);
   }
+}
+
+
+/* Tipos de agenda usados pelo RH. */
+.agenda-legend {
+  padding: 12px 24px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  border-bottom: 1px solid #edf0f4;
+  background: #ffffff;
+}
+
+.agenda-legend-item,
+.agenda-kind-badge,
+.agenda-pipeline-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.agenda-legend-item {
+  padding: 7px 10px;
+  border: 1px solid transparent;
+}
+
+.agenda-legend-item i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.agenda-kind-badge {
+  margin-top: 6px;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+}
+
+.agenda-pipeline-note {
+  min-height: 31px;
+  padding: 0 9px;
+  justify-content: center;
+  color: #667085;
+  background: #f8fafc;
+}
+
+.agenda-card.kind-entrevista {
+  border-left: 4px solid #3b82f6;
+}
+
+.agenda-card.kind-teste {
+  border-left: 4px solid #f97316;
+}
+
+.agenda-card.kind-exame {
+  border-left: 4px solid #10b981;
+}
+
+.agenda-time.kind-entrevista,
+.agenda-kind-badge.kind-entrevista,
+.agenda-legend-item.kind-entrevista {
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.agenda-time.kind-teste,
+.agenda-kind-badge.kind-teste,
+.agenda-legend-item.kind-teste {
+  color: #c2410c;
+  border-color: #fed7aa;
+  background: #fff7ed;
+}
+
+.agenda-time.kind-exame,
+.agenda-kind-badge.kind-exame,
+.agenda-legend-item.kind-exame {
+  color: #047857;
+  border-color: #a7f3d0;
+  background: #ecfdf3;
+}
+
+.agenda-legend-item.kind-entrevista i {
+  background: #3b82f6;
+}
+
+.agenda-legend-item.kind-teste i {
+  background: #f97316;
+}
+
+.agenda-legend-item.kind-exame i {
+  background: #10b981;
+}
+
+.agenda-calendar-event.kind-entrevista {
+  border-left-color: #3b82f6;
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+
+.agenda-calendar-event.kind-teste {
+  border-left-color: #f97316;
+  color: #c2410c;
+  background: #fff7ed;
+}
+
+.agenda-calendar-event.kind-exame {
+  border-left-color: #10b981;
+  color: #047857;
+  background: #ecfdf3;
 }
