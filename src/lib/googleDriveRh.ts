@@ -169,3 +169,101 @@ export async function moverCurriculoDrive(params: {
 
   return data
 }
+
+
+export type RegistroCandidaturaPublicaResult = {
+  ok: true
+  candidatoId: string
+  candidaturaId: string | null
+  situacao:
+    | 'candidato_criado'
+    | 'candidato_atualizado'
+    | 'candidatura_criada_candidato_existente'
+    | 'ja_inscrito'
+    | 'banco_talentos_atualizado'
+  mensagem: string
+}
+
+export async function registrarCandidaturaPublica(params: {
+  tipo: 'vaga' | 'banco_talentos'
+  vagaId: string | null
+  candidato: {
+    nomeCompleto: string
+    email: string
+    whatsapp: string
+    cidade: string | null
+    uf: string | null
+  }
+  curriculoDrive: DriveUploadResult
+  observacoes: string | null
+}) {
+  const { data, error } = await supabase.functions.invoke<
+    | RegistroCandidaturaPublicaResult
+    | { ok: false; error: string }
+  >('rh-candidatura-publica', {
+    body: {
+      acao: 'registrar-candidatura-publica',
+      tipo: params.tipo,
+      vagaId: params.vagaId,
+      candidato: params.candidato,
+      curriculoDrive: params.curriculoDrive,
+      observacoes: params.observacoes,
+    },
+  })
+
+  if (error) {
+    throw new Error(
+      await readFunctionError(
+        error,
+        'Não foi possível registrar a candidatura no sistema.',
+      ),
+    )
+  }
+
+  if (!data?.ok) {
+    throw new Error(
+      (data as { error?: string } | null)?.error ??
+        'O sistema não confirmou o registro da candidatura.',
+    )
+  }
+
+  return data
+}
+
+export async function enviarConfirmacaoCandidatura(params: {
+  candidatoId: string
+  vagaId: string | null
+  tipo: 'vaga' | 'banco_talentos'
+  email: string
+}) {
+  const { data, error } = await supabase.functions.invoke<
+    | { ok: true; emailSent: boolean; message?: string }
+    | { ok: false; error: string }
+  >('rh-candidatura-confirmacao', {
+    body: {
+      acao: 'enviar-confirmacao',
+      candidatoId: params.candidatoId,
+      vagaId: params.vagaId,
+      tipo: params.tipo,
+      email: params.email,
+    },
+  })
+
+  if (error) {
+    throw new Error(
+      await readFunctionError(
+        error,
+        'Não foi possível enviar o e-mail de confirmação ao candidato.',
+      ),
+    )
+  }
+
+  if (!data?.ok) {
+    throw new Error(
+      (data as { error?: string } | null)?.error ??
+        'O e-mail de confirmação não foi enviado.',
+    )
+  }
+
+  return data
+}

@@ -7,7 +7,11 @@ import {
   type FormEvent,
 } from 'react'
 import { supabase } from '../lib/supabase'
-import { enviarCurriculoParaDrive } from '../lib/googleDriveRh'
+import {
+  enviarConfirmacaoCandidatura,
+  enviarCurriculoParaDrive,
+  registrarCandidaturaPublica,
+} from '../lib/googleDriveRh'
 import './PortalVagas.css'
 
 type VagaStatus =
@@ -423,75 +427,38 @@ function PortalVagas() {
         .filter(Boolean)
         .join('\n\n')
 
-      const { data: candidatoCriado, error: candidatoError } =
-        await supabase
-          .from('candidatos')
-          .insert({
-            nome_completo: nomeCompleto,
-            email,
-            whatsapp,
-            cidade: nullableText(cidade),
-            uf: uf || null,
-            origem:
-              view.type === 'talent-bank'
-                ? 'banco_talentos'
-                : 'site',
-            observacoes: observacoesPortal,
-            curriculo_path: curriculoDrive.fileUrl,
-            curriculo_drive_file_id: curriculoDrive.fileId,
-            curriculo_drive_url: curriculoDrive.fileUrl,
-            curriculo_drive_nome: curriculoDrive.fileName,
-            curriculo_drive_folder_id: curriculoDrive.folderId,
-            active: true,
-          })
-          .select('id')
-          .single()
+      const registro = await registrarCandidaturaPublica({
+        tipo: view.type === 'talent-bank' ? 'banco_talentos' : 'vaga',
+        vagaId:
+          view.type === 'apply' && vagaSelecionada
+            ? vagaSelecionada.id
+            : null,
+        candidato: {
+          nomeCompleto,
+          email,
+          whatsapp,
+          cidade: nullableText(cidade),
+          uf: uf || null,
+        },
+        curriculoDrive,
+        observacoes: observacoesPortal,
+      })
 
-      if (candidatoError || !candidatoCriado) {
-        console.error(
-          'Erro ao cadastrar candidato:',
-          candidatoError?.message,
-        )
-
-        if (candidatoError?.code === '23505') {
-          throw new Error(
-            'Já existe um cadastro com esse e-mail ou WhatsApp. Entre em contato com o RH para atualizar seu currículo.',
-          )
-        }
-
-        throw new Error(
-          'Não foi possível registrar sua candidatura. Verifique as permissões públicas da tabela candidatos no Supabase.',
-        )
+      try {
+        await enviarConfirmacaoCandidatura({
+          candidatoId: registro.candidatoId,
+          vagaId:
+            view.type === 'apply' && vagaSelecionada
+              ? vagaSelecionada.id
+              : null,
+          tipo: view.type === 'talent-bank' ? 'banco_talentos' : 'vaga',
+          email,
+        })
+      } catch (emailError) {
+        console.error('Erro ao enviar confirmação ao candidato:', emailError)
       }
 
-      if (view.type === 'apply' && vagaSelecionada) {
-        const { error: candidaturaError } = await supabase
-          .from('candidaturas')
-          .insert({
-            candidato_id: candidatoCriado.id,
-            vaga_id: vagaSelecionada.id,
-            etapa: 'recebido',
-            status: 'ativo',
-            observacoes: 'Candidatura enviada pelo portal público. Currículo armazenado no Google Drive.',
-          })
-
-        if (candidaturaError) {
-          console.error(
-            'Erro ao criar candidatura:',
-            candidaturaError.message,
-          )
-          throw new Error(
-            'Seu currículo foi salvo, mas não foi possível vincular automaticamente à vaga. O RH poderá localizar seu cadastro na lista de candidatos.',
-          )
-        }
-      }
-
-      const mensagemSucesso =
-        view.type === 'talent-bank'
-          ? 'Currículo enviado com sucesso para o banco de talentos.'
-          : 'Candidatura enviada com sucesso. Nossa equipe de RH analisará seu perfil.'
-
-      setMensagem(mensagemSucesso)
+      setMensagem(registro.mensagem)
       setForm(initialForm)
       setCurriculo(null)
       window.scrollTo({ top: 0, behavior: 'smooth' })
