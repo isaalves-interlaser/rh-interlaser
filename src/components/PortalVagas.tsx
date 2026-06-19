@@ -486,13 +486,22 @@ function PortalVagas() {
         }
       }
 
-      setMensagem(
+      const mensagemSucesso =
         view.type === 'talent-bank'
           ? 'Currículo enviado com sucesso para o banco de talentos.'
-          : 'Candidatura enviada com sucesso. Nossa equipe de RH analisará seu perfil.',
-      )
+          : 'Candidatura enviada com sucesso. Nossa equipe de RH analisará seu perfil.'
+
+      setMensagem(mensagemSucesso)
       setForm(initialForm)
       setCurriculo(null)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+
+      window.setTimeout(() => {
+        window.history.pushState({}, '', '/vagas')
+        setPath(window.location.pathname)
+        setErro('')
+        setMensagem('')
+      }, 2500)
     } catch (submissionError) {
       setErro(
         submissionError instanceof Error
@@ -647,16 +656,25 @@ function PortalVagas() {
               />
             </label>
 
-            <label className="full">
-              Currículo *
-              <input
-                type="file"
-                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                onChange={handleCurriculoChange}
-                disabled={enviando}
-              />
+            <div className="jobs-form-field full">
+              <span className="jobs-field-label">Currículo *</span>
+
+              <label className={`jobs-file-control ${curriculo ? 'has-file' : ''}`}>
+                <input
+                  className="jobs-file-input"
+                  type="file"
+                  accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  onChange={handleCurriculoChange}
+                  disabled={enviando}
+                />
+                <span className="jobs-file-button">Escolher arquivo</span>
+                <span className="jobs-file-name">
+                  {curriculo ? curriculo.name : 'Nenhum arquivo selecionado'}
+                </span>
+              </label>
+
               <small>PDF, DOC ou DOCX até {MAX_FILE_SIZE_MB} MB. O arquivo será salvo no Google Drive do RH.</small>
-            </label>
+            </div>
 
             <label className="full">
               Observação opcional
