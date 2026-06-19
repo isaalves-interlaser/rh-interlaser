@@ -83,3 +83,14 @@ with check (
   etapa = 'recebido'
   and status = 'ativo'
 );
+
+-- Informações públicas da vaga exibidas no portal
+alter table public.vagas
+  add column if not exists resumo_publico text,
+  add column if not exists descricao_publica text,
+  add column if not exists atividades text,
+  add column if not exists requisitos text,
+  add column if not exists beneficios text,
+  add column if not exists horario_trabalho text,
+  add column if not exists salario_faixa text,
+  add column if not exists observacoes_publicas text;

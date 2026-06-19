@@ -66,6 +66,14 @@ type Vaga = {
   prioridade: VagaPrioridade
   status: VagaStatus
   data_limite: string | null
+  resumo_publico: string | null
+  descricao_publica: string | null
+  atividades: string | null
+  requisitos: string | null
+  beneficios: string | null
+  horario_trabalho: string | null
+  salario_faixa: string | null
+  observacoes_publicas: string | null
   created_at: string
   drive_folder_id: string | null
   drive_folder_url: string | null
@@ -81,6 +89,14 @@ type VagaForm = {
   prioridade: VagaPrioridade
   status: VagaStatus
   data_limite: string
+  resumo_publico: string
+  descricao_publica: string
+  atividades: string
+  requisitos: string
+  beneficios: string
+  horario_trabalho: string
+  salario_faixa: string
+  observacoes_publicas: string
 }
 
 const initialForm: VagaForm = {
@@ -93,6 +109,14 @@ const initialForm: VagaForm = {
   prioridade: 'normal',
   status: 'aberta',
   data_limite: '',
+  resumo_publico: '',
+  descricao_publica: '',
+  atividades: '',
+  requisitos: '',
+  beneficios: '',
+  horario_trabalho: '',
+  salario_faixa: '',
+  observacoes_publicas: '',
 }
 
 const statusLabels: Record<VagaStatus, string> = {
@@ -154,6 +178,11 @@ function nomeFilial(filial: Filial | null | undefined) {
   return 'Filial não encontrada'
 }
 
+function nullableText(value: string) {
+  const normalized = value.trim()
+  return normalized || null
+}
+
 
 type VagasProps = {
   responsavelRhEmail?: string
@@ -200,7 +229,7 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
         supabase
           .from('vagas')
           .select(
-            'id, numero, empresa_id, filial_id, cargo, setor, tipo_contrato, modalidade, prioridade, status, data_limite, created_at, drive_folder_id, drive_folder_url',
+            'id, numero, empresa_id, filial_id, cargo, setor, tipo_contrato, modalidade, prioridade, status, data_limite, resumo_publico, descricao_publica, atividades, requisitos, beneficios, horario_trabalho, salario_faixa, observacoes_publicas, created_at, drive_folder_id, drive_folder_url',
           )
           .order('created_at', { ascending: false }),
         supabase
@@ -362,7 +391,15 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
       prioridade: vaga.prioridade,
       status: vaga.status,
       data_limite: vaga.data_limite ?? '',
-        })
+      resumo_publico: vaga.resumo_publico ?? '',
+      descricao_publica: vaga.descricao_publica ?? '',
+      atividades: vaga.atividades ?? '',
+      requisitos: vaga.requisitos ?? '',
+      beneficios: vaga.beneficios ?? '',
+      horario_trabalho: vaga.horario_trabalho ?? '',
+      salario_faixa: vaga.salario_faixa ?? '',
+      observacoes_publicas: vaga.observacoes_publicas ?? '',
+    })
     setEditandoId(vaga.id)
     setErro('')
     setMensagem('')
@@ -411,6 +448,14 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
       prioridade: form.prioridade,
       status: form.status,
       data_limite: form.data_limite || null,
+      resumo_publico: nullableText(form.resumo_publico),
+      descricao_publica: nullableText(form.descricao_publica),
+      atividades: nullableText(form.atividades),
+      requisitos: nullableText(form.requisitos),
+      beneficios: nullableText(form.beneficios),
+      horario_trabalho: nullableText(form.horario_trabalho),
+      salario_faixa: nullableText(form.salario_faixa),
+      observacoes_publicas: nullableText(form.observacoes_publicas),
     }
 
     const result = editandoId
@@ -1122,6 +1167,149 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
                       }))
                     }
                     disabled={salvando}
+                  />
+                </div>
+
+                <div className="vacancies-form-section-title">
+                  <strong>Informações públicas da vaga</strong>
+                  <span>Esses textos aparecem para o candidato na página de detalhes da vaga.</span>
+                </div>
+
+                <div className="vacancies-form-group full">
+                  <label htmlFor="vaga-resumo-publico">Resumo para o card da vaga</label>
+                  <textarea
+                    id="vaga-resumo-publico"
+                    value={form.resumo_publico}
+                    onChange={(event) =>
+                      setForm((atual) => ({
+                        ...atual,
+                        resumo_publico: event.target.value,
+                      }))
+                    }
+                    disabled={salvando}
+                    rows={2}
+                    maxLength={260}
+                    placeholder="Ex.: Atuação no apoio às rotinas de RH, atendimento interno e organização de documentos."
+                  />
+                  <small>Texto curto. Ele aparece nos cards e no início da página de detalhes.</small>
+                </div>
+
+                <div className="vacancies-form-group full">
+                  <label htmlFor="vaga-descricao-publica">Descrição da vaga</label>
+                  <textarea
+                    id="vaga-descricao-publica"
+                    value={form.descricao_publica}
+                    onChange={(event) =>
+                      setForm((atual) => ({
+                        ...atual,
+                        descricao_publica: event.target.value,
+                      }))
+                    }
+                    disabled={salvando}
+                    rows={4}
+                    placeholder="Descreva o objetivo da vaga e o contexto da área."
+                  />
+                </div>
+
+                <div className="vacancies-form-group full">
+                  <label htmlFor="vaga-atividades">Atividades principais</label>
+                  <textarea
+                    id="vaga-atividades"
+                    value={form.atividades}
+                    onChange={(event) =>
+                      setForm((atual) => ({
+                        ...atual,
+                        atividades: event.target.value,
+                      }))
+                    }
+                    disabled={salvando}
+                    rows={4}
+                    placeholder="Liste as principais atividades da função."
+                  />
+                </div>
+
+                <div className="vacancies-form-group full">
+                  <label htmlFor="vaga-requisitos">Requisitos</label>
+                  <textarea
+                    id="vaga-requisitos"
+                    value={form.requisitos}
+                    onChange={(event) =>
+                      setForm((atual) => ({
+                        ...atual,
+                        requisitos: event.target.value,
+                      }))
+                    }
+                    disabled={salvando}
+                    rows={4}
+                    placeholder="Ex.: Ensino médio completo, experiência na área, conhecimento em pacote Office."
+                  />
+                </div>
+
+                <div className="vacancies-form-group full">
+                  <label htmlFor="vaga-beneficios">Benefícios</label>
+                  <textarea
+                    id="vaga-beneficios"
+                    value={form.beneficios}
+                    onChange={(event) =>
+                      setForm((atual) => ({
+                        ...atual,
+                        beneficios: event.target.value,
+                      }))
+                    }
+                    disabled={salvando}
+                    rows={3}
+                    placeholder="Ex.: Vale transporte, refeição, cesta básica, convênio médico."
+                  />
+                </div>
+
+                <div className="vacancies-form-group">
+                  <label htmlFor="vaga-horario">Horário de trabalho</label>
+                  <input
+                    id="vaga-horario"
+                    type="text"
+                    value={form.horario_trabalho}
+                    onChange={(event) =>
+                      setForm((atual) => ({
+                        ...atual,
+                        horario_trabalho: event.target.value,
+                      }))
+                    }
+                    disabled={salvando}
+                    placeholder="Ex.: Segunda a sexta, 07h30 às 17h18"
+                  />
+                </div>
+
+                <div className="vacancies-form-group">
+                  <label htmlFor="vaga-salario">Faixa salarial</label>
+                  <input
+                    id="vaga-salario"
+                    type="text"
+                    value={form.salario_faixa}
+                    onChange={(event) =>
+                      setForm((atual) => ({
+                        ...atual,
+                        salario_faixa: event.target.value,
+                      }))
+                    }
+                    disabled={salvando}
+                    placeholder="Ex.: A combinar"
+                  />
+                </div>
+
+                <div className="vacancies-form-group full">
+                  <label htmlFor="vaga-observacoes-publicas">Observações públicas</label>
+                  <textarea
+                    id="vaga-observacoes-publicas"
+                    value={form.observacoes_publicas}
+                    onChange={(event) =>
+                      setForm((atual) => ({
+                        ...atual,
+                        observacoes_publicas: event.target.value,
+                      }))
+                    }
+                    disabled={salvando}
+                    rows={3}
+                    placeholder="Informações extras que podem aparecer para o candidato."
                   />
                 </div>
 

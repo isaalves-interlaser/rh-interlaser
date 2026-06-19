@@ -783,3 +783,33 @@ button:disabled,
     padding-right: 16px;
   }
 }
+
+.jobs-detail-description {
+  display: grid;
+  gap: 18px;
+}
+
+.jobs-detail-text-block {
+  padding: 20px;
+  border: 1px solid #e1e7ee;
+  border-radius: 18px;
+  background: #ffffff;
+}
+
+.jobs-detail-text-block h2 {
+  margin: 0 0 10px;
+  color: #172033;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+
+.jobs-detail-text-block p {
+  margin: 8px 0 0;
+  color: #667085;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.jobs-detail-grid {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}

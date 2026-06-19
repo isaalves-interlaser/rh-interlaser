@@ -56,6 +56,14 @@ type VagaPublica = {
   modalidade: VagaModalidade
   status: VagaStatus
   data_limite: string | null
+  resumo_publico: string | null
+  descricao_publica: string | null
+  atividades: string | null
+  requisitos: string | null
+  beneficios: string | null
+  horario_trabalho: string | null
+  salario_faixa: string | null
+  observacoes_publicas: string | null
   created_at: string
   drive_folder_id: string | null
   drive_folder_url: string | null
@@ -194,6 +202,30 @@ function vacancyLocation(filial: Filial | null | undefined) {
   return cityUf || nomeFilial(filial)
 }
 
+function textOrNull(value: string | null | undefined) {
+  const normalized = value?.trim()
+  return normalized || null
+}
+
+function renderTextBlock(title: string, value: string | null | undefined) {
+  const text = textOrNull(value)
+
+  if (!text) return null
+
+  return (
+    <section className="jobs-detail-text-block">
+      <h2>{title}</h2>
+      {text.split('\n').map((line, index) => {
+        const item = line.trim()
+
+        if (!item) return null
+
+        return <p key={`${title}-${index}`}>{item}</p>
+      })}
+    </section>
+  )
+}
+
 function PortalVagas() {
   const [path, setPath] = useState(window.location.pathname)
   const [vagas, setVagas] = useState<VagaPublica[]>([])
@@ -227,7 +259,7 @@ function PortalVagas() {
         supabase
           .from('vagas')
           .select(
-            'id, numero, empresa_id, filial_id, cargo, setor, tipo_contrato, modalidade, status, data_limite, created_at, drive_folder_id, drive_folder_url',
+            'id, numero, empresa_id, filial_id, cargo, setor, tipo_contrato, modalidade, status, data_limite, resumo_publico, descricao_publica, atividades, requisitos, beneficios, horario_trabalho, salario_faixa, observacoes_publicas, created_at, drive_folder_id, drive_folder_url',
           )
           .eq('status', 'aberta')
           .order('created_at', { ascending: false }),
@@ -496,7 +528,7 @@ function PortalVagas() {
         </div>
 
         <h3>{vaga.cargo}</h3>
-        <p>{vaga.setor}</p>
+        <p>{textOrNull(vaga.resumo_publico) ?? vaga.setor}</p>
 
         <div className="jobs-card-meta">
           <span>{nomeEmpresa(empresa)}</span>
@@ -737,8 +769,12 @@ function PortalVagas() {
           <span>{buildVacancyCode(vagaSelecionada.numero)}</span>
           <h1>{vagaSelecionada.cargo}</h1>
           <p>
-            Oportunidade para atuação no setor de{' '}
-            <strong>{vagaSelecionada.setor}</strong>.
+            {textOrNull(vagaSelecionada.resumo_publico) ?? (
+              <>
+                Oportunidade para atuação no setor de{' '}
+                <strong>{vagaSelecionada.setor}</strong>.
+              </>
+            )}
           </p>
 
           <div className="jobs-detail-grid">
@@ -768,15 +804,35 @@ function PortalVagas() {
               <small>Prazo</small>
               <strong>{formatDate(vagaSelecionada.data_limite)}</strong>
             </div>
+            {textOrNull(vagaSelecionada.horario_trabalho) && (
+              <div>
+                <small>Horário</small>
+                <strong>{vagaSelecionada.horario_trabalho}</strong>
+              </div>
+            )}
+            {textOrNull(vagaSelecionada.salario_faixa) && (
+              <div>
+                <small>Faixa salarial</small>
+                <strong>{vagaSelecionada.salario_faixa}</strong>
+              </div>
+            )}
           </div>
 
           <div className="jobs-detail-description">
-            <h2>Como funciona a candidatura</h2>
-            <p>
-              Envie seus dados e currículo pelo formulário. O RH irá
-              avaliar o perfil e, caso exista aderência à vaga, entrará em
-              contato pelos canais informados.
-            </p>
+            {renderTextBlock('Sobre a vaga', vagaSelecionada.descricao_publica)}
+            {renderTextBlock('Atividades principais', vagaSelecionada.atividades)}
+            {renderTextBlock('Requisitos', vagaSelecionada.requisitos)}
+            {renderTextBlock('Benefícios', vagaSelecionada.beneficios)}
+            {renderTextBlock('Observações', vagaSelecionada.observacoes_publicas)}
+
+            <section className="jobs-detail-text-block">
+              <h2>Como funciona a candidatura</h2>
+              <p>
+                Envie seus dados e currículo pelo formulário. O RH irá
+                avaliar o perfil e, caso exista aderência à vaga, entrará em
+                contato pelos canais informados.
+              </p>
+            </section>
           </div>
 
           <button

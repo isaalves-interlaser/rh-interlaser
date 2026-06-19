@@ -731,3 +731,32 @@
   border-color: #818cf8;
   background: #e0e7ff;
 }
+
+.vacancies-form-section-title {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+  padding: 14px 16px;
+  display: grid;
+  gap: 4px;
+  border: 1px solid #fed7aa;
+  border-radius: 12px;
+  background: #fff7ed;
+}
+
+.vacancies-form-section-title strong {
+  color: #9a3412;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.vacancies-form-section-title span {
+  color: #667085;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.vacancies-form-group textarea {
+  min-height: 92px;
+  resize: vertical;
+}
