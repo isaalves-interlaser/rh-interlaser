@@ -760,3 +760,67 @@
   min-height: 92px;
   resize: vertical;
 }
+
+.vacancy-portal-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.vacancy-portal-status::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.vacancy-portal-status.published {
+  color: #047857;
+  background: #d1fae5;
+}
+
+.vacancy-portal-status.private {
+  color: #667085;
+  background: #f2f4f7;
+}
+
+.vacancies-publication-card {
+  padding: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 190px;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid #fed7aa;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #fff7ed 0%, #ffffff 100%);
+}
+
+.vacancies-publication-card strong {
+  display: block;
+  color: #172033;
+  font-size: 13px;
+}
+
+.vacancies-publication-card span {
+  display: block;
+  margin-top: 4px;
+  color: #667085;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.vacancies-publication-card select {
+  height: 42px;
+}
+
+@media (max-width: 720px) {
+  .vacancies-publication-card {
+    grid-template-columns: 1fr;
+  }
+}

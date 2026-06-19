@@ -66,6 +66,7 @@ type Vaga = {
   prioridade: VagaPrioridade
   status: VagaStatus
   data_limite: string | null
+  publicar_portal: boolean
   resumo_publico: string | null
   descricao_publica: string | null
   atividades: string | null
@@ -89,6 +90,7 @@ type VagaForm = {
   prioridade: VagaPrioridade
   status: VagaStatus
   data_limite: string
+  publicar_portal: boolean
   resumo_publico: string
   descricao_publica: string
   atividades: string
@@ -109,6 +111,7 @@ const initialForm: VagaForm = {
   prioridade: 'normal',
   status: 'aberta',
   data_limite: '',
+  publicar_portal: false,
   resumo_publico: '',
   descricao_publica: '',
   atividades: '',
@@ -229,7 +232,7 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
         supabase
           .from('vagas')
           .select(
-            'id, numero, empresa_id, filial_id, cargo, setor, tipo_contrato, modalidade, prioridade, status, data_limite, resumo_publico, descricao_publica, atividades, requisitos, beneficios, horario_trabalho, salario_faixa, observacoes_publicas, created_at, drive_folder_id, drive_folder_url',
+            'id, numero, empresa_id, filial_id, cargo, setor, tipo_contrato, modalidade, prioridade, status, data_limite, publicar_portal, resumo_publico, descricao_publica, atividades, requisitos, beneficios, horario_trabalho, salario_faixa, observacoes_publicas, created_at, drive_folder_id, drive_folder_url',
           )
           .order('created_at', { ascending: false }),
         supabase
@@ -391,6 +394,7 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
       prioridade: vaga.prioridade,
       status: vaga.status,
       data_limite: vaga.data_limite ?? '',
+      publicar_portal: vaga.publicar_portal ?? false,
       resumo_publico: vaga.resumo_publico ?? '',
       descricao_publica: vaga.descricao_publica ?? '',
       atividades: vaga.atividades ?? '',
@@ -448,6 +452,7 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
       prioridade: form.prioridade,
       status: form.status,
       data_limite: form.data_limite || null,
+      publicar_portal: form.publicar_portal,
       resumo_publico: nullableText(form.resumo_publico),
       descricao_publica: nullableText(form.descricao_publica),
       atividades: nullableText(form.atividades),
@@ -651,6 +656,7 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
                 <th>Drive</th>
                 <th>Contratado</th>
                 <th>Status</th>
+                <th>Portal</th>
                 <th>Prioridade</th>
                 <th>Prazo</th>
                 <th aria-label="Ações" />
@@ -745,6 +751,18 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
                         className={`vacancy-status status-${vaga.status}`}
                       >
                         {statusLabels[vaga.status]}
+                      </span>
+                    </td>
+                    <td>
+                      <span
+                        className={`vacancy-portal-status ${vaga.publicar_portal ? 'published' : 'private'}`}
+                        title={
+                          vaga.publicar_portal && vaga.status === 'aberta'
+                            ? 'Aparece no portal público de vagas'
+                            : 'Não aparece no portal público de vagas'
+                        }
+                      >
+                        {vaga.publicar_portal ? 'Publicado' : 'Interno'}
                       </span>
                     </td>
                     <td>
@@ -1168,6 +1186,39 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
                     }
                     disabled={salvando}
                   />
+                </div>
+
+                <div className="vacancies-form-group full">
+                  <label>Publicação da vaga</label>
+                  <div className="vacancies-publication-card">
+                    <div>
+                      <strong>Publicar no portal?</strong>
+                      <span>
+                        Quando marcado como “Sim”, a vaga aparecerá para os
+                        candidatos na página pública, desde que o status esteja
+                        como Aberta.
+                      </span>
+                    </div>
+
+                    <select
+                      id="vaga-publicar-portal"
+                      value={form.publicar_portal ? 'sim' : 'nao'}
+                      onChange={(event) =>
+                        setForm((atual) => ({
+                          ...atual,
+                          publicar_portal: event.target.value === 'sim',
+                        }))
+                      }
+                      disabled={salvando}
+                    >
+                      <option value="nao">Não publicar</option>
+                      <option value="sim">Publicar no portal</option>
+                    </select>
+                  </div>
+                  <small>
+                    Use “Não publicar” para deixar a vaga preparada internamente
+                    antes de liberar para os candidatos.
+                  </small>
                 </div>
 
                 <div className="vacancies-form-section-title">
