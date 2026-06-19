@@ -26,7 +26,8 @@ function isPortalVagasRoute(pathname: string) {
     normalizedPath === '/vagas' ||
     normalizedPath.startsWith('/vagas/') ||
     normalizedPath.startsWith('/candidatar/') ||
-    normalizedPath === '/candidatura-espontanea'
+    normalizedPath === '/candidatura-espontanea' ||
+    normalizedPath === '/confirmacao-candidatura'
   )
 }
 
