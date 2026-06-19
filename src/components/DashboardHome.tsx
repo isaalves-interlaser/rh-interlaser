@@ -1,634 +1,772 @@
-import { useEffect, useMemo, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 import { supabase } from '../lib/supabase'
-import Usuarios from './Usuarios'
-import Vagas from './Vagas'
-import Candidatos from './Candidatos'
-import Pipeline from './Pipeline'
-import Agenda from './Agenda'
-import Onboarding from './Onboarding'
-import DashboardHome from './DashboardHome'
-import EmpresasFiliais from './EmpresasFiliais'
-import DocumentosConfiguracao from './DocumentosConfiguracao'
-import Contratos from './Contratos'
-import Relatorios from './Relatorios'
-import './Dashboard.css'
+import './DashboardHome.css'
 
-type PageId =
-  | 'dashboard'
+type DashboardPage =
   | 'pipeline'
   | 'candidatos'
   | 'vagas'
   | 'agenda'
   | 'onboarding'
-  | 'contratos'
-  | 'relatorios'
-  | 'usuarios'
-  | 'empresas-filiais'
-  | 'documentacao-config'
 
-type UserRole = 'admin' | 'rh' | 'gestor' | 'consulta'
-
-type UserProfile = {
-  full_name: string
-  role: UserRole
-  active: boolean
+type DashboardHomeProps = {
+  userName: string
+  onNavigate: (page: DashboardPage) => void
 }
 
-type DashboardProps = {
-  userId: string
-  userEmail: string
-  loading: boolean
-  onLogout: () => Promise<void>
-}
 
-type MenuIconName =
-  | 'dashboard'
-  | 'pipeline'
+
+type DashboardIconType =
   | 'candidates'
   | 'vacancies'
-  | 'calendar'
+  | 'interviews'
   | 'onboarding'
-  | 'reports'
-  | 'contracts'
-  | 'users'
-  | 'companies'
-  | 'documents'
+  | 'movement'
+  | 'calendar'
 
-type MenuItem = {
-  id: PageId
-  label: string
-  icon: MenuIconName
-}
-
-const roleLabels: Record<UserRole, string> = {
-  admin: 'Administrador',
-  rh: 'Recursos Humanos',
-  gestor: 'Gestor',
-  consulta: 'Consulta',
-}
-
-type SidebarIconName = MenuIconName | 'settings' | 'logout'
-
-function SidebarIcon({ name }: { name: SidebarIconName }) {
+function DashboardIcon({ type }: { type: DashboardIconType }) {
   const commonProps = {
-    width: 20,
-    height: 20,
+    width: '18',
+    height: '18',
     viewBox: '0 0 24 24',
     fill: 'none',
     xmlns: 'http://www.w3.org/2000/svg',
+    'aria-hidden': true,
   }
 
-  switch (name) {
-    case 'dashboard':
-      return (
-        <svg {...commonProps} aria-hidden="true">
-          <rect x="4" y="4" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.8" />
-          <rect x="14" y="4" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.8" />
-          <rect x="4" y="14" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.8" />
-          <rect x="14" y="14" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.8" />
-        </svg>
-      )
-    case 'pipeline':
-      return (
-        <svg {...commonProps} aria-hidden="true">
-          <path d="M5 7h10.5a3.5 3.5 0 0 1 0 7H9" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M8 4 5 7l3 3" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M16 20 19 17l-3-3" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      )
+  const strokeProps = {
+    stroke: 'currentColor',
+    strokeWidth: '2',
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+  }
+
+  switch (type) {
     case 'candidates':
       return (
-        <svg {...commonProps} aria-hidden="true">
-          <circle cx="12" cy="8" r="3.2" stroke="currentColor" strokeWidth="1.8" />
-          <path d="M5.5 20a6.5 6.5 0 0 1 13 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <svg {...commonProps}>
+          <path {...strokeProps} d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" />
+          <circle {...strokeProps} cx="9.5" cy="7" r="4" />
+          <path {...strokeProps} d="M20 8v6" />
+          <path {...strokeProps} d="M23 11h-6" />
         </svg>
       )
     case 'vacancies':
       return (
-        <svg {...commonProps} aria-hidden="true">
-          <path d="M9 7V5.8A1.8 1.8 0 0 1 10.8 4h2.4A1.8 1.8 0 0 1 15 5.8V7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          <rect x="4" y="7" width="16" height="12" rx="2.2" stroke="currentColor" strokeWidth="1.8" />
-          <path d="M4 12h16M10 12v1.5h4V12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <svg {...commonProps}>
+          <rect {...strokeProps} x="3" y="5" width="18" height="14" rx="2" />
+          <path {...strokeProps} d="M8 5V3h8v2" />
+          <path {...strokeProps} d="M3 11h18" />
+          <path {...strokeProps} d="M9 15h6" />
         </svg>
       )
-    case 'calendar':
+    case 'interviews':
       return (
-        <svg {...commonProps} aria-hidden="true">
-          <rect x="4" y="5" width="16" height="15" rx="2.2" stroke="currentColor" strokeWidth="1.8" />
-          <path d="M8 3.5v3M16 3.5v3M4 9h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          <path d="M8 13h.01M12 13h.01M16 13h.01M8 17h.01M12 17h.01" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+        <svg {...commonProps}>
+          <rect {...strokeProps} x="3" y="4" width="18" height="17" rx="2" />
+          <path {...strokeProps} d="M8 2v4" />
+          <path {...strokeProps} d="M16 2v4" />
+          <path {...strokeProps} d="M3 10h18" />
+          <path {...strokeProps} d="M9 15h.01" />
+          <path {...strokeProps} d="M14 15h1" />
         </svg>
       )
     case 'onboarding':
       return (
-        <svg {...commonProps} aria-hidden="true">
-          <rect x="5" y="4" width="14" height="16" rx="2" stroke="currentColor" strokeWidth="1.8" />
-          <path d="m8 12 2.4 2.4L16 9" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+        <svg {...commonProps}>
+          <path {...strokeProps} d="M9 11l2 2 4-5" />
+          <path {...strokeProps} d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9" />
+          <path {...strokeProps} d="M18 3h3v3" />
         </svg>
       )
-    case 'reports':
+    case 'movement':
       return (
-        <svg {...commonProps} aria-hidden="true">
-          <path d="M5 20V5M19 20H5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          <rect x="8" y="12" width="2.8" height="5" rx="1" stroke="currentColor" strokeWidth="1.6" />
-          <rect x="13" y="8" width="2.8" height="9" rx="1" stroke="currentColor" strokeWidth="1.6" />
-          <rect x="18" y="10" width="2.8" height="7" rx="1" transform="translate(-3 0)" stroke="currentColor" strokeWidth="1.6" />
+        <svg {...commonProps}>
+          <path {...strokeProps} d="M17 3l4 4-4 4" />
+          <path {...strokeProps} d="M3 7h18" />
+          <path {...strokeProps} d="M7 21l-4-4 4-4" />
+          <path {...strokeProps} d="M21 17H3" />
         </svg>
       )
-    case 'contracts':
+    case 'calendar':
       return (
-        <svg {...commonProps} aria-hidden="true">
-          <path d="M7 3.8h7l3 3V20H7a2 2 0 0 1-2-2V5.8a2 2 0 0 1 2-2Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-          <path d="M14 4v3h3M8.5 11h7M8.5 14.5h7M8.5 18h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-        </svg>
-      )
-    case 'users':
-      return (
-        <svg {...commonProps} aria-hidden="true">
-          <circle cx="9" cy="8" r="3" stroke="currentColor" strokeWidth="1.8" />
-          <path d="M3.8 19a5.2 5.2 0 0 1 10.4 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          <path d="M16 10.5a2.5 2.5 0 0 0 0-5M17.5 18a4.2 4.2 0 0 0-2.3-3.8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-        </svg>
-      )
-    case 'companies':
-      return (
-        <svg {...commonProps} aria-hidden="true">
-          <rect x="4.5" y="5" width="8" height="15" rx="1.5" stroke="currentColor" strokeWidth="1.8" />
-          <path d="M12.5 9h7v11h-7M7.5 8h2M7.5 12h2M7.5 16h2M15.5 12h1.8M15.5 16h1.8" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-        </svg>
-      )
-    case 'documents':
-      return (
-        <svg {...commonProps} aria-hidden="true">
-          <path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H10l2 2h5.5A2.5 2.5 0 0 1 20 9.5V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-          <path d="M8 12h8M8 15h5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-        </svg>
-      )
-    case 'settings':
-      return (
-        <svg {...commonProps} aria-hidden="true">
-          <path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z" stroke="currentColor" strokeWidth="1.8" />
-          <path d="M18.3 13.2c.08-.4.12-.8.12-1.2s-.04-.8-.12-1.2l2-1.5-2-3.4-2.4 1a7 7 0 0 0-2.1-1.2L13.5 3h-4l-.4 2.7A7 7 0 0 0 7 6.9l-2.4-1-2 3.4 2 1.5A6.5 6.5 0 0 0 4.5 12c0 .4.04.8.12 1.2l-2 1.5 2 3.4 2.4-1c.64.5 1.34.9 2.1 1.2l.4 2.7h4l.4-2.7c.76-.3 1.46-.7 2.1-1.2l2.4 1 2-3.4-2.12-1.5Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-        </svg>
-      )
-    case 'logout':
-      return (
-        <svg {...commonProps} aria-hidden="true">
-          <path d="M10 5H6.8A1.8 1.8 0 0 0 5 6.8v10.4A1.8 1.8 0 0 0 6.8 19H10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          <path d="M14 8l4 4-4 4M18 12H9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <svg {...commonProps}>
+          <rect {...strokeProps} x="3" y="4" width="18" height="17" rx="2" />
+          <path {...strokeProps} d="M8 2v4" />
+          <path {...strokeProps} d="M16 2v4" />
+          <path {...strokeProps} d="M3 10h18" />
+          <path {...strokeProps} d="M12 14v3" />
+          <path {...strokeProps} d="M10.5 15.5h3" />
         </svg>
       )
   }
 }
 
-const mainMenuItems: MenuItem[] = [
-  {
-    id: 'dashboard',
-    label: 'Dashboard',
-    icon: 'dashboard',
-  },
-  {
-    id: 'pipeline',
-    label: 'Pipeline',
-    icon: 'pipeline',
-  },
-  {
-    id: 'candidatos',
-    label: 'Candidatos',
-    icon: 'candidates',
-  },
-  {
-    id: 'vagas',
-    label: 'Vagas',
-    icon: 'vacancies',
-  },
-  {
-    id: 'agenda',
-    label: 'Agenda',
-    icon: 'calendar',
-  },
-  {
-    id: 'onboarding',
-    label: 'Onboarding',
-    icon: 'onboarding',
-  },
-]
-
-const reportsMenuItem: MenuItem = {
-  id: 'relatorios',
-  label: 'Relatórios',
-  icon: 'reports',
+type DashboardMetrics = {
+  candidatosAtivos: number
+  vagasAbertas: number
+  entrevistasProximas: number
+  onboardingsAtivos: number
 }
 
-const contractsMenuItem: MenuItem = {
-  id: 'contratos',
-  label: 'Contratos',
-  icon: 'contracts',
+type ApplicationRow = {
+  id: string
+  candidato_id: string
+  vaga_id: string
+  etapa: string
+  status: string
+  updated_at: string
 }
 
-const settingsMenuItems: MenuItem[] = [
-  {
-    id: 'usuarios',
-    label: 'Usuários',
-    icon: 'users',
-  },
-  {
-    id: 'empresas-filiais',
-    label: 'Empresas e filiais',
-    icon: 'companies',
-  },
-  {
-    id: 'documentacao-config',
-    label: 'Documentação',
-    icon: 'documents',
-  },
-]
-
-function formatUserName(email: string) {
-  const name = email.split('@')[0]
-
-  return name
-    .split(/[._-]/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ')
+type InterviewRow = {
+  id: string
+  candidatura_id: string
+  inicio: string
+  status: string
+  modalidade: string
 }
 
-function Dashboard({
-  userId,
-  userEmail,
-  loading,
-  onLogout,
-}: DashboardProps) {
-  const [activePage, setActivePage] = useState<PageId>('dashboard')
-  const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [profileError, setProfileError] = useState('')
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+type CandidateRow = {
+  id: string
+  numero: number
+  nome_completo: string
+}
 
-  useEffect(() => {
-    let componentMounted = true
+type VacancyRow = {
+  id: string
+  numero: number
+  cargo: string
+  setor: string
+}
 
-    async function loadProfile() {
-      setProfileError('')
+type RecentProcess = {
+  id: string
+  candidateName: string
+  candidateNumber: number
+  vacancyName: string
+  vacancyNumber: number
+  stage: string
+  status: string
+  updatedAt: string
+}
 
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('full_name, role, active')
-        .eq('id', userId)
-        .single()
+type UpcomingInterview = {
+  id: string
+  candidateName: string
+  vacancyName: string
+  vacancyNumber: number
+  startAt: string
+  status: string
+  modality: string
+}
 
-      if (!componentMounted) {
-        return
-      }
+const stageLabels: Record<string, string> = {
+  recebido: 'Recebido',
+  em_analise: 'Em análise',
+  entrevista_rh: 'Entrevista RH',
+  entrevista_gestor: 'Entrevista com gestor',
+  teste_pratico: 'Teste prático',
+  exame_admissional: 'Exame admissional',
+  documentacao: 'Documentação',
+  contratado: 'Contratado',
+}
 
-      if (error) {
-        console.error('Erro ao buscar perfil:', error.message)
-        setProfileError(
-          'Não foi possível carregar seu perfil de usuário.',
+const applicationStatusLabels: Record<string, string> = {
+  ativo: 'Ativo',
+  reprovado: 'Reprovado',
+  desistente: 'Desistente',
+  suspenso: 'Suspenso',
+  banco_talentos: 'Banco de talentos',
+  contratado: 'Contratado',
+}
+
+const interviewStatusLabels: Record<string, string> = {
+  agendada: 'Agendada',
+  confirmada: 'Confirmada',
+  realizada: 'Realizada',
+  cancelada: 'Cancelada',
+  nao_compareceu: 'Não compareceu',
+}
+
+const modalityLabels: Record<string, string> = {
+  presencial: 'Presencial',
+  google_meet: 'Google Meet',
+  teams: 'Microsoft Teams',
+  zoom: 'Zoom',
+  telefone: 'Telefone',
+  outro: 'Outro',
+}
+
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(new Date(value))
+}
+
+function formatInterviewDate(value: string) {
+  const date = new Date(value)
+  const today = new Date()
+  const tomorrow = new Date()
+  tomorrow.setDate(today.getDate() + 1)
+
+  const sameDate = (first: Date, second: Date) =>
+    first.getFullYear() === second.getFullYear() &&
+    first.getMonth() === second.getMonth() &&
+    first.getDate() === second.getDate()
+
+  const time = new Intl.DateTimeFormat('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+
+  if (sameDate(date, today)) {
+    return `Hoje, ${time}`
+  }
+
+  if (sameDate(date, tomorrow)) {
+    return `Amanhã, ${time}`
+  }
+
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+}
+
+function DashboardHome({
+  userName,
+  onNavigate,
+}: DashboardHomeProps) {
+  const [metrics, setMetrics] = useState<DashboardMetrics>({
+    candidatosAtivos: 0,
+    vagasAbertas: 0,
+    entrevistasProximas: 0,
+    onboardingsAtivos: 0,
+  })
+  const [recentProcesses, setRecentProcesses] = useState<
+    RecentProcess[]
+  >([])
+  const [upcomingInterviews, setUpcomingInterviews] = useState<
+    UpcomingInterview[]
+  >([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  const currentDate = useMemo(() => new Date(), [])
+
+  const loadDashboard = useCallback(async () => {
+    setLoading(true)
+    setError('')
+
+    const now = new Date().toISOString()
+
+    const [
+      candidateCountResult,
+      vacancyCountResult,
+      interviewCountResult,
+      onboardingCountResult,
+      recentApplicationsResult,
+      upcomingInterviewsResult,
+    ] = await Promise.all([
+      supabase
+        .from('candidatos')
+        .select('*', { count: 'exact', head: true })
+        .eq('active', true),
+
+      supabase
+        .from('vagas')
+        .select('*', { count: 'exact', head: true })
+        .in('status', ['aberta', 'em_selecao']),
+
+      supabase
+        .from('entrevistas')
+        .select('*', { count: 'exact', head: true })
+        .gte('inicio', now)
+        .in('status', ['agendada', 'confirmada']),
+
+      supabase
+        .from('onboardings')
+        .select('*', { count: 'exact', head: true })
+        .in('status', [
+          'nao_iniciado',
+          'em_andamento',
+          'bloqueado',
+        ]),
+
+      supabase
+        .from('candidaturas')
+        .select(
+          'id, candidato_id, vaga_id, etapa, status, updated_at',
         )
-        return
-      }
+        .order('updated_at', { ascending: false })
+        .limit(6),
 
-      if (!data.active) {
-        setProfileError(
-          'Este usuário está inativo. Entre em contato com o administrador.',
+      supabase
+        .from('entrevistas')
+        .select(
+          'id, candidatura_id, inicio, status, modalidade',
         )
-        return
-      }
+        .gte('inicio', now)
+        .in('status', ['agendada', 'confirmada'])
+        .order('inicio', { ascending: true })
+        .limit(5),
+    ])
 
-      setProfile(data as UserProfile)
+    const firstError =
+      candidateCountResult.error ??
+      vacancyCountResult.error ??
+      interviewCountResult.error ??
+      onboardingCountResult.error ??
+      recentApplicationsResult.error ??
+      upcomingInterviewsResult.error
+
+    if (firstError) {
+      console.error(
+        'Erro ao carregar o dashboard:',
+        firstError.message,
+      )
+      setError(
+        'Não foi possível carregar todos os dados do dashboard.',
+      )
+      setLoading(false)
+      return
     }
 
-    loadProfile()
+    const recentApplications =
+      (recentApplicationsResult.data ?? []) as ApplicationRow[]
 
-    return () => {
-      componentMounted = false
-    }
-  }, [userId])
+    const interviewRows =
+      (upcomingInterviewsResult.data ?? []) as InterviewRow[]
 
-  const canManageHrSettings =
-    profile?.role === 'admin' || profile?.role === 'rh'
+    const interviewApplicationIds = Array.from(
+      new Set(
+        interviewRows.map((item) => item.candidatura_id),
+      ),
+    )
 
-  const canManageUsers = profile?.role === 'admin'
+    let interviewApplications: ApplicationRow[] = []
 
-  const visibleMainItems = useMemo(() => {
-    if (!canManageHrSettings) {
-      return mainMenuItems
-    }
+    if (interviewApplicationIds.length > 0) {
+      const { data, error: applicationError } = await supabase
+        .from('candidaturas')
+        .select(
+          'id, candidato_id, vaga_id, etapa, status, updated_at',
+        )
+        .in('id', interviewApplicationIds)
 
-    return [...mainMenuItems, reportsMenuItem, contractsMenuItem]
-  }, [canManageHrSettings])
-
-  const visibleSettingsItems = useMemo(
-    () =>
-      settingsMenuItems.filter((item) => {
-        if (item.id === 'usuarios') {
-          return canManageUsers
-        }
-
-        return canManageHrSettings
-      }),
-    [canManageHrSettings, canManageUsers],
-  )
-
-  const allVisibleItems = useMemo(
-    () => [...visibleMainItems, ...visibleSettingsItems],
-    [visibleMainItems, visibleSettingsItems],
-  )
-
-  const activeMenuItem = allVisibleItems.find(
-    (item) => item.id === activePage,
-  )
-
-  const userName = profile?.full_name || formatUserName(userEmail)
-
-  const roleName = profile
-    ? roleLabels[profile.role]
-    : 'Carregando...'
-
-  const isSettingsPage = visibleSettingsItems.some(
-    (item) => item.id === activePage,
-  )
-
-  useEffect(() => {
-    if (isSettingsPage) {
-      setSettingsOpen(true)
-    }
-  }, [isSettingsPage])
-
-  useEffect(() => {
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        setMobileMenuOpen(false)
+      if (applicationError) {
+        console.error(
+          'Erro ao carregar candidaturas das entrevistas:',
+          applicationError.message,
+        )
+        setError(
+          'Os indicadores foram carregados, mas alguns detalhes não puderam ser exibidos.',
+        )
+      } else {
+        interviewApplications = (data ?? []) as ApplicationRow[]
       }
     }
 
-    window.addEventListener('keydown', closeOnEscape)
+    const allApplications = [
+      ...recentApplications,
+      ...interviewApplications,
+    ]
 
-    return () => {
-      window.removeEventListener('keydown', closeOnEscape)
+    const candidateIds = Array.from(
+      new Set(allApplications.map((item) => item.candidato_id)),
+    )
+    const vacancyIds = Array.from(
+      new Set(allApplications.map((item) => item.vaga_id)),
+    )
+
+    let candidateRows: CandidateRow[] = []
+    let vacancyRows: VacancyRow[] = []
+
+    const detailQueries = []
+
+    if (candidateIds.length > 0) {
+      detailQueries.push(
+        supabase
+          .from('candidatos')
+          .select('id, numero, nome_completo')
+          .in('id', candidateIds),
+      )
     }
+
+    if (vacancyIds.length > 0) {
+      detailQueries.push(
+        supabase
+          .from('vagas')
+          .select('id, numero, cargo, setor')
+          .in('id', vacancyIds),
+      )
+    }
+
+    const detailResults = await Promise.all(detailQueries)
+
+    for (const result of detailResults) {
+      if (result.error) {
+        console.error(
+          'Erro ao carregar detalhes do dashboard:',
+          result.error.message,
+        )
+        continue
+      }
+
+      const rows = result.data ?? []
+
+      if (
+        rows.length > 0 &&
+        'nome_completo' in rows[0]
+      ) {
+        candidateRows = rows as CandidateRow[]
+      } else if (
+        rows.length > 0 &&
+        'cargo' in rows[0]
+      ) {
+        vacancyRows = rows as VacancyRow[]
+      }
+    }
+
+    const candidateMap = new Map(
+      candidateRows.map((item) => [item.id, item]),
+    )
+    const vacancyMap = new Map(
+      vacancyRows.map((item) => [item.id, item]),
+    )
+    const applicationMap = new Map(
+      allApplications.map((item) => [item.id, item]),
+    )
+
+    setMetrics({
+      candidatosAtivos: candidateCountResult.count ?? 0,
+      vagasAbertas: vacancyCountResult.count ?? 0,
+      entrevistasProximas: interviewCountResult.count ?? 0,
+      onboardingsAtivos: onboardingCountResult.count ?? 0,
+    })
+
+    setRecentProcesses(
+      recentApplications
+        .map((application) => {
+          const candidate = candidateMap.get(
+            application.candidato_id,
+          )
+          const vacancy = vacancyMap.get(application.vaga_id)
+
+          if (!candidate || !vacancy) {
+            return null
+          }
+
+          return {
+            id: application.id,
+            candidateName: candidate.nome_completo,
+            candidateNumber: candidate.numero,
+            vacancyName: vacancy.cargo,
+            vacancyNumber: vacancy.numero,
+            stage: application.etapa,
+            status: application.status,
+            updatedAt: application.updated_at,
+          } satisfies RecentProcess
+        })
+        .filter(
+          (item): item is RecentProcess => item !== null,
+        ),
+    )
+
+    setUpcomingInterviews(
+      interviewRows
+        .map((interview) => {
+          const application = applicationMap.get(
+            interview.candidatura_id,
+          )
+
+          if (!application) {
+            return null
+          }
+
+          const candidate = candidateMap.get(
+            application.candidato_id,
+          )
+          const vacancy = vacancyMap.get(application.vaga_id)
+
+          if (!candidate || !vacancy) {
+            return null
+          }
+
+          return {
+            id: interview.id,
+            candidateName: candidate.nome_completo,
+            vacancyName: vacancy.cargo,
+            vacancyNumber: vacancy.numero,
+            startAt: interview.inicio,
+            status: interview.status,
+            modality: interview.modalidade,
+          } satisfies UpcomingInterview
+        })
+        .filter(
+          (item): item is UpcomingInterview =>
+            item !== null,
+        ),
+    )
+
+    setLoading(false)
   }, [])
 
-  function navigate(page: PageId) {
-    setActivePage(page)
-    setMobileMenuOpen(false)
-  }
+  useEffect(() => {
+    loadDashboard()
+  }, [loadDashboard])
 
-  if (!profile && !profileError) {
-    return (
-      <section className="profile-state">
-        <div className="profile-state-logo">RH</div>
-        <strong>Carregando perfil...</strong>
-      </section>
-    )
-  }
+  const month = new Intl.DateTimeFormat('pt-BR', {
+    month: 'long',
+  }).format(currentDate)
 
-  if (profileError) {
+  const formattedMonth =
+    month.charAt(0).toUpperCase() + month.slice(1)
+
+  if (loading) {
     return (
-      <section className="profile-state">
-        <div className="profile-state-logo">RH</div>
-        <span>Acesso não autorizado</span>
-        <h1>Não foi possível acessar o sistema</h1>
-        <p>{profileError}</p>
-        <button type="button" onClick={onLogout} disabled={loading}>
-          {loading ? 'Saindo...' : 'Voltar para o login'}
-        </button>
+      <section className="dashboard-home-loading">
+        <div className="dashboard-home-loading-logo">RH</div>
+        <p>Carregando indicadores...</p>
       </section>
     )
   }
 
   return (
-    <div
-      className={
-        mobileMenuOpen
-          ? 'system-layout menu-open'
-          : 'system-layout'
-      }
-    >
-      <button
-        className="mobile-menu-overlay"
-        type="button"
-        aria-label="Fechar menu"
-        onClick={() => setMobileMenuOpen(false)}
-      />
-
-      <aside
-        className={
-          mobileMenuOpen
-            ? 'system-sidebar mobile-open'
-            : 'system-sidebar'
-        }
-      >
-        <div className="sidebar-brand">
-          <div className="sidebar-brand-icon">RH</div>
-
-          <div>
-            <strong>Interlaser</strong>
-            <span>Gestão de pessoas</span>
-          </div>
-
-          <button
-            className="sidebar-mobile-close"
-            type="button"
-            aria-label="Fechar menu"
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            ×
-          </button>
+    <div className="dashboard-home">
+      <section className="dashboard-home-welcome">
+        <div>
+          <span>Visão geral</span>
+          <h2>Olá, {userName}</h2>
+          <p>
+            Acompanhe os números e as próximas atividades do
+            recrutamento.
+          </p>
         </div>
 
-        <nav className="sidebar-navigation">
-          <span className="sidebar-section-label">
-            Menu principal
-          </span>
+        <div className="dashboard-home-welcome-actions">
+          <div className="dashboard-home-date">
+            <strong>{formattedMonth}</strong>
+            <span>{currentDate.getFullYear()}</span>
+          </div>
 
-          <div className="sidebar-main-menu">
-            {visibleMainItems.map((item) => (
+          <button type="button" onClick={loadDashboard}>
+            Atualizar dados
+          </button>
+        </div>
+      </section>
+
+      {error && (
+        <div className="dashboard-home-message" role="alert">
+          {error}
+        </div>
+      )}
+
+      <section className="dashboard-home-metrics">
+        <button
+          className="dashboard-home-metric"
+          type="button"
+          onClick={() => onNavigate('candidatos')}
+        >
+          <div className="dashboard-home-metric-top">
+            <span>Candidatos ativos</span>
+            <div><DashboardIcon type="candidates" /></div>
+          </div>
+          <strong>{metrics.candidatosAtivos}</strong>
+          <small>Cadastros disponíveis no processo</small>
+        </button>
+
+        <button
+          className="dashboard-home-metric"
+          type="button"
+          onClick={() => onNavigate('vagas')}
+        >
+          <div className="dashboard-home-metric-top">
+            <span>Vagas abertas</span>
+            <div><DashboardIcon type="vacancies" /></div>
+          </div>
+          <strong>{metrics.vagasAbertas}</strong>
+          <small>Abertas ou em seleção</small>
+        </button>
+
+        <button
+          className="dashboard-home-metric"
+          type="button"
+          onClick={() => onNavigate('agenda')}
+        >
+          <div className="dashboard-home-metric-top">
+            <span>Próximas entrevistas</span>
+            <div><DashboardIcon type="interviews" /></div>
+          </div>
+          <strong>{metrics.entrevistasProximas}</strong>
+          <small>Agendadas ou confirmadas</small>
+        </button>
+
+        <button
+          className="dashboard-home-metric"
+          type="button"
+          onClick={() => onNavigate('onboarding')}
+        >
+          <div className="dashboard-home-metric-top">
+            <span>Onboardings ativos</span>
+            <div><DashboardIcon type="onboarding" /></div>
+          </div>
+          <strong>{metrics.onboardingsAtivos}</strong>
+          <small>Não iniciados ou em andamento</small>
+        </button>
+      </section>
+
+      <section className="dashboard-home-grid">
+        <article className="dashboard-home-panel">
+          <header>
+            <div>
+              <h3>Processos recentes</h3>
+              <p>Últimas candidaturas movimentadas</p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => onNavigate('pipeline')}
+            >
+              Abrir pipeline
+            </button>
+          </header>
+
+          <div className="dashboard-home-process-list">
+            {recentProcesses.map((process) => (
               <button
-                className={
-                  activePage === item.id
-                    ? 'sidebar-menu-item active'
-                    : 'sidebar-menu-item'
-                }
+                className="dashboard-home-process"
                 type="button"
-                key={item.id}
-                onClick={() => navigate(item.id)}
-                aria-pressed={activePage === item.id}
+                key={process.id}
+                onClick={() => onNavigate('pipeline')}
               >
-                <span className="menu-icon" aria-hidden="true">
-                  <SidebarIcon name={item.icon} />
-                </span>
-                <span>{item.label}</span>
+                <div className="dashboard-home-avatar">
+                  {process.candidateName
+                    .charAt(0)
+                    .toUpperCase()}
+                </div>
+
+                <div className="dashboard-home-process-main">
+                  <strong>{process.candidateName}</strong>
+                  <span>
+                    CAN-
+                    {String(process.candidateNumber).padStart(
+                      6,
+                      '0',
+                    )}{' '}
+                    · VAG-
+                    {String(process.vacancyNumber).padStart(
+                      6,
+                      '0',
+                    )}{' '}
+                    — {process.vacancyName}
+                  </span>
+                </div>
+
+                <div className="dashboard-home-process-status">
+                  <span className="stage">
+                    {stageLabels[process.stage] ??
+                      process.stage}
+                  </span>
+                  <small>
+                    {applicationStatusLabels[
+                      process.status
+                    ] ?? process.status}
+                  </small>
+                </div>
+
+                <time>{formatDateTime(process.updatedAt)}</time>
               </button>
             ))}
+
+            {recentProcesses.length === 0 && (
+              <div className="dashboard-home-empty">
+                <div><DashboardIcon type="movement" /></div>
+                <strong>Nenhuma movimentação recente</strong>
+                <p>
+                  As candidaturas movimentadas aparecerão aqui.
+                </p>
+              </div>
+            )}
           </div>
+        </article>
 
-          {visibleSettingsItems.length > 0 && (
-            <div className="sidebar-settings-group">
+        <article className="dashboard-home-panel">
+          <header>
+            <div>
+              <h3>Próximas entrevistas</h3>
+              <p>Compromissos agendados</p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => onNavigate('agenda')}
+            >
+              Abrir agenda
+            </button>
+          </header>
+
+          <div className="dashboard-home-interview-list">
+            {upcomingInterviews.map((interview) => (
               <button
-                className={
-                  isSettingsPage
-                    ? 'sidebar-menu-item settings-parent active'
-                    : 'sidebar-menu-item settings-parent'
-                }
+                className="dashboard-home-interview"
                 type="button"
-                onClick={() =>
-                  setSettingsOpen((current) => !current)
-                }
-                aria-expanded={settingsOpen}
+                key={interview.id}
+                onClick={() => onNavigate('agenda')}
               >
-                <span className="menu-icon" aria-hidden="true">
-                  <SidebarIcon name="settings" />
-                </span>
+                <div className="dashboard-home-interview-date">
+                  <strong>
+                    {formatInterviewDate(interview.startAt)}
+                  </strong>
+                  <span>
+                    {modalityLabels[interview.modality] ??
+                      interview.modality}
+                  </span>
+                </div>
 
-                <span>Configurações</span>
+                <div className="dashboard-home-interview-main">
+                  <strong>{interview.candidateName}</strong>
+                  <span>
+                    VAG-
+                    {String(interview.vacancyNumber).padStart(
+                      6,
+                      '0',
+                    )}{' '}
+                    — {interview.vacancyName}
+                  </span>
+                </div>
 
                 <span
-                  className={
-                    settingsOpen
-                      ? 'settings-chevron open'
-                      : 'settings-chevron'
-                  }
-                  aria-hidden="true"
+                  className={`dashboard-home-interview-status status-${interview.status}`}
                 >
-                  ›
+                  {interviewStatusLabels[interview.status] ??
+                    interview.status}
                 </span>
               </button>
+            ))}
 
-              <div
-                className={
-                  settingsOpen
-                    ? 'sidebar-submenu open'
-                    : 'sidebar-submenu'
-                }
-              >
-                {visibleSettingsItems.map((item) => (
-                  <button
-                    className={
-                      activePage === item.id
-                        ? 'sidebar-submenu-item active'
-                        : 'sidebar-submenu-item'
-                    }
-                    type="button"
-                    key={item.id}
-                    onClick={() => navigate(item.id)}
-                    aria-pressed={activePage === item.id}
-                  >
-                    <span className="submenu-line" />
-                    <span className="menu-icon" aria-hidden="true">
-                      <SidebarIcon name={item.icon} />
-                    </span>
-                    <span>{item.label}</span>
-                  </button>
-                ))}
+            {upcomingInterviews.length === 0 && (
+              <div className="dashboard-home-empty">
+                <div><DashboardIcon type="calendar" /></div>
+                <strong>Nenhuma entrevista próxima</strong>
+                <p>
+                  Os próximos compromissos aparecerão aqui.
+                </p>
               </div>
-            </div>
-          )}
-        </nav>
-
-        <div className="sidebar-user">
-          <div className="sidebar-user-avatar">
-            {userName.charAt(0).toUpperCase()}
-          </div>
-
-          <div className="sidebar-user-data">
-            <strong>{userName}</strong>
-            <span>{userEmail}</span>
-          </div>
-
-          <button
-            className="sidebar-logout"
-            type="button"
-            onClick={onLogout}
-            disabled={loading}
-            aria-label="Sair do sistema"
-            title="Sair do sistema"
-          >
-            <SidebarIcon name="logout" />
-          </button>
-        </div>
-      </aside>
-
-      <main className="system-main">
-        <header className="system-header">
-          <button
-            className="mobile-menu-button"
-            type="button"
-            aria-label="Abrir menu"
-            aria-expanded={mobileMenuOpen}
-            onClick={() => setMobileMenuOpen(true)}
-          >
-            <span />
-            <span />
-            <span />
-          </button>
-
-          <div className="system-header-title">
-            <span className="header-eyebrow">
-              Sistema de Recursos Humanos
-            </span>
-            <h1>{activeMenuItem?.label ?? 'Dashboard'}</h1>
-          </div>
-
-          <div className="header-actions">
-            <div className="header-user">
-              <div className="header-user-avatar">
-                {userName.charAt(0).toUpperCase()}
-              </div>
-
-              <div>
-                <strong>{userName}</strong>
-                <span>{roleName}</span>
-              </div>
-            </div>
-          </div>
-        </header>
-
-        <div className="system-content">
-          {activePage === 'dashboard' && (
-            <DashboardHome
-              userName={userName}
-              onNavigate={(page) =>
-                setActivePage(page as PageId)
-              }
-            />
-          )}
-
-          {activePage === 'pipeline' && <Pipeline />}
-
-          {activePage === 'candidatos' && <Candidatos />}
-
-          {activePage === 'vagas' && (
-            <Vagas responsavelRhEmail={userEmail} />
-          )}
-
-          {activePage === 'agenda' && <Agenda />}
-
-          {activePage === 'onboarding' && <Onboarding />}
-
-          {activePage === 'relatorios' &&
-            canManageHrSettings && <Relatorios />}
-
-          {activePage === 'contratos' &&
-            canManageHrSettings && <Contratos />}
-
-          {activePage === 'usuarios' && canManageUsers && (
-            <Usuarios currentUserId={userId} />
-          )}
-
-          {activePage === 'empresas-filiais' &&
-            canManageHrSettings && <EmpresasFiliais />}
-
-          {activePage === 'documentacao-config' &&
-            canManageHrSettings && (
-              <DocumentosConfiguracao />
             )}
-        </div>
-      </main>
+          </div>
+        </article>
+      </section>
     </div>
   )
 }
 
-export default Dashboard
+export default DashboardHome
