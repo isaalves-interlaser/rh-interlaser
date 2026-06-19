@@ -627,6 +627,41 @@ function Pipeline() {
     }
   }
 
+
+  async function enviarEmailProcesso(
+    candidaturaId: string,
+    tipo: 'teste' | 'exame',
+  ) {
+    const { data, error } = await supabase.functions.invoke(
+      'rh-processo-email',
+      {
+        body: { candidaturaId, tipo },
+      },
+    )
+
+    if (error) {
+      throw new Error(
+        data?.error ??
+          (await readFunctionError(
+            error,
+            'Não foi possível enviar o e-mail ao candidato.',
+          )),
+      )
+    }
+
+    if (!data?.ok) {
+      throw new Error(
+        data?.error ??
+          'O e-mail não foi confirmado pelo serviço de envio.',
+      )
+    }
+
+    return data as {
+      ok: true
+      message?: string
+    }
+  }
+
   async function salvarEntrevista() {
     if (!entrevistaModal) {
       return
@@ -1090,10 +1125,9 @@ function Pipeline() {
       )
       .single()
 
-    setSalvandoProcesso(false)
-
     if (error) {
       console.error(`Erro ao salvar ${label}:`, error.message)
+      setSalvandoProcesso(false)
       setErro(`Não foi possível salvar ${label.toLowerCase()}.`)
       return
     }
@@ -1106,11 +1140,30 @@ function Pipeline() {
       ),
     )
 
+    let avisoEmail = ' E-mail enviado ao candidato.'
+
+    try {
+      const emailResult = await enviarEmailProcesso(
+        processModal.candidaturaId,
+        processModal.tipo,
+      )
+
+      avisoEmail = ` ${emailResult.message ?? 'E-mail enviado ao candidato.'}`
+    } catch (emailError) {
+      console.error(`Erro ao enviar e-mail de ${label}:`, emailError)
+      avisoEmail = ` Porém, o e-mail não foi enviado: ${
+        emailError instanceof Error
+          ? emailError.message
+          : 'erro desconhecido'
+      }`
+    }
+
+    setSalvandoProcesso(false)
     setProcessModal(null)
     setMensagem(
       isTest
-        ? 'Teste prático agendado.'
-        : 'Exame admissional atualizado e sincronizado com o Onboarding.',
+        ? `Teste prático agendado.${avisoEmail}`
+        : `Exame admissional atualizado e sincronizado com o Onboarding.${avisoEmail}`,
     )
   }
 
@@ -2150,6 +2203,11 @@ function Pipeline() {
                 </div>
               </div>
 
+              <div className="pipeline-email-notice">
+                Ao confirmar, o sistema salva a etapa e envia um e-mail ao
+                candidato com data, horário, local e orientações.
+              </div>
+
               <div className="pipeline-form-grid">
                 <div className="pipeline-field">
                   <label htmlFor="pipeline-process-start">
@@ -2280,8 +2338,8 @@ function Pipeline() {
                 {salvandoProcesso
                   ? 'Salvando...'
                   : processModal.tipo === 'teste'
-                    ? 'Agendar teste'
-                    : 'Salvar exame'}
+                    ? 'Agendar teste e enviar e-mail'
+                    : 'Salvar exame e enviar e-mail'}
               </button>
             </footer>
           </section>
