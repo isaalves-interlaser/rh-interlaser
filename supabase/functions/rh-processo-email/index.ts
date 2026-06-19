@@ -18,6 +18,22 @@ type GmailResult = {
   error?: { message?: string }
 }
 
+type GoogleTokenResponse = {
+  access_token?: string
+  error?: string
+  error_description?: string
+}
+
+type GoogleCalendarEvent = {
+  id?: string
+  htmlLink?: string
+  error?: {
+    code?: number
+    message?: string
+    status?: string
+  }
+}
+
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -36,6 +52,10 @@ function secret(name: string) {
   }
 
   return value
+}
+
+function optionalSecret(name: string, fallback: string) {
+  return Deno.env.get(name)?.trim() || fallback
 }
 
 function escapeHtml(value: string | null | undefined) {
@@ -86,6 +106,17 @@ function formatDateTime(value: string) {
   }).format(date)
 }
 
+function addMinutesIso(value: string, minutes: number) {
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    throw new Error('Data e horário inválidos para o Google Agenda.')
+  }
+
+  date.setMinutes(date.getMinutes() + minutes)
+  return date.toISOString()
+}
+
 async function googleAccessToken() {
   const response = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
@@ -100,7 +131,7 @@ async function googleAccessToken() {
     }),
   })
 
-  const data = await response.json()
+  const data = (await response.json()) as GoogleTokenResponse
 
   if (!response.ok || !data.access_token) {
     throw new Error(
@@ -110,7 +141,7 @@ async function googleAccessToken() {
     )
   }
 
-  return data.access_token as string
+  return data.access_token
 }
 
 async function sendEmail(args: {
@@ -153,6 +184,86 @@ async function sendEmail(args: {
   }
 
   return data
+}
+
+async function upsertCalendarEvent(args: {
+  accessToken: string
+  tipo: 'teste' | 'exame'
+  eventId: string | null
+  candidatoNome: string
+  candidatoEmail: string
+  vagaNumero: number
+  vagaCargo: string
+  vagaSetor: string
+  inicio: string
+  local: string
+  observacoes: string | null
+}) {
+  const calendarId = secret('GOOGLE_CALENDAR_ID')
+  const timezone = optionalSecret(
+    'GOOGLE_CALENDAR_TIMEZONE',
+    'America/Sao_Paulo',
+  )
+
+  const isTest = args.tipo === 'teste'
+  const title = isTest ? 'Teste prático' : 'Exame admissional'
+  const colorId = isTest ? '6' : '10'
+  const end = addMinutesIso(args.inicio, 60)
+
+  const eventPayload = {
+    summary: `${title} — ${args.candidatoNome}`,
+    location: args.local,
+    description: [
+      `Candidato: ${args.candidatoNome}`,
+      args.candidatoEmail ? `E-mail: ${args.candidatoEmail}` : '',
+      `Vaga: VAG-${String(args.vagaNumero).padStart(6, '0')} — ${args.vagaCargo}`,
+      `Setor: ${args.vagaSetor}`,
+      args.observacoes ? `Observações: ${args.observacoes}` : '',
+      '',
+      'Gerenciado pelo sistema RH Interlaser.',
+    ]
+      .filter(Boolean)
+      .join('\n'),
+    colorId,
+    start: {
+      dateTime: args.inicio,
+      timeZone: timezone,
+    },
+    end: {
+      dateTime: end,
+      timeZone: timezone,
+    },
+  }
+
+  const method = args.eventId ? 'PATCH' : 'POST'
+  const eventUrl = args.eventId
+    ? `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(args.eventId)}?sendUpdates=none`
+    : `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?sendUpdates=none`
+
+  const response = await fetch(eventUrl, {
+    method,
+    headers: {
+      Authorization: `Bearer ${args.accessToken}`,
+      'Content-Type': 'application/json; charset=utf-8',
+    },
+    body: JSON.stringify(eventPayload),
+  })
+
+  const data = (await response.json()) as GoogleCalendarEvent
+
+  if (!response.ok || !data.id) {
+    throw new Error(
+      `Google Agenda recusou o evento: ${
+        data.error?.message ?? `HTTP ${response.status}`
+      }`,
+    )
+  }
+
+  return {
+    eventId: data.id,
+    eventLink: data.htmlLink ?? null,
+    calendarId,
+  }
 }
 
 function buildHtml(args: {
@@ -207,7 +318,7 @@ function buildHtml(args: {
   `.trim()
 }
 
-Deno.serve(async (request) => {
+Deno.serve(async (request: Request) => {
   if (request.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -277,7 +388,7 @@ Deno.serve(async (request) => {
     const { data: application, error: applicationError } = await admin
       .from('candidaturas')
       .select(
-        'id, candidato_id, vaga_id, teste_inicio, teste_local, exame_inicio, exame_local, exame_status, observacoes',
+        'id, candidato_id, vaga_id, teste_inicio, teste_local, teste_google_event_id, teste_google_event_link, exame_inicio, exame_local, exame_status, exame_google_event_id, exame_google_event_link, observacoes',
       )
       .eq('id', candidaturaId)
       .single()
@@ -294,7 +405,7 @@ Deno.serve(async (request) => {
         .single(),
       admin
         .from('vagas')
-        .select('id, cargo, setor')
+        .select('id, numero, cargo, setor')
         .eq('id', application.vaga_id)
         .single(),
     ])
@@ -322,6 +433,9 @@ Deno.serve(async (request) => {
     const isTest = tipo === 'teste'
     const inicio = isTest ? application.teste_inicio : application.exame_inicio
     const local = isTest ? application.teste_local : application.exame_local
+    const currentEventId = isTest
+      ? application.teste_google_event_id
+      : application.exame_google_event_id
 
     if (!inicio || !local) {
       return json(
@@ -335,6 +449,46 @@ Deno.serve(async (request) => {
     }
 
     const accessToken = await googleAccessToken()
+
+    const calendarEvent = await upsertCalendarEvent({
+      accessToken,
+      tipo,
+      eventId: currentEventId,
+      candidatoNome: candidate.nome_completo,
+      candidatoEmail: recipient,
+      vagaNumero: vacancy.numero,
+      vagaCargo: vacancy.cargo,
+      vagaSetor: vacancy.setor,
+      inicio,
+      local,
+      observacoes: application.observacoes,
+    })
+
+    const updatePayload = isTest
+      ? {
+          teste_google_event_id: calendarEvent.eventId,
+          teste_google_event_link: calendarEvent.eventLink,
+          teste_google_calendar_id: calendarEvent.calendarId,
+          teste_google_synced_at: new Date().toISOString(),
+        }
+      : {
+          exame_google_event_id: calendarEvent.eventId,
+          exame_google_event_link: calendarEvent.eventLink,
+          exame_google_calendar_id: calendarEvent.calendarId,
+          exame_google_synced_at: new Date().toISOString(),
+        }
+
+    const { error: updateError } = await admin
+      .from('candidaturas')
+      .update(updatePayload)
+      .eq('id', candidaturaId)
+
+    if (updateError) {
+      throw new Error(
+        `O evento foi criado no Google Agenda, mas não foi salvo na candidatura: ${updateError.message}`,
+      )
+    }
+
     const subject = isTest
       ? 'Agendamento de teste — Interlaser'
       : 'Agendamento de exame admissional — Interlaser'
@@ -358,8 +512,10 @@ Deno.serve(async (request) => {
     return json({
       ok: true,
       message: isTest
-        ? 'E-mail do teste enviado ao candidato.'
-        : 'E-mail do exame enviado ao candidato.',
+        ? 'Teste criado no Google Agenda e e-mail enviado ao candidato.'
+        : 'Exame criado no Google Agenda e e-mail enviado ao candidato.',
+      googleEventId: calendarEvent.eventId,
+      googleEventLink: calendarEvent.eventLink,
     })
   } catch (error) {
     console.error('Erro em rh-processo-email:', error)
