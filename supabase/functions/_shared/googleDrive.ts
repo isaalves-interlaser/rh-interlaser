@@ -1,22 +1,30 @@
-import { create, getNumericDate } from 'https://deno.land/x/djwt@v3.0.2/mod.ts'
+type GoogleTokenResponse = {
+  access_token?: string
+  error?: string
+  error_description?: string
+}
 
-const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive'
-const TOKEN_URL = 'https://oauth2.googleapis.com/token'
+type DriveFile = {
+  id?: string
+  name?: string
+  webViewLink?: string
+  parents?: string[]
+  error?: {
+    message?: string
+  }
+}
+
 const DRIVE_API = 'https://www.googleapis.com/drive/v3'
 const DRIVE_UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3'
 
-function env(name: string) {
-  const value = Deno.env.get(name)
+function secret(name: string) {
+  const value = Deno.env.get(name)?.trim()
 
   if (!value) {
-    throw new Error(`Variável de ambiente não configurada: ${name}`)
+    throw new Error(`Secret ausente: ${name}`)
   }
 
   return value
-}
-
-function normalizePrivateKey(value: string) {
-  return value.replace(/\\n/g, '\n')
 }
 
 function base64ToUint8Array(base64: string) {
@@ -37,6 +45,7 @@ function stringToUint8Array(value: string) {
 function concatBytes(parts: Uint8Array[]) {
   const total = parts.reduce((sum, part) => sum + part.length, 0)
   const output = new Uint8Array(total)
+
   let offset = 0
 
   for (const part of parts) {
@@ -47,73 +56,38 @@ function concatBytes(parts: Uint8Array[]) {
   return output
 }
 
-async function importPrivateKey(pem: string) {
-  const normalized = normalizePrivateKey(pem)
-    .replace('-----BEGIN PRIVATE KEY-----', '')
-    .replace('-----END PRIVATE KEY-----', '')
-    .replace(/\s/g, '')
-
-  const keyData = base64ToUint8Array(normalized)
-
-  return crypto.subtle.importKey(
-    'pkcs8',
-    keyData,
-    {
-      name: 'RSASSA-PKCS1-v1_5',
-      hash: 'SHA-256',
-    },
-    false,
-    ['sign'],
-  )
-}
-
-async function getAccessToken() {
-  const clientEmail = env('GOOGLE_SERVICE_ACCOUNT_EMAIL')
-  const privateKey = env('GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY')
-  const key = await importPrivateKey(privateKey)
-  const now = Math.floor(Date.now() / 1000)
-
-  const assertion = await create(
-    { alg: 'RS256', typ: 'JWT' },
-    {
-      iss: clientEmail,
-      scope: DRIVE_SCOPE,
-      aud: TOKEN_URL,
-      iat: now,
-      exp: getNumericDate(3600),
-    },
-    key,
-  )
-
-  const response = await fetch(TOKEN_URL, {
+async function googleAccessToken() {
+  const response = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
     body: new URLSearchParams({
-      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-      assertion,
+      client_id: secret('GOOGLE_CLIENT_ID'),
+      client_secret: secret('GOOGLE_CLIENT_SECRET'),
+      refresh_token: secret('GOOGLE_REFRESH_TOKEN'),
+      grant_type: 'refresh_token',
     }),
   })
 
-  const data = await response.json()
+  const data = (await response.json()) as GoogleTokenResponse
 
   if (!response.ok || !data.access_token) {
     throw new Error(
-      data.error_description ??
-        data.error ??
-        'Não foi possível autenticar no Google Drive.',
+      `Não foi possível autenticar no Google: ${
+        data.error_description ?? data.error ?? response.status
+      }`,
     )
   }
 
-  return String(data.access_token)
+  return data.access_token
 }
 
-async function driveFetch(
-  url: string,
-  init: RequestInit = {},
-) {
-  const token = await getAccessToken()
+async function driveFetch(url: string, init: RequestInit = {}) {
+  const accessToken = await googleAccessToken()
+
   const headers = new Headers(init.headers)
-  headers.set('Authorization', `Bearer ${token}`)
+  headers.set('Authorization', `Bearer ${accessToken}`)
 
   const response = await fetch(url, {
     ...init,
@@ -121,13 +95,19 @@ async function driveFetch(
   })
 
   const contentType = response.headers.get('content-type') ?? ''
+
   const data = contentType.includes('application/json')
     ? await response.json()
     : await response.text()
 
   if (!response.ok) {
     const message =
-      typeof data === 'object' && data?.error?.message
+      typeof data === 'object' &&
+      data !== null &&
+      'error' in data &&
+      typeof data.error === 'object' &&
+      data.error !== null &&
+      'message' in data.error
         ? String(data.error.message)
         : typeof data === 'string'
           ? data
@@ -144,7 +124,7 @@ export function getFolderUrl(folderId: string) {
 }
 
 export function getRequiredFolderId(name: string) {
-  return env(name)
+  return secret(name)
 }
 
 export function safeDriveName(value: string) {
@@ -161,22 +141,28 @@ export async function createDriveFolder(params: {
   name: string
   parentId: string
 }) {
-  const data = await driveFetch(
+  const data = (await driveFetch(
     `${DRIVE_API}/files?supportsAllDrives=true&fields=id,name,webViewLink`,
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+      },
       body: JSON.stringify({
         name: params.name,
         mimeType: 'application/vnd.google-apps.folder',
         parents: [params.parentId],
       }),
     },
-  ) as { id: string; name: string; webViewLink?: string }
+  )) as DriveFile
+
+  if (!data.id) {
+    throw new Error('O Google Drive não retornou o ID da pasta criada.')
+  }
 
   return {
     id: data.id,
-    name: data.name,
+    name: data.name ?? params.name,
     url: data.webViewLink ?? getFolderUrl(data.id),
   }
 }
@@ -188,6 +174,7 @@ export async function uploadDriveFile(params: {
   parentId: string
 }) {
   const boundary = `rh_drive_${crypto.randomUUID()}`
+
   const metadata = JSON.stringify({
     name: params.name,
     parents: [params.parentId],
@@ -198,13 +185,15 @@ export async function uploadDriveFile(params: {
       `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n`,
     ),
     stringToUint8Array(
-      `--${boundary}\r\nContent-Type: ${params.mimeType || 'application/octet-stream'}\r\n\r\n`,
+      `--${boundary}\r\nContent-Type: ${
+        params.mimeType || 'application/octet-stream'
+      }\r\n\r\n`,
     ),
     base64ToUint8Array(params.base64),
     stringToUint8Array(`\r\n--${boundary}--`),
   ])
 
-  const data = await driveFetch(
+  const data = (await driveFetch(
     `${DRIVE_UPLOAD_API}/files?uploadType=multipart&supportsAllDrives=true&fields=id,name,webViewLink,parents`,
     {
       method: 'POST',
@@ -213,16 +202,15 @@ export async function uploadDriveFile(params: {
       },
       body,
     },
-  ) as {
-    id: string
-    name: string
-    webViewLink?: string
-    parents?: string[]
+  )) as DriveFile
+
+  if (!data.id) {
+    throw new Error('O Google Drive não retornou o ID do currículo enviado.')
   }
 
   return {
     id: data.id,
-    name: data.name,
+    name: data.name ?? params.name,
     url: data.webViewLink ?? null,
     folderId: data.parents?.[0] ?? params.parentId,
   }
@@ -232,11 +220,12 @@ export async function moveDriveFile(params: {
   fileId: string
   targetFolderId: string
 }) {
-  const current = await driveFetch(
+  const current = (await driveFetch(
     `${DRIVE_API}/files/${params.fileId}?supportsAllDrives=true&fields=id,parents`,
-  ) as { id: string; parents?: string[] }
+  )) as DriveFile
 
   const removeParents = (current.parents ?? []).join(',')
+
   const search = new URLSearchParams({
     supportsAllDrives: 'true',
     addParents: params.targetFolderId,
@@ -247,21 +236,20 @@ export async function moveDriveFile(params: {
     search.set('removeParents', removeParents)
   }
 
-  const data = await driveFetch(
+  const data = (await driveFetch(
     `${DRIVE_API}/files/${params.fileId}?${search.toString()}`,
     {
       method: 'PATCH',
     },
-  ) as {
-    id: string
-    name: string
-    webViewLink?: string
-    parents?: string[]
+  )) as DriveFile
+
+  if (!data.id) {
+    throw new Error('O Google Drive não retornou o ID do arquivo movido.')
   }
 
   return {
     id: data.id,
-    name: data.name,
+    name: data.name ?? 'curriculo',
     url: data.webViewLink ?? null,
     folderId: data.parents?.[0] ?? params.targetFolderId,
   }
