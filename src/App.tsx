@@ -8,6 +8,7 @@ import { supabase } from './lib/supabase'
 import Dashboard from './components/Dashboard'
 import EnvioDocumentos from './components/EnvioDocumentos'
 import PortalVagas from './components/PortalVagas'
+import TermoLgpd from './components/TermoLgpd'
 import './App.css'
 
 type AuthView = 'login' | 'forgot-password' | 'update-password'
@@ -294,6 +295,10 @@ function App() {
 
   if (documentToken) {
     return <EnvioDocumentos token={documentToken} />
+  }
+
+  if (window.location.pathname.replace(/\/+$/, '') === '/termo-lgpd') {
+    return <TermoLgpd />
   }
 
   if (isPortalVagasRoute(window.location.pathname)) {

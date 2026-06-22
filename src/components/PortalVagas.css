@@ -1,4 +1,4 @@
-.jobs-public-page {
+a.jobs-public-page {
   min-height: 100vh;
   padding: 22px clamp(14px, 3vw, 48px) 56px;
   color: #172033;
@@ -812,4 +812,360 @@ button:disabled,
 
 .jobs-detail-grid {
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.jobs-confirmation {
+  width: min(100%, 920px);
+  margin: 0 auto;
+}
+
+.jobs-confirmation-card {
+  padding: clamp(28px, 5vw, 58px);
+  display: grid;
+  gap: 22px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #e1e7ee;
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at 92% 0%, rgba(249, 115, 22, 0.12), transparent 34%),
+    linear-gradient(180deg, #ffffff 0%, #fffaf5 100%);
+  box-shadow: 0 22px 60px rgba(35, 56, 85, 0.1);
+  text-align: center;
+}
+
+.jobs-confirmation-card::after {
+  content: '';
+  width: 180px;
+  height: 180px;
+  position: absolute;
+  right: -58px;
+  top: -70px;
+  border-radius: 999px;
+  background: rgba(249, 115, 22, 0.1);
+}
+
+.jobs-confirmation-icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto;
+  display: grid;
+  place-items: center;
+  position: relative;
+  z-index: 1;
+  border-radius: 24px;
+  color: #ffffff;
+  background: linear-gradient(180deg, #22c55e 0%, #15803d 100%);
+  font-size: 34px;
+  font-weight: 950;
+  box-shadow: 0 18px 34px rgba(21, 128, 61, 0.22);
+}
+
+.jobs-confirmation-card > span {
+  position: relative;
+  z-index: 1;
+  color: #f97316;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.jobs-confirmation-card h1 {
+  max-width: 720px;
+  margin: -8px auto 0;
+  position: relative;
+  z-index: 1;
+  color: #172033;
+  font-size: clamp(34px, 5vw, 58px);
+  line-height: 1.04;
+  letter-spacing: -0.055em;
+}
+
+.jobs-confirmation-card > p {
+  max-width: 720px;
+  margin: -4px auto 0;
+  position: relative;
+  z-index: 1;
+  color: #667085;
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.jobs-confirmation-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.jobs-confirmation-summary div,
+.jobs-confirmation-next {
+  padding: 18px;
+  border: 1px solid #e1e7ee;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.82);
+  text-align: left;
+}
+
+.jobs-confirmation-summary small {
+  display: block;
+  margin-bottom: 6px;
+  color: #98a2b3;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.jobs-confirmation-summary strong {
+  color: #172033;
+  font-size: 14px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.jobs-confirmation-next {
+  position: relative;
+  z-index: 1;
+}
+
+.jobs-confirmation-next h2 {
+  margin: 0 0 12px;
+  color: #172033;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+
+.jobs-confirmation-next ul {
+  margin: 0;
+  padding-left: 20px;
+  color: #667085;
+  line-height: 1.7;
+}
+
+.jobs-confirmation-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 1;
+}
+
+.jobs-confirmation-actions button {
+  min-height: 46px;
+  padding: 0 20px;
+  border: 1px solid #e1e7ee;
+  border-radius: 999px;
+  color: #475467;
+  background: #ffffff;
+  font-size: 13px;
+  font-weight: 950;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+}
+
+.jobs-confirmation-actions button:hover {
+  color: #c2410c;
+  border-color: #fed7aa;
+  background: #fff7ed;
+  transform: translateY(-1px);
+}
+
+.jobs-confirmation-actions .primary {
+  color: #ffffff;
+  border-color: transparent;
+  background: linear-gradient(180deg, #fb7c22 0%, #f97316 100%);
+  box-shadow: 0 12px 26px rgba(249, 115, 22, 0.18);
+}
+
+.jobs-confirmation-actions .primary:hover {
+  color: #ffffff;
+  background: linear-gradient(180deg, #f97316 0%, #ea580c 100%);
+  box-shadow: 0 16px 34px rgba(249, 115, 22, 0.24);
+}
+
+@media (max-width: 640px) {
+  .jobs-confirmation-card {
+    border-radius: 22px;
+  }
+
+  .jobs-confirmation-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .jobs-confirmation-actions button {
+    width: 100%;
+  }
+}
+
+
+.jobs-inline-link {
+  color: #ea580c;
+  font-weight: 950;
+  text-decoration: none;
+}
+
+.jobs-inline-link:hover {
+  text-decoration: underline;
+}
+
+.jobs-terms-hero,
+.jobs-terms-card {
+  width: min(100%, 980px);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.jobs-terms-hero {
+  margin-bottom: 18px;
+  padding: clamp(28px, 5vw, 54px);
+  overflow: hidden;
+  position: relative;
+  border-radius: 30px;
+  color: #ffffff;
+  background:
+    radial-gradient(circle at 16% 18%, rgba(255, 255, 255, 0.17), transparent 30%),
+    linear-gradient(135deg, #7c2d12 0%, #9a3412 38%, #f97316 100%);
+  box-shadow: 0 26px 70px rgba(124, 45, 18, 0.22);
+}
+
+.jobs-terms-hero::after {
+  content: '';
+  width: 180px;
+  height: 180px;
+  position: absolute;
+  right: -50px;
+  top: -54px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.jobs-terms-hero span {
+  display: inline-flex;
+  margin-bottom: 12px;
+  color: #ffedd5;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.jobs-terms-hero h1 {
+  max-width: 840px;
+  margin: 0;
+  color: #ffffff;
+  font-size: clamp(32px, 5vw, 58px);
+  line-height: 1.02;
+  letter-spacing: -0.055em;
+}
+
+.jobs-terms-hero p {
+  max-width: 760px;
+  margin: 16px 0 0;
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.jobs-terms-card {
+  padding: clamp(24px, 4vw, 44px);
+  border: 1px solid #e1e7ee;
+  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 48px rgba(35, 56, 85, 0.08);
+}
+
+.jobs-terms-summary {
+  margin-bottom: 26px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.jobs-terms-summary div {
+  padding: 16px;
+  border: 1px solid #e1e7ee;
+  border-radius: 16px;
+  background: #f8fafc;
+}
+
+.jobs-terms-summary small {
+  display: block;
+  margin-bottom: 6px;
+  color: #98a2b3;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.jobs-terms-summary strong {
+  color: #172033;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.jobs-terms-card section {
+  padding: 18px 0;
+  border-top: 1px solid #edf1f5;
+}
+
+.jobs-terms-card h2 {
+  margin: 0 0 10px;
+  color: #172033;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+
+.jobs-terms-card p {
+  margin: 0;
+  color: #667085;
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+.jobs-terms-actions {
+  margin-top: 24px;
+  padding-top: 22px;
+  border-top: 1px solid #edf1f5;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.jobs-terms-actions a {
+  min-height: 46px;
+  padding: 0 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 950;
+  text-decoration: none;
+}
+
+.jobs-terms-secondary {
+  border: 1px solid #e1e7ee;
+  color: #475467;
+  background: #ffffff;
+}
+
+.jobs-terms-secondary:hover {
+  color: #c2410c;
+  border-color: #fed7aa;
+  background: #fff7ed;
+}
+
+@media (max-width: 720px) {
+  .jobs-terms-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .jobs-terms-actions a {
+    width: 100%;
+  }
 }

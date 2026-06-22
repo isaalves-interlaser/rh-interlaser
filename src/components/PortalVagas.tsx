@@ -56,7 +56,7 @@ type VagaPublica = {
   modalidade: VagaModalidade
   status: VagaStatus
   data_limite: string | null
-  publicar_portal: boolean
+  publicar_portal: boolean | null
   resumo_publico: string | null
   descricao_publica: string | null
   atividades: string | null
@@ -80,11 +80,20 @@ type FormularioCandidatura = {
   consentimento: boolean
 }
 
+type ConfirmacaoCandidatura = {
+  tipo: 'vaga' | 'banco_talentos'
+  titulo: string
+  codigo: string | null
+  email: string
+  mensagem: string
+}
+
 type PortalView =
   | { type: 'list' }
   | { type: 'details'; vagaId: string }
   | { type: 'apply'; vagaId: string }
   | { type: 'talent-bank' }
+  | { type: 'confirmation' }
 
 const initialForm: FormularioCandidatura = {
   nomeCompleto: '',
@@ -113,12 +122,17 @@ const modalidadeLabels: Record<VagaModalidade, string> = {
 
 const MAX_FILE_SIZE_MB = 10
 const acceptedExtensions = ['pdf', 'doc', 'docx']
+const CONFIRMATION_STORAGE_KEY = 'rh_candidatura_confirmacao'
 
 function parsePortalView(pathname: string): PortalView {
   const normalizedPath = pathname.replace(/\/+$/, '') || '/'
 
   if (normalizedPath === '/candidatura-espontanea') {
     return { type: 'talent-bank' }
+  }
+
+  if (normalizedPath === '/confirmacao-candidatura') {
+    return { type: 'confirmation' }
   }
 
   const candidatarMatch = normalizedPath.match(/^\/candidatar\/([^/]+)$/)
@@ -208,6 +222,18 @@ function textOrNull(value: string | null | undefined) {
   return normalized || null
 }
 
+function readStoredConfirmation() {
+  try {
+    const stored = window.sessionStorage.getItem(CONFIRMATION_STORAGE_KEY)
+
+    if (!stored) return null
+
+    return JSON.parse(stored) as ConfirmacaoCandidatura
+  } catch {
+    return null
+  }
+}
+
 function renderTextBlock(title: string, value: string | null | undefined) {
   const text = textOrNull(value)
 
@@ -237,6 +263,8 @@ function PortalVagas() {
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState('')
   const [mensagem, setMensagem] = useState('')
+  const [confirmacao, setConfirmacao] =
+    useState<ConfirmacaoCandidatura | null>(() => readStoredConfirmation())
   const [form, setForm] =
     useState<FormularioCandidatura>(initialForm)
   const [curriculo, setCurriculo] = useState<File | null>(null)
@@ -302,6 +330,7 @@ function PortalVagas() {
       setPath(window.location.pathname)
       setErro('')
       setMensagem('')
+      setConfirmacao(readStoredConfirmation())
     }
 
     window.addEventListener('popstate', handlePopState)
@@ -492,17 +521,28 @@ function PortalVagas() {
         console.error('Erro ao enviar confirmação ao candidato:', emailError)
       }
 
-      setMensagem(registro.mensagem)
+      const dadosConfirmacao: ConfirmacaoCandidatura = {
+        tipo: view.type === 'talent-bank' ? 'banco_talentos' : 'vaga',
+        titulo:
+          view.type === 'apply' && vagaSelecionada
+            ? vagaSelecionada.cargo
+            : 'Banco de talentos',
+        codigo:
+          view.type === 'apply' && vagaSelecionada
+            ? buildVacancyCode(vagaSelecionada.numero)
+            : null,
+        email,
+        mensagem: registro.mensagem,
+      }
+
+      window.sessionStorage.setItem(
+        CONFIRMATION_STORAGE_KEY,
+        JSON.stringify(dadosConfirmacao),
+      )
+      setConfirmacao(dadosConfirmacao)
       setForm(initialForm)
       setCurriculo(null)
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-
-      window.setTimeout(() => {
-        window.history.pushState({}, '', '/vagas')
-        setPath(window.location.pathname)
-        setErro('')
-        setMensagem('')
-      }, 2500)
+      navegar('/confirmacao-candidatura')
     } catch (submissionError) {
       setErro(
         submissionError instanceof Error
@@ -701,9 +741,17 @@ function PortalVagas() {
               disabled={enviando}
             />
             <span>
-              Autorizo a INTERLASER a armazenar meus dados pessoais e
-              currículo para participação em processos seletivos, conforme
-              a LGPD.
+              Li e aceito o{' '}
+              <a
+                className="jobs-inline-link"
+                href="/termo-lgpd"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Termo de Consentimento para Tratamento de Dados Pessoais
+              </a>
+              , autorizando a INTERLASER a utilizar meus dados e currículo
+              para processos seletivos atuais e futuros.
             </span>
           </label>
 
@@ -734,6 +782,74 @@ function PortalVagas() {
             </button>
           </footer>
         </form>
+      </section>
+    )
+  }
+
+  function renderConfirmation() {
+    const dados = confirmacao ?? readStoredConfirmation()
+    const isTalentBank = dados?.tipo === 'banco_talentos'
+    const titulo = isTalentBank
+      ? 'Currículo recebido com sucesso!'
+      : 'Inscrição recebida com sucesso!'
+    const vagaLabel = dados?.codigo
+      ? `${dados.codigo} — ${dados.titulo}`
+      : dados?.titulo ?? 'Banco de talentos'
+
+    return (
+      <section className="jobs-confirmation">
+        <div className="jobs-confirmation-card">
+          <div className="jobs-confirmation-icon" aria-hidden="true">
+            ✓
+          </div>
+
+          <span>Cadastro concluído</span>
+          <h1>{titulo}</h1>
+
+          <p>
+            {dados?.mensagem ||
+              'Recebemos suas informações e seu currículo. Nossa equipe de RH fará a análise e entrará em contato caso seu perfil avance no processo.'}
+          </p>
+
+          <div className="jobs-confirmation-summary">
+            <div>
+              <small>Destino</small>
+              <strong>{vagaLabel}</strong>
+            </div>
+            <div>
+              <small>Confirmação</small>
+              <strong>{dados?.email || 'E-mail informado no cadastro'}</strong>
+            </div>
+          </div>
+
+          <div className="jobs-confirmation-next">
+            <h2>Próximos passos</h2>
+            <ul>
+              <li>O RH analisará seu currículo e as informações enviadas.</li>
+              <li>Se houver aderência à oportunidade, o contato será feito pelo e-mail ou WhatsApp informado.</li>
+              <li>Você também pode visualizar outras vagas abertas no portal.</li>
+            </ul>
+          </div>
+
+          <footer className="jobs-confirmation-actions">
+            <button
+              className="primary"
+              type="button"
+              onClick={() => navegar('/vagas')}
+            >
+              Ver outras vagas
+            </button>
+
+            {!isTalentBank && (
+              <button
+                type="button"
+                onClick={() => navegar('/candidatura-espontanea')}
+              >
+                Enviar para banco de talentos
+              </button>
+            )}
+          </footer>
+        </div>
       </section>
     )
   }
@@ -939,12 +1055,14 @@ function PortalVagas() {
           >
             Banco de talentos
           </button>
+          <a href="/termo-lgpd">Termo LGPD</a>
           <a href="/">Área interna</a>
         </nav>
       </header>
 
       {view.type === 'list' && renderList()}
       {view.type === 'details' && renderDetails()}
+      {view.type === 'confirmation' && renderConfirmation()}
       {(view.type === 'apply' || view.type === 'talent-bank') &&
         renderApplicationForm()}
     </main>
