@@ -431,3 +431,149 @@
     grid-column: auto;
   }
 }
+
+.contracts-experience-summary {
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.experience-pill {
+  width: fit-content;
+  display: inline-flex;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.experience-pill.neutral {
+  color: #344054;
+  background: #eef2f7;
+}
+
+.experience-pill.warning {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.experience-pill.success {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.experience-pill.danger {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+.contracts-section-title {
+  padding: 14px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid #fed7aa;
+  border-radius: 12px;
+  background: #fff7ed;
+}
+
+.contracts-section-title strong {
+  color: #9a3412;
+  font-size: 12px;
+}
+
+.contracts-section-title span {
+  color: #c2410c;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.contracts-experience-timeline {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.experience-step {
+  padding: 13px;
+  display: flex;
+  gap: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.experience-step-number {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #ffffff;
+  background: #f97316;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.experience-step strong,
+.experience-step small {
+  display: block;
+}
+
+.experience-step strong {
+  color: #172033;
+  font-size: 10px;
+}
+
+.experience-step small {
+  margin-top: 4px;
+  color: #667085;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.contracts-evaluation-card {
+  padding: 14px;
+  border: 1px solid #e0e6ed;
+  border-radius: 13px;
+  background: #fbfcfd;
+}
+
+.contracts-evaluation-card > header {
+  margin-bottom: 13px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.contracts-evaluation-card > header strong,
+.contracts-evaluation-card > header span {
+  display: block;
+}
+
+.contracts-evaluation-card > header strong {
+  color: #172033;
+  font-size: 12px;
+}
+
+.contracts-evaluation-card > header span {
+  margin-top: 4px;
+  color: #667085;
+  font-size: 9px;
+}
+
+.contracts-evaluation-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 13px;
+}
+
+@media (max-width: 900px) {
+  .contracts-experience-timeline,
+  .contracts-evaluation-grid {
+    grid-template-columns: 1fr;
+  }
+}

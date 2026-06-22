@@ -14,6 +14,21 @@ type ContractStatus =
   | 'encerrado'
   | 'cancelado'
 
+type ExperienceStatus =
+  | 'nao_iniciado'
+  | 'adaptacao_14'
+  | 'experiencia_44'
+  | 'avaliacao_anual'
+  | 'concluido'
+  | 'encerrado'
+
+type EvaluationStatus =
+  | 'aguardando'
+  | 'pendente'
+  | 'aprovado'
+  | 'reprovado'
+  | 'acompanhamento'
+
 type Contrato = {
   id: string
   candidatura_id: string
@@ -32,6 +47,20 @@ type Contrato = {
   gestor_nome: string | null
   gestor_email: string | null
   observacoes: string | null
+  experiencia_status: ExperienceStatus | null
+  experiencia_inicio: string | null
+  adaptacao_14_data: string | null
+  adaptacao_14_status: EvaluationStatus | null
+  adaptacao_14_parecer: string | null
+  adaptacao_14_avaliado_em: string | null
+  experiencia_44_data: string | null
+  experiencia_44_status: EvaluationStatus | null
+  experiencia_44_parecer: string | null
+  experiencia_44_avaliado_em: string | null
+  avaliacao_anual_data: string | null
+  avaliacao_anual_status: EvaluationStatus | null
+  avaliacao_anual_parecer: string | null
+  avaliacao_anual_avaliado_em: string | null
   created_at: string
   updated_at: string
 }
@@ -82,6 +111,17 @@ type ContractForm = {
   gestor_nome: string
   gestor_email: string
   observacoes: string
+  experiencia_status: ExperienceStatus
+  experiencia_inicio: string
+  adaptacao_14_data: string
+  adaptacao_14_status: EvaluationStatus
+  adaptacao_14_parecer: string
+  experiencia_44_data: string
+  experiencia_44_status: EvaluationStatus
+  experiencia_44_parecer: string
+  avaliacao_anual_data: string
+  avaliacao_anual_status: EvaluationStatus
+  avaliacao_anual_parecer: string
 }
 
 const statusLabels: Record<ContractStatus, string> = {
@@ -98,6 +138,110 @@ const contractTypeLabels: Record<string, string> = {
   estagio: 'Estágio',
   aprendiz: 'Aprendiz',
   terceiro: 'Terceiro',
+}
+
+const experienceStatusLabels: Record<ExperienceStatus, string> = {
+  nao_iniciado: 'Não iniciado',
+  adaptacao_14: 'Adaptação inicial - 14 dias',
+  experiencia_44: 'Avaliação de experiência - 44 dias',
+  avaliacao_anual: 'Avaliação anual - 1 ano',
+  concluido: 'Acompanhamento concluído',
+  encerrado: 'Encerrado',
+}
+
+const evaluationStatusLabels: Record<EvaluationStatus, string> = {
+  aguardando: 'Aguardando período',
+  pendente: 'Pendente de avaliação',
+  aprovado: 'Aprovado',
+  reprovado: 'Reprovado',
+  acompanhamento: 'Necessita acompanhamento',
+}
+
+const evaluationOptions: Array<{ value: EvaluationStatus; label: string }> = [
+  { value: 'aguardando', label: evaluationStatusLabels.aguardando },
+  { value: 'pendente', label: evaluationStatusLabels.pendente },
+  { value: 'aprovado', label: evaluationStatusLabels.aprovado },
+  { value: 'reprovado', label: evaluationStatusLabels.reprovado },
+  { value: 'acompanhamento', label: evaluationStatusLabels.acompanhamento },
+]
+
+function addDays(date: string, days: number) {
+  if (!date) {
+    return ''
+  }
+
+  const value = new Date(`${date}T00:00:00`)
+  value.setDate(value.getDate() + days)
+
+  return value.toISOString().slice(0, 10)
+}
+
+function getDefaultExperienceDates(admissionDate: string) {
+  return {
+    experiencia_inicio: admissionDate,
+    adaptacao_14_data: addDays(admissionDate, 14),
+    experiencia_44_data: addDays(admissionDate, 44),
+    avaliacao_anual_data: addDays(admissionDate, 365),
+  }
+}
+
+function getTodayIso() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function isDue(date: string | null | undefined) {
+  if (!date) {
+    return false
+  }
+
+  return date <= getTodayIso()
+}
+
+function getCurrentExperienceStep(contrato: Contrato) {
+  const adaptacaoStatus = contrato.adaptacao_14_status ?? 'aguardando'
+  const experienciaStatus = contrato.experiencia_44_status ?? 'aguardando'
+  const anualStatus = contrato.avaliacao_anual_status ?? 'aguardando'
+  const adaptacaoDate = contrato.adaptacao_14_data
+  const experienciaDate = contrato.experiencia_44_data
+  const anualDate = contrato.avaliacao_anual_data
+
+  if (adaptacaoStatus === 'reprovado' || experienciaStatus === 'reprovado') {
+    return {
+      label: 'Reprovado na experiência',
+      date: adaptacaoStatus === 'reprovado' ? adaptacaoDate : experienciaDate,
+      tone: 'danger',
+    }
+  }
+
+  if (adaptacaoStatus !== 'aprovado') {
+    return {
+      label: 'Avaliação 14 dias',
+      date: adaptacaoDate,
+      tone: isDue(adaptacaoDate) ? 'warning' : 'neutral',
+    }
+  }
+
+  if (experienciaStatus !== 'aprovado') {
+    return {
+      label: 'Avaliação 44 dias',
+      date: experienciaDate,
+      tone: isDue(experienciaDate) ? 'warning' : 'neutral',
+    }
+  }
+
+  if (anualStatus !== 'aprovado') {
+    return {
+      label: 'Avaliação anual',
+      date: anualDate,
+      tone: isDue(anualDate) ? 'warning' : 'success',
+    }
+  }
+
+  return {
+    label: 'Acompanhamento concluído',
+    date: anualDate,
+    tone: 'success',
+  }
 }
 
 function formatDate(value: string | null) {
@@ -152,7 +296,7 @@ function Contratos() {
       supabase
         .from('contratos')
         .select(
-          'id, candidatura_id, candidato_id, vaga_id, empresa_id, filial_id, status, numero_contrato, data_admissao, tipo_contrato, cargo, setor, salario, jornada, gestor_nome, gestor_email, observacoes, created_at, updated_at',
+          'id, candidatura_id, candidato_id, vaga_id, empresa_id, filial_id, status, numero_contrato, data_admissao, tipo_contrato, cargo, setor, salario, jornada, gestor_nome, gestor_email, observacoes, experiencia_status, experiencia_inicio, adaptacao_14_data, adaptacao_14_status, adaptacao_14_parecer, adaptacao_14_avaliado_em, experiencia_44_data, experiencia_44_status, experiencia_44_parecer, experiencia_44_avaliado_em, avaliacao_anual_data, avaliacao_anual_status, avaliacao_anual_parecer, avaliacao_anual_avaliado_em, created_at, updated_at',
         )
         .order('created_at', { ascending: false }),
       supabase
@@ -289,6 +433,10 @@ function Contratos() {
   )
 
   function openEdit(view: ContractView) {
+    const defaultDates = getDefaultExperienceDates(
+      view.contrato.data_admissao ?? '',
+    )
+
     setEditing(view)
     setForm({
       status: view.contrato.status,
@@ -313,6 +461,39 @@ function Contratos() {
       gestor_nome: view.contrato.gestor_nome ?? '',
       gestor_email: view.contrato.gestor_email ?? '',
       observacoes: view.contrato.observacoes ?? '',
+      experiencia_status:
+        view.contrato.experiencia_status ??
+        (view.contrato.data_admissao
+          ? 'adaptacao_14'
+          : 'nao_iniciado'),
+      experiencia_inicio:
+        view.contrato.experiencia_inicio ??
+        defaultDates.experiencia_inicio,
+      adaptacao_14_data:
+        view.contrato.adaptacao_14_data ??
+        defaultDates.adaptacao_14_data,
+      adaptacao_14_status:
+        view.contrato.adaptacao_14_status ??
+        (isDue(defaultDates.adaptacao_14_data)
+          ? 'pendente'
+          : 'aguardando'),
+      adaptacao_14_parecer:
+        view.contrato.adaptacao_14_parecer ?? '',
+      experiencia_44_data:
+        view.contrato.experiencia_44_data ??
+        defaultDates.experiencia_44_data,
+      experiencia_44_status:
+        view.contrato.experiencia_44_status ?? 'aguardando',
+      experiencia_44_parecer:
+        view.contrato.experiencia_44_parecer ?? '',
+      avaliacao_anual_data:
+        view.contrato.avaliacao_anual_data ??
+        defaultDates.avaliacao_anual_data,
+      avaliacao_anual_status:
+        view.contrato.avaliacao_anual_status ??
+        'aguardando',
+      avaliacao_anual_parecer:
+        view.contrato.avaliacao_anual_parecer ?? '',
     })
     setError('')
     setMessage('')
@@ -325,6 +506,37 @@ function Contratos() {
 
     setEditing(null)
     setForm(null)
+  }
+
+
+  function updateAdmissionDate(value: string) {
+    setForm((current) => {
+      if (!current) {
+        return current
+      }
+
+      const dates = getDefaultExperienceDates(value)
+
+      return {
+        ...current,
+        data_admissao: value,
+        experiencia_status: value
+          ? current.experiencia_status === 'nao_iniciado'
+            ? 'adaptacao_14'
+            : current.experiencia_status
+          : 'nao_iniciado',
+        experiencia_inicio: dates.experiencia_inicio,
+        adaptacao_14_data: dates.adaptacao_14_data,
+        experiencia_44_data: dates.experiencia_44_data,
+        avaliacao_anual_data: dates.avaliacao_anual_data,
+        adaptacao_14_status: value
+          ? current.adaptacao_14_status === 'aguardando' &&
+            isDue(dates.adaptacao_14_data)
+            ? 'pendente'
+            : current.adaptacao_14_status
+          : 'aguardando',
+      }
+    })
   }
 
   async function saveContract(
@@ -361,6 +573,30 @@ function Contratos() {
       return
     }
 
+    if (
+      form.adaptacao_14_status === 'reprovado' &&
+      form.experiencia_44_status === 'aprovado'
+    ) {
+      setError(
+        'Não é possível aprovar a experiência se a avaliação de 14 dias foi reprovada.',
+      )
+      return
+    }
+
+    const computedExperienceStatus: ExperienceStatus =
+      form.adaptacao_14_status === 'reprovado' ||
+      form.experiencia_44_status === 'reprovado'
+        ? 'encerrado'
+        : form.adaptacao_14_status !== 'aprovado'
+          ? form.data_admissao
+            ? 'adaptacao_14'
+            : 'nao_iniciado'
+          : form.experiencia_44_status !== 'aprovado'
+            ? 'experiencia_44'
+            : form.avaliacao_anual_status !== 'aprovado'
+              ? 'avaliacao_anual'
+              : 'concluido'
+
     setSaving(true)
 
     const { data, error: updateError } = await supabase
@@ -380,6 +616,38 @@ function Contratos() {
         gestor_email:
           form.gestor_email.trim().toLowerCase() || null,
         observacoes: form.observacoes.trim() || null,
+        experiencia_status: computedExperienceStatus,
+        experiencia_inicio: form.experiencia_inicio || null,
+        adaptacao_14_data: form.adaptacao_14_data || null,
+        adaptacao_14_status: form.adaptacao_14_status,
+        adaptacao_14_parecer:
+          form.adaptacao_14_parecer.trim() || null,
+        adaptacao_14_avaliado_em:
+          form.adaptacao_14_status === 'aprovado' ||
+          form.adaptacao_14_status === 'reprovado' ||
+          form.adaptacao_14_status === 'acompanhamento'
+            ? new Date().toISOString()
+            : editing.contrato.adaptacao_14_avaliado_em,
+        experiencia_44_data: form.experiencia_44_data || null,
+        experiencia_44_status: form.experiencia_44_status,
+        experiencia_44_parecer:
+          form.experiencia_44_parecer.trim() || null,
+        experiencia_44_avaliado_em:
+          form.experiencia_44_status === 'aprovado' ||
+          form.experiencia_44_status === 'reprovado' ||
+          form.experiencia_44_status === 'acompanhamento'
+            ? new Date().toISOString()
+            : editing.contrato.experiencia_44_avaliado_em,
+        avaliacao_anual_data: form.avaliacao_anual_data || null,
+        avaliacao_anual_status: form.avaliacao_anual_status,
+        avaliacao_anual_parecer:
+          form.avaliacao_anual_parecer.trim() || null,
+        avaliacao_anual_avaliado_em:
+          form.avaliacao_anual_status === 'aprovado' ||
+          form.avaliacao_anual_status === 'reprovado' ||
+          form.avaliacao_anual_status === 'acompanhamento'
+            ? new Date().toISOString()
+            : editing.contrato.avaliacao_anual_avaliado_em,
       })
       .eq('id', editing.contrato.id)
       .select()
@@ -501,6 +769,7 @@ function Contratos() {
                 <th>Candidato</th>
                 <th>Cargo / unidade</th>
                 <th>Admissão</th>
+                <th>Experiência</th>
                 <th>Contrato</th>
                 <th>Salário</th>
                 <th>Situação</th>
@@ -558,6 +827,27 @@ function Contratos() {
                   </td>
 
                   <td>
+                    {(() => {
+                      const step = getCurrentExperienceStep(
+                        view.contrato,
+                      )
+
+                      return (
+                        <div className="contracts-experience-summary">
+                          <span
+                            className={`experience-pill ${step.tone}`}
+                          >
+                            {step.label}
+                          </span>
+                          <small>
+                            Vencimento: {formatDate(step.date ?? null)}
+                          </small>
+                        </div>
+                      )
+                    })()}
+                  </td>
+
+                  <td>
                     <strong>
                       {view.contrato.numero_contrato ||
                         'Sem número'}
@@ -596,7 +886,7 @@ function Contratos() {
 
               {filteredViews.length === 0 && (
                 <tr>
-                  <td colSpan={7}>
+                  <td colSpan={8}>
                     <div className="contracts-empty">
                       <strong>
                         Nenhum contrato encontrado
@@ -740,15 +1030,7 @@ function Contratos() {
                     type="date"
                     value={form.data_admissao}
                     onChange={(event) =>
-                      setForm((current) =>
-                        current
-                          ? {
-                              ...current,
-                              data_admissao:
-                                event.target.value,
-                            }
-                          : current,
-                      )
+                      updateAdmissionDate(event.target.value)
                     }
                     disabled={saving}
                   />
@@ -914,6 +1196,391 @@ function Contratos() {
                     }
                     disabled={saving}
                   />
+                </div>
+
+                <div className="contracts-section-title full">
+                  <strong>Experiência e avaliações</strong>
+                  <span>
+                    Controle automático: 14 dias de adaptação,
+                    mais 30 dias de experiência e avaliação anual.
+                  </span>
+                </div>
+
+                <div className="contracts-experience-timeline full">
+                  <article className="experience-step">
+                    <span className="experience-step-number">1</span>
+                    <div>
+                      <strong>Adaptação inicial - 14 dias</strong>
+                      <small>
+                        Avaliar presença, adaptação ao setor,
+                        postura e dificuldades iniciais.
+                      </small>
+                    </div>
+                  </article>
+
+                  <article className="experience-step">
+                    <span className="experience-step-number">2</span>
+                    <div>
+                      <strong>Avaliação de experiência - 44 dias</strong>
+                      <small>
+                        Se aprovado nos 14 dias, acompanha mais
+                        30 dias antes da próxima decisão.
+                      </small>
+                    </div>
+                  </article>
+
+                  <article className="experience-step">
+                    <span className="experience-step-number">3</span>
+                    <div>
+                      <strong>Avaliação anual - 1 ano</strong>
+                      <small>
+                        Acompanhamento interno de desempenho após
+                        a permanência no cargo.
+                      </small>
+                    </div>
+                  </article>
+                </div>
+
+                <div className="contracts-field">
+                  <label htmlFor="experience-status">
+                    Status do acompanhamento
+                  </label>
+                  <select
+                    id="experience-status"
+                    value={form.experiencia_status}
+                    onChange={(event) =>
+                      setForm((current) =>
+                        current
+                          ? {
+                              ...current,
+                              experiencia_status:
+                                event.target
+                                  .value as ExperienceStatus,
+                            }
+                          : current,
+                      )
+                    }
+                    disabled={saving}
+                  >
+                    {Object.entries(experienceStatusLabels).map(
+                      ([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ),
+                    )}
+                  </select>
+                </div>
+
+                <div className="contracts-field">
+                  <label htmlFor="experience-start">
+                    Início do acompanhamento
+                  </label>
+                  <input
+                    id="experience-start"
+                    type="date"
+                    value={form.experiencia_inicio}
+                    onChange={(event) =>
+                      setForm((current) =>
+                        current
+                          ? {
+                              ...current,
+                              experiencia_inicio:
+                                event.target.value,
+                            }
+                          : current,
+                      )
+                    }
+                    disabled={saving}
+                  />
+                </div>
+
+                <div className="contracts-evaluation-card full">
+                  <header>
+                    <div>
+                      <strong>Avaliação de adaptação - 14 dias</strong>
+                      <span>
+                        Vencimento: {formatDate(form.adaptacao_14_data || null)}
+                      </span>
+                    </div>
+                  </header>
+
+                  <div className="contracts-evaluation-grid">
+                    <div className="contracts-field">
+                      <label htmlFor="adaptation-date">
+                        Data da avaliação
+                      </label>
+                      <input
+                        id="adaptation-date"
+                        type="date"
+                        value={form.adaptacao_14_data}
+                        onChange={(event) =>
+                          setForm((current) =>
+                            current
+                              ? {
+                                  ...current,
+                                  adaptacao_14_data:
+                                    event.target.value,
+                                }
+                              : current,
+                          )
+                        }
+                        disabled={saving}
+                      />
+                    </div>
+
+                    <div className="contracts-field">
+                      <label htmlFor="adaptation-status">
+                        Resultado
+                      </label>
+                      <select
+                        id="adaptation-status"
+                        value={form.adaptacao_14_status}
+                        onChange={(event) =>
+                          setForm((current) =>
+                            current
+                              ? {
+                                  ...current,
+                                  adaptacao_14_status:
+                                    event.target
+                                      .value as EvaluationStatus,
+                                  experiencia_44_status:
+                                    event.target.value === 'aprovado' &&
+                                    current.experiencia_44_status ===
+                                      'aguardando'
+                                      ? 'pendente'
+                                      : current.experiencia_44_status,
+                                }
+                              : current,
+                          )
+                        }
+                        disabled={saving}
+                      >
+                        {evaluationOptions.map((option) => (
+                          <option
+                            key={option.value}
+                            value={option.value}
+                          >
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="contracts-field full">
+                    <label htmlFor="adaptation-notes">
+                      Parecer do RH/líder
+                    </label>
+                    <textarea
+                      id="adaptation-notes"
+                      rows={3}
+                      value={form.adaptacao_14_parecer}
+                      onChange={(event) =>
+                        setForm((current) =>
+                          current
+                            ? {
+                                ...current,
+                                adaptacao_14_parecer:
+                                  event.target.value,
+                              }
+                            : current,
+                        )
+                      }
+                      placeholder="Registre adaptação, postura, presença, dificuldades e decisão da primeira avaliação."
+                      disabled={saving}
+                    />
+                  </div>
+                </div>
+
+                <div className="contracts-evaluation-card full">
+                  <header>
+                    <div>
+                      <strong>Avaliação de experiência - 44 dias</strong>
+                      <span>
+                        Vencimento: {formatDate(form.experiencia_44_data || null)}
+                      </span>
+                    </div>
+                  </header>
+
+                  <div className="contracts-evaluation-grid">
+                    <div className="contracts-field">
+                      <label htmlFor="experience-44-date">
+                        Data da avaliação
+                      </label>
+                      <input
+                        id="experience-44-date"
+                        type="date"
+                        value={form.experiencia_44_data}
+                        onChange={(event) =>
+                          setForm((current) =>
+                            current
+                              ? {
+                                  ...current,
+                                  experiencia_44_data:
+                                    event.target.value,
+                                }
+                              : current,
+                          )
+                        }
+                        disabled={saving}
+                      />
+                    </div>
+
+                    <div className="contracts-field">
+                      <label htmlFor="experience-44-status">
+                        Resultado
+                      </label>
+                      <select
+                        id="experience-44-status"
+                        value={form.experiencia_44_status}
+                        onChange={(event) =>
+                          setForm((current) =>
+                            current
+                              ? {
+                                  ...current,
+                                  experiencia_44_status:
+                                    event.target
+                                      .value as EvaluationStatus,
+                                  avaliacao_anual_status:
+                                    event.target.value === 'aprovado' &&
+                                    current.avaliacao_anual_status ===
+                                      'aguardando'
+                                      ? 'pendente'
+                                      : current.avaliacao_anual_status,
+                                }
+                              : current,
+                          )
+                        }
+                        disabled={saving}
+                      >
+                        {evaluationOptions.map((option) => (
+                          <option
+                            key={option.value}
+                            value={option.value}
+                          >
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="contracts-field full">
+                    <label htmlFor="experience-44-notes">
+                      Parecer do RH/líder
+                    </label>
+                    <textarea
+                      id="experience-44-notes"
+                      rows={3}
+                      value={form.experiencia_44_parecer}
+                      onChange={(event) =>
+                        setForm((current) =>
+                          current
+                            ? {
+                                ...current,
+                                experiencia_44_parecer:
+                                  event.target.value,
+                              }
+                            : current,
+                        )
+                      }
+                      placeholder="Registre evolução, qualidade do trabalho, relacionamento, aprendizado e decisão."
+                      disabled={saving}
+                    />
+                  </div>
+                </div>
+
+                <div className="contracts-evaluation-card full">
+                  <header>
+                    <div>
+                      <strong>Avaliação anual - 1 ano</strong>
+                      <span>
+                        Vencimento: {formatDate(form.avaliacao_anual_data || null)}
+                      </span>
+                    </div>
+                  </header>
+
+                  <div className="contracts-evaluation-grid">
+                    <div className="contracts-field">
+                      <label htmlFor="annual-date">
+                        Data da avaliação
+                      </label>
+                      <input
+                        id="annual-date"
+                        type="date"
+                        value={form.avaliacao_anual_data}
+                        onChange={(event) =>
+                          setForm((current) =>
+                            current
+                              ? {
+                                  ...current,
+                                  avaliacao_anual_data:
+                                    event.target.value,
+                                }
+                              : current,
+                          )
+                        }
+                        disabled={saving}
+                      />
+                    </div>
+
+                    <div className="contracts-field">
+                      <label htmlFor="annual-status">
+                        Resultado
+                      </label>
+                      <select
+                        id="annual-status"
+                        value={form.avaliacao_anual_status}
+                        onChange={(event) =>
+                          setForm((current) =>
+                            current
+                              ? {
+                                  ...current,
+                                  avaliacao_anual_status:
+                                    event.target
+                                      .value as EvaluationStatus,
+                                }
+                              : current,
+                          )
+                        }
+                        disabled={saving}
+                      >
+                        {evaluationOptions.map((option) => (
+                          <option
+                            key={option.value}
+                            value={option.value}
+                          >
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="contracts-field full">
+                    <label htmlFor="annual-notes">
+                      Parecer do RH/líder
+                    </label>
+                    <textarea
+                      id="annual-notes"
+                      rows={3}
+                      value={form.avaliacao_anual_parecer}
+                      onChange={(event) =>
+                        setForm((current) =>
+                          current
+                            ? {
+                                ...current,
+                                avaliacao_anual_parecer:
+                                  event.target.value,
+                              }
+                            : current,
+                        )
+                      }
+                      placeholder="Registre avaliação de desempenho, evolução no cargo e próximos encaminhamentos."
+                      disabled={saving}
+                    />
+                  </div>
                 </div>
 
                 <div className="contracts-field full">
