@@ -29,6 +29,14 @@ type EvaluationStatus =
   | 'reprovado'
   | 'acompanhamento'
 
+type ExperienceDueFilter =
+  | 'todos'
+  | 'em_experiencia'
+  | 'vence_3_dias'
+  | 'vence_hoje'
+  | 'vencidos'
+  | 'anual'
+
 type Contrato = {
   id: string
   candidatura_id: string
@@ -157,6 +165,15 @@ const evaluationStatusLabels: Record<EvaluationStatus, string> = {
   acompanhamento: 'Necessita acompanhamento',
 }
 
+const experienceDueFilterLabels: Record<ExperienceDueFilter, string> = {
+  todos: 'Todas',
+  em_experiencia: 'Em experiência',
+  vence_3_dias: 'Vencendo em até 3 dias',
+  vence_hoje: 'Vence hoje',
+  vencidos: 'Vencidos',
+  anual: 'Avaliação anual',
+}
+
 const evaluationOptions: Array<{ value: EvaluationStatus; label: string }> = [
   { value: 'aguardando', label: evaluationStatusLabels.aguardando },
   { value: 'pendente', label: evaluationStatusLabels.pendente },
@@ -186,15 +203,78 @@ function getDefaultExperienceDates(admissionDate: string) {
 }
 
 function getTodayIso() {
-  return new Date().toISOString().slice(0, 10)
+  const today = new Date()
+  today.setMinutes(today.getMinutes() - today.getTimezoneOffset())
+
+  return today.toISOString().slice(0, 10)
+}
+
+function daysUntil(date: string | null | undefined) {
+  if (!date) {
+    return null
+  }
+
+  const today = new Date(`${getTodayIso()}T00:00:00`)
+  const dueDate = new Date(`${date}T00:00:00`)
+
+  if (
+    Number.isNaN(today.getTime()) ||
+    Number.isNaN(dueDate.getTime())
+  ) {
+    return null
+  }
+
+  return Math.ceil(
+    (dueDate.getTime() - today.getTime()) / 86_400_000,
+  )
 }
 
 function isDue(date: string | null | undefined) {
-  if (!date) {
-    return false
+  const remaining = daysUntil(date)
+
+  return remaining !== null && remaining <= 0
+}
+
+function isDueInNextDays(date: string | null | undefined, days: number) {
+  const remaining = daysUntil(date)
+
+  return remaining !== null && remaining >= 0 && remaining <= days
+}
+
+function dueText(date: string | null | undefined) {
+  const remaining = daysUntil(date)
+
+  if (remaining === null) {
+    return 'Sem vencimento'
   }
 
-  return date <= getTodayIso()
+  if (remaining < 0) {
+    return `Vencido há ${Math.abs(remaining)} dia(s)`
+  }
+
+  if (remaining === 0) {
+    return 'Vence hoje'
+  }
+
+  return `Vence em ${remaining} dia(s)`
+}
+
+function stepTone(date: string | null | undefined) {
+  const remaining = daysUntil(date)
+
+  if (remaining === null) {
+    return 'neutral'
+  }
+
+  if (remaining < 0) {
+    return 'danger'
+  }
+
+  if (remaining <= 3) {
+    return 'warning'
+  }
+
+  return 'neutral'
 }
 
 function getCurrentExperienceStep(contrato: Contrato) {
@@ -217,7 +297,7 @@ function getCurrentExperienceStep(contrato: Contrato) {
     return {
       label: 'Avaliação 14 dias',
       date: adaptacaoDate,
-      tone: isDue(adaptacaoDate) ? 'warning' : 'neutral',
+      tone: stepTone(adaptacaoDate),
     }
   }
 
@@ -225,7 +305,7 @@ function getCurrentExperienceStep(contrato: Contrato) {
     return {
       label: 'Avaliação 44 dias',
       date: experienciaDate,
-      tone: isDue(experienciaDate) ? 'warning' : 'neutral',
+      tone: stepTone(experienciaDate),
     }
   }
 
@@ -233,7 +313,7 @@ function getCurrentExperienceStep(contrato: Contrato) {
     return {
       label: 'Avaliação anual',
       date: anualDate,
-      tone: isDue(anualDate) ? 'warning' : 'success',
+      tone: stepTone(anualDate),
     }
   }
 
@@ -274,6 +354,8 @@ function Contratos() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] =
     useState<'todos' | ContractStatus>('todos')
+  const [experienceFilter, setExperienceFilter] =
+    useState<ExperienceDueFilter>('todos')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -393,9 +475,63 @@ function Contratos() {
     const term = search.trim().toLowerCase()
 
     return views.filter((view) => {
+      const step = getCurrentExperienceStep(view.contrato)
+      const remainingDays = daysUntil(step.date)
+
       const matchesStatus =
         statusFilter === 'todos' ||
         view.contrato.status === statusFilter
+
+      const matchesExperience = (() => {
+        if (experienceFilter === 'todos') {
+          return true
+        }
+
+        if (experienceFilter === 'em_experiencia') {
+          return (
+            view.contrato.status === 'ativo' &&
+            !['concluido', 'encerrado'].includes(
+              view.contrato.experiencia_status ?? 'nao_iniciado',
+            )
+          )
+        }
+
+        if (experienceFilter === 'vence_3_dias') {
+          return (
+            view.contrato.status === 'ativo' &&
+            remainingDays !== null &&
+            remainingDays >= 0 &&
+            remainingDays <= 3 &&
+            step.label !== 'Acompanhamento concluído'
+          )
+        }
+
+        if (experienceFilter === 'vence_hoje') {
+          return (
+            view.contrato.status === 'ativo' &&
+            remainingDays === 0 &&
+            step.label !== 'Acompanhamento concluído'
+          )
+        }
+
+        if (experienceFilter === 'vencidos') {
+          return (
+            view.contrato.status === 'ativo' &&
+            remainingDays !== null &&
+            remainingDays < 0 &&
+            step.label !== 'Acompanhamento concluído'
+          )
+        }
+
+        if (experienceFilter === 'anual') {
+          return (
+            step.label === 'Avaliação anual' ||
+            view.contrato.experiencia_status === 'avaliacao_anual'
+          )
+        }
+
+        return true
+      })()
 
       const matchesTerm =
         !term ||
@@ -412,9 +548,13 @@ function Contratos() {
           .includes(term) ||
         String(view.candidato?.numero ?? '').includes(term)
 
-      return matchesStatus && Boolean(matchesTerm)
+      return (
+        matchesStatus &&
+        matchesExperience &&
+        Boolean(matchesTerm)
+      )
     })
-  }, [search, statusFilter, views])
+  }, [experienceFilter, search, statusFilter, views])
 
   const activeContracts = useMemo(
     () =>
@@ -429,6 +569,19 @@ function Contratos() {
       contratos.filter(
         (contrato) => contrato.status === 'rascunho',
       ).length,
+    [contratos],
+  )
+
+  const dueInThreeDaysContracts = useMemo(
+    () =>
+      contratos.filter((contrato) => {
+        const step = getCurrentExperienceStep(contrato)
+        return (
+          contrato.status === 'ativo' &&
+          step.label !== 'Acompanhamento concluído' &&
+          isDueInNextDays(step.date, 3)
+        )
+      }).length,
     [contratos],
   )
 
@@ -746,6 +899,29 @@ function Contratos() {
             </select>
           </div>
 
+          <div className="contracts-filter">
+            <label htmlFor="contract-experience-filter">
+              Experiência
+            </label>
+            <select
+              id="contract-experience-filter"
+              value={experienceFilter}
+              onChange={(event) =>
+                setExperienceFilter(
+                  event.target.value as ExperienceDueFilter,
+                )
+              }
+            >
+              {Object.entries(experienceDueFilterLabels).map(
+                ([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ),
+              )}
+            </select>
+          </div>
+
           <div className="contracts-summary">
             <span>Total</span>
             <strong>{contratos.length}</strong>
@@ -759,6 +935,11 @@ function Contratos() {
           <div className="contracts-summary">
             <span>Ativos</span>
             <strong>{activeContracts}</strong>
+          </div>
+
+          <div className="contracts-summary warning">
+            <span>Vencendo 3 dias</span>
+            <strong>{dueInThreeDaysContracts}</strong>
           </div>
         </div>
 
@@ -840,7 +1021,7 @@ function Contratos() {
                             {step.label}
                           </span>
                           <small>
-                            Vencimento: {formatDate(step.date ?? null)}
+                            {formatDate(step.date ?? null)} · {dueText(step.date)}
                           </small>
                         </div>
                       )

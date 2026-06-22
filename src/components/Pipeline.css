@@ -1009,13 +1009,55 @@
   }
 }
 
-.pipeline-email-notice {
-  margin-top: 14px;
+/* Finalização de contratação */
+.pipeline-hiring-modal .pipeline-modal-body {
+  max-height: calc(100vh - 210px);
+  overflow-y: auto;
+}
+
+.pipeline-hiring-notice {
+  margin-bottom: 16px;
   padding: 12px 14px;
   border: 1px solid #fed7aa;
   border-radius: 10px;
   color: #9a3412;
   background: #fff7ed;
-  font-size: 12px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.pipeline-check-option {
+  min-height: 42px;
+  padding: 11px 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px solid #dfe6ee;
+  border-radius: 10px;
+  color: #344054;
+  background: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
   line-height: 1.45;
+}
+
+.pipeline-check-option.full {
+  grid-column: 1 / -1;
+}
+
+.pipeline-check-option input {
+  width: 16px;
+  height: 16px;
+  margin: 1px 0 0;
+  accent-color: #f97316;
+}
+
+.pipeline-check-option span {
+  flex: 1;
+}
+
+@media (max-width: 680px) {
+  .pipeline-check-option.full {
+    grid-column: auto;
+  }
 }

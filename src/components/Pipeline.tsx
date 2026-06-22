@@ -5,7 +5,6 @@ import {
   useState,
 } from 'react'
 import { supabase } from '../lib/supabase'
-import { moverCurriculoDrive } from '../lib/googleDriveRh'
 import SolicitacaoDocumentosModal from './SolicitacaoDocumentosModal'
 import AdicionarCandidatoPipelineModal from './AdicionarCandidatoPipelineModal'
 import './Pipeline.css'
@@ -125,6 +124,20 @@ type ProcessModalData = {
     | 'cancelado'
 }
 
+type HireModalData = {
+  candidaturaId: string
+  candidatoNome: string
+  candidatoEmail: string | null
+  vagaLabel: string
+  dataInicio: string
+  horarioInicio: string
+  localApresentacao: string
+  responsavelApresentacao: string
+  observacoes: string
+  enviarEmail: boolean
+  criarExperiencia: boolean
+}
+
 const etapas: Array<{
   id: CandidaturaEtapa
   label: string
@@ -235,6 +248,14 @@ function nullableText(value: string) {
   return normalized || null
 }
 
+function todayDateInput(offsetDays = 0) {
+  const date = new Date()
+  date.setDate(date.getDate() + offsetDays)
+  date.setMinutes(date.getMinutes() - date.getTimezoneOffset())
+
+  return date.toISOString().slice(0, 10)
+}
+
 function defaultInterviewPeriod() {
   const start = new Date()
   start.setSeconds(0, 0)
@@ -312,6 +333,10 @@ function Pipeline() {
   const [processModal, setProcessModal] =
     useState<ProcessModalData | null>(null)
   const [salvandoProcesso, setSalvandoProcesso] =
+    useState(false)
+  const [hireModal, setHireModal] =
+    useState<HireModalData | null>(null)
+  const [salvandoContratacao, setSalvandoContratacao] =
     useState(false)
   const [documentacaoId, setDocumentacaoId] =
     useState<string | null>(null)
@@ -624,41 +649,6 @@ function Pipeline() {
       ok: true
       meetLink: string
       eventLink: string | null
-    }
-  }
-
-
-  async function enviarEmailProcesso(
-    candidaturaId: string,
-    tipo: 'teste' | 'exame',
-  ) {
-    const { data, error } = await supabase.functions.invoke(
-      'rh-processo-email',
-      {
-        body: { candidaturaId, tipo },
-      },
-    )
-
-    if (error) {
-      throw new Error(
-        data?.error ??
-          (await readFunctionError(
-            error,
-            'Não foi possível enviar o e-mail ao candidato.',
-          )),
-      )
-    }
-
-    if (!data?.ok) {
-      throw new Error(
-        data?.error ??
-          'O e-mail não foi confirmado pelo serviço de envio.',
-      )
-    }
-
-    return data as {
-      ok: true
-      message?: string
     }
   }
 
@@ -1125,9 +1115,10 @@ function Pipeline() {
       )
       .single()
 
+    setSalvandoProcesso(false)
+
     if (error) {
       console.error(`Erro ao salvar ${label}:`, error.message)
-      setSalvandoProcesso(false)
       setErro(`Não foi possível salvar ${label.toLowerCase()}.`)
       return
     }
@@ -1140,47 +1131,109 @@ function Pipeline() {
       ),
     )
 
-    let avisoEmail = ' E-mail enviado ao candidato.'
-
-    try {
-      const emailResult = await enviarEmailProcesso(
-        processModal.candidaturaId,
-        processModal.tipo,
-      )
-
-      avisoEmail = ` ${emailResult.message ?? 'E-mail enviado ao candidato.'}`
-    } catch (emailError) {
-      console.error(`Erro ao enviar e-mail de ${label}:`, emailError)
-      avisoEmail = ` Porém, o e-mail não foi enviado: ${
-        emailError instanceof Error
-          ? emailError.message
-          : 'erro desconhecido'
-      }`
-    }
-
-    setSalvandoProcesso(false)
     setProcessModal(null)
     setMensagem(
       isTest
-        ? `Teste prático agendado.${avisoEmail}`
-        : `Exame admissional atualizado e sincronizado com o Onboarding.${avisoEmail}`,
+        ? 'Teste prático agendado.'
+        : 'Exame admissional atualizado e sincronizado com o Onboarding.',
     )
   }
 
-  async function finalizarContratacao(
-    candidaturaId: string,
-  ) {
-    setFinalizandoId(candidaturaId)
+  function abrirContratacao(candidaturaId: string) {
+    const card = cards.find(
+      (item) => item.candidatura.id === candidaturaId,
+    )
+
+    if (!card) {
+      setErro('Não foi possível localizar a candidatura.')
+      setDraggedId(null)
+      return
+    }
+
+    setHireModal({
+      candidaturaId,
+      candidatoNome: card.candidato.nome_completo,
+      candidatoEmail: card.candidato.email,
+      vagaLabel: `VAG-${String(card.vaga.numero).padStart(
+        6,
+        '0',
+      )} — ${card.vaga.cargo}`,
+      dataInicio: todayDateInput(1),
+      horarioInicio: '07:30',
+      localApresentacao: 'Interlaser Máquinas',
+      responsavelApresentacao: 'RH',
+      observacoes: '',
+      enviarEmail: Boolean(card.candidato.email),
+      criarExperiencia: true,
+    })
+
+    setDraggedId(null)
     setErro('')
     setMensagem('')
+  }
+
+  function fecharContratacaoModal() {
+    if (salvandoContratacao) {
+      return
+    }
+
+    setHireModal(null)
+    setErro('')
+  }
+
+  async function finalizarContratacao() {
+    if (!hireModal) {
+      return
+    }
+
+    setErro('')
+    setMensagem('')
+
+    if (!hireModal.dataInicio) {
+      setErro('Informe a data de início do colaborador.')
+      return
+    }
+
+    if (!hireModal.horarioInicio) {
+      setErro('Informe o horário de apresentação.')
+      return
+    }
+
+    if (!hireModal.localApresentacao.trim()) {
+      setErro('Informe o local de apresentação.')
+      return
+    }
+
+    if (hireModal.enviarEmail && !hireModal.candidatoEmail) {
+      setErro(
+        'O candidato não possui e-mail cadastrado. Desmarque o envio de e-mail ou atualize o cadastro.',
+      )
+      return
+    }
+
+    setSalvandoContratacao(true)
+    setFinalizandoId(hireModal.candidaturaId)
 
     const { data, error } = await supabase.functions.invoke(
       'finalizar-contratacao',
       {
-        body: { candidaturaId },
+        body: {
+          candidaturaId: hireModal.candidaturaId,
+          dataInicio: hireModal.dataInicio,
+          horarioInicio: hireModal.horarioInicio,
+          localApresentacao:
+            hireModal.localApresentacao.trim(),
+          responsavelApresentacao:
+            hireModal.responsavelApresentacao.trim() || null,
+          observacoes:
+            hireModal.observacoes.trim() || null,
+          enviarEmail: hireModal.enviarEmail,
+          criarExperiencia: hireModal.criarExperiencia,
+        },
       },
     )
 
+    setSalvandoContratacao(false)
     setFinalizandoId(null)
     setDraggedId(null)
 
@@ -1199,15 +1252,16 @@ function Pipeline() {
 
     setCandidaturas((current) =>
       current.map((item) =>
-        item.id === candidaturaId
+        item.id === hireModal.candidaturaId
           ? (data.candidature as Candidatura)
           : item,
       ),
     )
 
+    setHireModal(null)
     setMensagem(
       data.message ??
-        'Contratação finalizada e vaga fechada.',
+        'Contratação finalizada, contrato criado e acompanhamento iniciado.',
     )
   }
 
@@ -1293,7 +1347,7 @@ function Pipeline() {
     }
 
     if (novaEtapa === 'contratado') {
-      await finalizarContratacao(candidaturaId)
+      abrirContratacao(candidaturaId)
       return
     }
 
@@ -1460,31 +1514,6 @@ function Pipeline() {
       return
     }
 
-    let avisoDrive = ''
-
-    if (
-      statusModal.status === 'reprovado' ||
-      statusModal.status === 'banco_talentos'
-    ) {
-      try {
-        await moverCurriculoDrive({
-          candidaturaId: statusModal.candidaturaId,
-          destino:
-            statusModal.status === 'reprovado'
-              ? 'reprovados'
-              : 'banco_talentos',
-        })
-        avisoDrive = ' Currículo movido no Google Drive.'
-      } catch (driveError) {
-        console.error(
-          'Erro ao mover currículo no Google Drive:',
-          driveError,
-        )
-        avisoDrive =
-          ' A situação foi atualizada, mas o currículo não foi movido no Google Drive.'
-      }
-    }
-
     setCandidaturas((current) =>
       current.map((item) =>
         item.id === statusModal.candidaturaId
@@ -1495,7 +1524,7 @@ function Pipeline() {
 
     setStatusModal(null)
     setStatusObservacao('')
-    setMensagem(`Situação atualizada com sucesso.${avisoDrive}`)
+    setMensagem('Situação atualizada com sucesso.')
   }
 
   function irParaEtapa(etapaId: CandidaturaEtapa) {
@@ -2203,11 +2232,6 @@ function Pipeline() {
                 </div>
               </div>
 
-              <div className="pipeline-email-notice">
-                Ao confirmar, o sistema salva a etapa e envia um e-mail ao
-                candidato com data, horário, local e orientações.
-              </div>
-
               <div className="pipeline-form-grid">
                 <div className="pipeline-field">
                   <label htmlFor="pipeline-process-start">
@@ -2338,8 +2362,257 @@ function Pipeline() {
                 {salvandoProcesso
                   ? 'Salvando...'
                   : processModal.tipo === 'teste'
-                    ? 'Agendar teste e enviar e-mail'
-                    : 'Salvar exame e enviar e-mail'}
+                    ? 'Agendar teste'
+                    : 'Salvar exame'}
+              </button>
+            </footer>
+          </section>
+        </div>
+      )}
+
+      {hireModal && (
+        <div
+          className="pipeline-modal-overlay"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              fecharContratacaoModal()
+            }
+          }}
+        >
+          <section
+            className="pipeline-modal pipeline-interview-modal pipeline-hiring-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pipeline-hiring-title"
+          >
+            <header className="pipeline-modal-header">
+              <div>
+                <span className="pipeline-eyebrow">
+                  Contratação
+                </span>
+                <h2 id="pipeline-hiring-title">
+                  Finalizar contratação
+                </h2>
+              </div>
+
+              <button
+                type="button"
+                onClick={fecharContratacaoModal}
+                disabled={salvandoContratacao}
+                aria-label="Fechar"
+              >
+                ×
+              </button>
+            </header>
+
+            <div className="pipeline-modal-body">
+              <div className="pipeline-interview-summary">
+                <div>
+                  <span>Candidato</span>
+                  <strong>{hireModal.candidatoNome}</strong>
+                </div>
+                <div>
+                  <span>Vaga</span>
+                  <strong>{hireModal.vagaLabel}</strong>
+                </div>
+              </div>
+
+              <div className="pipeline-hiring-notice">
+                Ao confirmar, o sistema cria/atualiza o contrato,
+                inicia o acompanhamento de experiência e calcula as
+                avaliações de 14 dias, 44 dias e 1 ano.
+              </div>
+
+              <div className="pipeline-form-grid">
+                <div className="pipeline-field">
+                  <label htmlFor="pipeline-hiring-start-date">
+                    Data de início *
+                  </label>
+                  <input
+                    id="pipeline-hiring-start-date"
+                    type="date"
+                    value={hireModal.dataInicio}
+                    onChange={(event) =>
+                      setHireModal((current) =>
+                        current
+                          ? {
+                              ...current,
+                              dataInicio: event.target.value,
+                            }
+                          : current,
+                      )
+                    }
+                    disabled={salvandoContratacao}
+                  />
+                </div>
+
+                <div className="pipeline-field">
+                  <label htmlFor="pipeline-hiring-start-time">
+                    Horário de apresentação *
+                  </label>
+                  <input
+                    id="pipeline-hiring-start-time"
+                    type="time"
+                    value={hireModal.horarioInicio}
+                    onChange={(event) =>
+                      setHireModal((current) =>
+                        current
+                          ? {
+                              ...current,
+                              horarioInicio: event.target.value,
+                            }
+                          : current,
+                      )
+                    }
+                    disabled={salvandoContratacao}
+                  />
+                </div>
+
+                <div className="pipeline-field">
+                  <label htmlFor="pipeline-hiring-location">
+                    Local de apresentação *
+                  </label>
+                  <input
+                    id="pipeline-hiring-location"
+                    type="text"
+                    value={hireModal.localApresentacao}
+                    onChange={(event) =>
+                      setHireModal((current) =>
+                        current
+                          ? {
+                              ...current,
+                              localApresentacao:
+                                event.target.value,
+                            }
+                          : current,
+                      )
+                    }
+                    disabled={salvandoContratacao}
+                  />
+                </div>
+
+                <div className="pipeline-field">
+                  <label htmlFor="pipeline-hiring-responsible">
+                    Responsável por receber
+                  </label>
+                  <input
+                    id="pipeline-hiring-responsible"
+                    type="text"
+                    value={hireModal.responsavelApresentacao}
+                    onChange={(event) =>
+                      setHireModal((current) =>
+                        current
+                          ? {
+                              ...current,
+                              responsavelApresentacao:
+                                event.target.value,
+                            }
+                          : current,
+                      )
+                    }
+                    disabled={salvandoContratacao}
+                  />
+                </div>
+
+                <div className="pipeline-field full">
+                  <label htmlFor="pipeline-hiring-notes">
+                    Observações para o primeiro dia
+                  </label>
+                  <textarea
+                    id="pipeline-hiring-notes"
+                    rows={4}
+                    value={hireModal.observacoes}
+                    onChange={(event) =>
+                      setHireModal((current) =>
+                        current
+                          ? {
+                              ...current,
+                              observacoes:
+                                event.target.value,
+                            }
+                          : current,
+                      )
+                    }
+                    placeholder="Ex.: comparecer com documento pessoal, procurar o RH na portaria..."
+                    disabled={salvandoContratacao}
+                  />
+                </div>
+
+                <label className="pipeline-check-option full">
+                  <input
+                    type="checkbox"
+                    checked={hireModal.enviarEmail}
+                    onChange={(event) =>
+                      setHireModal((current) =>
+                        current
+                          ? {
+                              ...current,
+                              enviarEmail: event.target.checked,
+                            }
+                          : current,
+                      )
+                    }
+                    disabled={
+                      salvandoContratacao || !hireModal.candidatoEmail
+                    }
+                  />
+                  <span>
+                    Enviar e-mail de confirmação ao candidato
+                    {hireModal.candidatoEmail
+                      ? ` (${hireModal.candidatoEmail})`
+                      : ' (candidato sem e-mail cadastrado)'}
+                  </span>
+                </label>
+
+                <label className="pipeline-check-option full">
+                  <input
+                    type="checkbox"
+                    checked={hireModal.criarExperiencia}
+                    onChange={(event) =>
+                      setHireModal((current) =>
+                        current
+                          ? {
+                              ...current,
+                              criarExperiencia: event.target.checked,
+                            }
+                          : current,
+                      )
+                    }
+                    disabled={salvandoContratacao}
+                  />
+                  <span>
+                    Criar automaticamente o período de experiência e
+                    avaliações D+14, D+44 e D+365
+                  </span>
+                </label>
+              </div>
+
+              {erro && (
+                <div className="pipeline-message error">
+                  {erro}
+                </div>
+              )}
+            </div>
+
+            <footer className="pipeline-modal-actions">
+              <button
+                className="pipeline-secondary-button"
+                type="button"
+                onClick={fecharContratacaoModal}
+                disabled={salvandoContratacao}
+              >
+                Cancelar
+              </button>
+              <button
+                className="pipeline-primary-button"
+                type="button"
+                onClick={finalizarContratacao}
+                disabled={salvandoContratacao}
+              >
+                {salvandoContratacao
+                  ? 'Finalizando...'
+                  : 'Confirmar contratação'}
               </button>
             </footer>
           </section>

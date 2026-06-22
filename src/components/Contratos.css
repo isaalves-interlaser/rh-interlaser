@@ -61,11 +61,13 @@
   padding: 15px 22px;
   display: grid;
   grid-template-columns:
-    minmax(260px, 1fr)
-    190px
+    minmax(240px, 1fr)
+    180px
+    220px
+    90px
     100px
-    110px
-    100px;
+    90px
+    120px;
   gap: 12px;
   align-items: end;
   border-bottom: 1px solid #edf0f4;
@@ -130,6 +132,16 @@
   margin-top: 1px;
   color: #172033;
   font-size: 17px;
+}
+
+.contracts-summary.warning {
+  border-color: #fed7aa;
+  background: #fff7ed;
+}
+
+.contracts-summary.warning span,
+.contracts-summary.warning strong {
+  color: #9a3412;
 }
 
 .contracts-table-wrapper {
