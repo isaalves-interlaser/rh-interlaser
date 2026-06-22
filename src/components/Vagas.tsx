@@ -6,7 +6,7 @@ import {
   type FormEvent,
 } from 'react'
 import { supabase } from '../lib/supabase'
-import { criarPastaVagaDrive } from '../lib/googleDriveRh'
+import { criarPastaVagaDrive, moverCurriculoDrive } from '../lib/googleDriveRh'
 import './Vagas.css'
 
 type VagaStatus =
@@ -44,6 +44,8 @@ type Candidatura = {
   etapa: string
   status: string
   data_entrada: string
+  motivo_reprovacao: string | null
+  observacoes: string | null
 }
 
 type Candidato = {
@@ -52,7 +54,21 @@ type Candidato = {
   nome_completo: string
   email: string | null
   whatsapp: string | null
+  origem: string | null
+  observacoes: string | null
+  curriculo_path: string | null
+  curriculo_drive_file_id: string | null
+  curriculo_drive_url: string | null
+  curriculo_drive_nome: string | null
 }
+
+type TriagemFiltro =
+  | 'todos'
+  | 'novos'
+  | 'em_analise'
+  | 'banco_talentos'
+  | 'reprovados'
+
 
 type BeneficioConfig = {
   codigo: string
@@ -143,6 +159,34 @@ const statusCadastroOptions: VagaStatus[] = [
   'suspensa',
   'preenchida',
 ]
+
+const triagemFiltroLabels: Record<TriagemFiltro, string> = {
+  todos: 'Todos',
+  novos: 'Novos',
+  em_analise: 'Em análise',
+  banco_talentos: 'Banco de talentos',
+  reprovados: 'Recusados',
+}
+
+const etapaLabels: Record<string, string> = {
+  recebido: 'Recebido',
+  em_analise: 'Em análise',
+  entrevista_rh: 'Entrevista RH',
+  entrevista_gestor: 'Entrevista com gestor',
+  teste_pratico: 'Teste prático',
+  exame_admissional: 'Exame admissional',
+  documentacao: 'Documentação',
+  contratado: 'Contratado',
+}
+
+const candidaturaStatusLabels: Record<string, string> = {
+  ativo: 'Ativo',
+  reprovado: 'Reprovado',
+  desistente: 'Desistente',
+  suspenso: 'Suspenso',
+  banco_talentos: 'Banco de talentos',
+  contratado: 'Contratado',
+}
 
 const prioridadeLabels: Record<VagaPrioridade, string> = {
   normal: 'Normal',
@@ -260,6 +304,73 @@ function selectedBenefitNames(value: string) {
 }
 
 
+function labelFromMap(map: Record<string, string>, value: string) {
+  return map[value] ?? value.replaceAll('_', ' ')
+}
+
+function getCandidatoInitials(nome: string) {
+  const parts = nome
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+
+  if (parts.length === 0) return 'RH'
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+
+  return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase()
+}
+
+function formatDateTime(value: string | null) {
+  if (!value) return '—'
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) return '—'
+
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(date)
+}
+
+function getCurriculoUrl(candidato: Candidato | null) {
+  if (!candidato) return ''
+
+  return candidato.curriculo_drive_url || candidato.curriculo_path || ''
+}
+
+function getDriveFileIdFromUrl(value: string) {
+  if (!value) return ''
+
+  const filePathMatch = value.match(/\/file\/d\/([^/]+)/)
+  if (filePathMatch?.[1]) return filePathMatch[1]
+
+  try {
+    const url = new URL(value)
+    return url.searchParams.get('id') ?? ''
+  } catch {
+    return ''
+  }
+}
+
+function getCurriculoPreviewUrl(candidato: Candidato | null) {
+  if (!candidato) return ''
+
+  const originalUrl = getCurriculoUrl(candidato)
+  const fileId =
+    candidato.curriculo_drive_file_id || getDriveFileIdFromUrl(originalUrl)
+
+  if (fileId) {
+    return `https://drive.google.com/file/d/${fileId}/preview`
+  }
+
+  if (originalUrl.includes('/view')) {
+    return originalUrl.replace('/view', '/preview')
+  }
+
+  return originalUrl
+}
+
 type VagasProps = {
   responsavelRhEmail?: string
 }
@@ -272,6 +383,14 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
   const [candidatos, setCandidatos] = useState<Candidato[]>([])
   const [beneficiosConfig, setBeneficiosConfig] = useState<BeneficioConfig[]>([])
   const [vagaDetalhesId, setVagaDetalhesId] = useState<string | null>(null)
+  const [candidaturaSelecionadaId, setCandidaturaSelecionadaId] =
+    useState<string | null>(null)
+  const [filtroTriagem, setFiltroTriagem] =
+    useState<TriagemFiltro>('todos')
+  const [menuTriagemAbertoId, setMenuTriagemAbertoId] =
+    useState<string | null>(null)
+  const [salvandoTriagemId, setSalvandoTriagemId] =
+    useState<string | null>(null)
   const [form, setForm] = useState<VagaForm>(initialForm)
   const [editandoId, setEditandoId] = useState<string | null>(null)
   const [modalAberto, setModalAberto] = useState(false)
@@ -312,11 +431,11 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
           .order('created_at', { ascending: false }),
         supabase
           .from('candidaturas')
-          .select('id, candidato_id, vaga_id, etapa, status, data_entrada')
+          .select('id, candidato_id, vaga_id, etapa, status, data_entrada, motivo_reprovacao, observacoes')
           .order('data_entrada', { ascending: false }),
         supabase
           .from('candidatos')
-          .select('id, numero, nome_completo, email, whatsapp')
+          .select('id, numero, nome_completo, email, whatsapp, origem, observacoes, curriculo_path, curriculo_drive_file_id, curriculo_drive_url, curriculo_drive_nome')
           .order('nome_completo'),
         supabase
           .from('beneficios_configuracao')
@@ -471,6 +590,123 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
   const candidaturasDaVaga = vagaDetalhes
     ? candidaturasPorVaga.get(vagaDetalhes.id) ?? []
     : []
+
+  const candidatosPorId = useMemo(() => {
+    return new Map(candidatos.map((candidato) => [candidato.id, candidato]))
+  }, [candidatos])
+
+  const candidatosDaVagaComDados = useMemo(() => {
+    return candidaturasDaVaga
+      .map((candidatura) => {
+        const candidato = candidatosPorId.get(candidatura.candidato_id)
+
+        if (!candidato) return null
+
+        return { candidatura, candidato }
+      })
+      .filter(
+        (item): item is { candidatura: Candidatura; candidato: Candidato } =>
+          item !== null,
+      )
+  }, [candidaturasDaVaga, candidatosPorId])
+
+  const candidatosDaVagaFiltrados = useMemo(() => {
+    return candidatosDaVagaComDados.filter(({ candidatura }) => {
+      if (filtroTriagem === 'todos') return true
+
+      if (filtroTriagem === 'novos') {
+        return candidatura.status === 'ativo' && candidatura.etapa === 'recebido'
+      }
+
+      if (filtroTriagem === 'em_analise') {
+        return (
+          candidatura.status === 'ativo' && candidatura.etapa === 'em_analise'
+        )
+      }
+
+      if (filtroTriagem === 'banco_talentos') {
+        return candidatura.status === 'banco_talentos'
+      }
+
+      if (filtroTriagem === 'reprovados') {
+        return candidatura.status === 'reprovado'
+      }
+
+      return true
+    })
+  }, [candidatosDaVagaComDados, filtroTriagem])
+
+  const triagemResumo = useMemo(() => {
+    return candidatosDaVagaComDados.reduce(
+      (acc, { candidatura }) => {
+        acc.todos += 1
+
+        if (candidatura.status === 'ativo' && candidatura.etapa === 'recebido') {
+          acc.novos += 1
+        }
+
+        if (
+          candidatura.status === 'ativo' &&
+          candidatura.etapa === 'em_analise'
+        ) {
+          acc.em_analise += 1
+        }
+
+        if (candidatura.status === 'banco_talentos') {
+          acc.banco_talentos += 1
+        }
+
+        if (candidatura.status === 'reprovado') {
+          acc.reprovados += 1
+        }
+
+        return acc
+      },
+      {
+        todos: 0,
+        novos: 0,
+        em_analise: 0,
+        banco_talentos: 0,
+        reprovados: 0,
+      } as Record<TriagemFiltro, number>,
+    )
+  }, [candidatosDaVagaComDados])
+
+  const candidatoTriagemSelecionado = useMemo(() => {
+    return (
+      candidatosDaVagaComDados.find(
+        ({ candidatura }) => candidatura.id === candidaturaSelecionadaId,
+      ) ??
+      candidatosDaVagaFiltrados[0] ??
+      candidatosDaVagaComDados[0] ??
+      null
+    )
+  }, [
+    candidaturaSelecionadaId,
+    candidatosDaVagaComDados,
+    candidatosDaVagaFiltrados,
+  ])
+
+  const curriculoSelecionadoUrl = getCurriculoUrl(
+    candidatoTriagemSelecionado?.candidato ?? null,
+  )
+  const curriculoPreviewUrl = getCurriculoPreviewUrl(
+    candidatoTriagemSelecionado?.candidato ?? null,
+  )
+
+  function abrirTriagem(vagaId: string) {
+    setVagaDetalhesId(vagaId)
+    setCandidaturaSelecionadaId(null)
+    setFiltroTriagem('todos')
+    setMenuTriagemAbertoId(null)
+  }
+
+  function fecharTriagem() {
+    setVagaDetalhesId(null)
+    setCandidaturaSelecionadaId(null)
+    setFiltroTriagem('todos')
+    setMenuTriagemAbertoId(null)
+  }
 
   function abrirNovaVaga() {
     setForm({
@@ -663,6 +899,102 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
     })
   }
 
+  async function atualizarTriagemCurriculo(
+    candidatura: Candidatura,
+    acao: 'em_analise' | 'banco_talentos' | 'reprovar',
+  ) {
+    setErro('')
+    setMensagem('')
+    setMenuTriagemAbertoId(null)
+
+    const payload: Partial<Candidatura> = {}
+    let mensagemSucesso = ''
+    let destinoDrive: 'reprovados' | 'banco_talentos' | null = null
+
+    if (acao === 'em_analise') {
+      payload.etapa = 'em_analise'
+      payload.status = 'ativo'
+      payload.motivo_reprovacao = null
+      mensagemSucesso = 'Candidato movido para Em análise.'
+    }
+
+    if (acao === 'banco_talentos') {
+      const confirmou = window.confirm(
+        'Mover este candidato para Banco de Talentos?',
+      )
+
+      if (!confirmou) return
+
+      payload.status = 'banco_talentos'
+      payload.motivo_reprovacao = null
+      destinoDrive = 'banco_talentos'
+      mensagemSucesso = 'Candidato movido para Banco de Talentos.'
+    }
+
+    if (acao === 'reprovar') {
+      const motivo = window.prompt(
+        'Informe o motivo da recusa. Essa informação fica interna para o RH:',
+      )
+
+      if (motivo === null) return
+
+      const motivoNormalizado = motivo.trim()
+
+      if (!motivoNormalizado) {
+        setErro('Informe o motivo da recusa para continuar.')
+        return
+      }
+
+      payload.status = 'reprovado'
+      payload.motivo_reprovacao = motivoNormalizado
+      destinoDrive = 'reprovados'
+      mensagemSucesso = 'Candidato recusado com sucesso.'
+    }
+
+    setSalvandoTriagemId(candidatura.id)
+
+    const { data, error } = await supabase
+      .from('candidaturas')
+      .update(payload)
+      .eq('id', candidatura.id)
+      .select(
+        'id, candidato_id, vaga_id, etapa, status, data_entrada, motivo_reprovacao, observacoes',
+      )
+      .single()
+
+    if (error) {
+      console.error('Erro ao atualizar triagem:', error.message)
+      setSalvandoTriagemId(null)
+      setErro('Não foi possível atualizar a situação do candidato.')
+      return
+    }
+
+    let avisoDrive = ''
+
+    if (destinoDrive) {
+      try {
+        await moverCurriculoDrive({
+          candidaturaId: candidatura.id,
+          destino: destinoDrive,
+        })
+        avisoDrive = ' Currículo movido no Google Drive.'
+      } catch (driveError) {
+        console.error('Erro ao mover currículo no Google Drive:', driveError)
+        avisoDrive =
+          ' A situação foi atualizada, mas o currículo não foi movido no Google Drive.'
+      }
+    }
+
+    setCandidaturas((atuais) =>
+      atuais.map((item) =>
+        item.id === candidatura.id ? (data as Candidatura) : item,
+      ),
+    )
+    setCandidaturaSelecionadaId(candidatura.id)
+    setSalvandoTriagemId(null)
+    setMensagem(`${mensagemSucesso}${avisoDrive}`)
+  }
+
   async function excluirVaga(vaga: Vaga) {
     setErro('')
     setMensagem('')
@@ -846,7 +1178,7 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
                       <button
                         className="vacancy-candidate-count"
                         type="button"
-                        onClick={() => setVagaDetalhesId(vaga.id)}
+                        onClick={() => abrirTriagem(vaga.id)}
                       >
                         {candidaturasPorVaga.get(vaga.id)?.length ?? 0}
                       </button>
@@ -870,7 +1202,7 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
                         <button
                           className="vacancy-hired-candidate"
                           type="button"
-                          onClick={() => setVagaDetalhesId(vaga.id)}
+                          onClick={() => abrirTriagem(vaga.id)}
                           title={contratado.candidato.nome_completo}
                         >
                           <span>
@@ -917,7 +1249,7 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
                       <div className="vacancy-actions">
                         <button
                           type="button"
-                          onClick={() => setVagaDetalhesId(vaga.id)}
+                          onClick={() => abrirTriagem(vaga.id)}
                         >
                           Ver candidatos
                         </button>
@@ -1007,7 +1339,7 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
           role="presentation"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) {
-              setVagaDetalhesId(null)
+              fecharTriagem()
             }
           }}
         >
@@ -1046,75 +1378,273 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
               <button
                 className="vacancies-close-button"
                 type="button"
-                onClick={() => setVagaDetalhesId(null)}
+                onClick={() => fecharTriagem()}
                 aria-label="Fechar"
               >
                 ×
               </button>
             </header>
 
-            <div className="vacancy-candidates-list">
-              {candidaturasDaVaga.map((candidatura) => {
-                const candidato = candidatos.find(
-                  (item) => item.id === candidatura.candidato_id,
-                )
+            <div className="vacancy-triage-filters" role="tablist" aria-label="Filtros de candidatos">
+              {(Object.keys(triagemFiltroLabels) as TriagemFiltro[]).map((filtro) => (
+                <button
+                  className={filtroTriagem === filtro ? 'active' : ''}
+                  key={filtro}
+                  type="button"
+                  onClick={() => {
+                    setFiltroTriagem(filtro)
+                    setCandidaturaSelecionadaId(null)
+                    setMenuTriagemAbertoId(null)
+                  }}
+                >
+                  {triagemFiltroLabels[filtro]}
+                  <span>{triagemResumo[filtro]}</span>
+                </button>
+              ))}
+            </div>
 
-                if (!candidato) {
-                  return null
-                }
+            <div className="vacancy-triage-layout">
+              <aside className="vacancy-triage-sidebar" aria-label="Candidatos da vaga">
+                {candidatosDaVagaFiltrados.map(({ candidatura, candidato }) => {
+                  const selecionado =
+                    candidatoTriagemSelecionado?.candidatura.id === candidatura.id
+                  const temCurriculo = Boolean(getCurriculoUrl(candidato))
+                  const salvandoEste = salvandoTriagemId === candidatura.id
 
-                const contratado =
-                  candidatura.status === 'contratado' ||
-                  candidatura.etapa === 'contratado'
-
-                return (
-                  <article
-                    className={
-                      contratado
-                        ? 'vacancy-candidate-card hired'
-                        : 'vacancy-candidate-card'
-                    }
-                    key={candidatura.id}
-                  >
-                    <div className="vacancy-candidate-avatar">
-                      {candidato.nome_completo.charAt(0).toUpperCase()}
-                    </div>
-
-                    <div className="vacancy-candidate-main">
-                      <strong>{candidato.nome_completo}</strong>
-                      <span>
-                        CAN-{String(candidato.numero).padStart(6, '0')}
-                        {candidato.email ? ` · ${candidato.email}` : ''}
+                  return (
+                    <button
+                      className={
+                        selecionado
+                          ? 'vacancy-triage-candidate selected'
+                          : 'vacancy-triage-candidate'
+                      }
+                      key={candidatura.id}
+                      type="button"
+                      onClick={() => {
+                        setCandidaturaSelecionadaId(candidatura.id)
+                        setMenuTriagemAbertoId(null)
+                      }}
+                    >
+                      <span className="vacancy-candidate-avatar">
+                        {getCandidatoInitials(candidato.nome_completo)}
                       </span>
-                    </div>
 
-                    <div className="vacancy-candidate-process">
-                      {contratado && (
-                        <span className="vacancy-hired-badge">
-                          Candidato contratado
+                      <span className="vacancy-triage-candidate-text">
+                        <strong>{candidato.nome_completo}</strong>
+                        <small>
+                          CAN-{String(candidato.numero).padStart(6, '0')}
+                          {candidato.email ? ` · ${candidato.email}` : ''}
+                        </small>
+                        <span className="vacancy-triage-badges">
+                          <span className={`vacancy-stage stage-${candidatura.etapa}`}>
+                            {labelFromMap(etapaLabels, candidatura.etapa)}
+                          </span>
+                          <span className={`vacancy-application-status application-${candidatura.status}`}>
+                            {labelFromMap(
+                              candidaturaStatusLabels,
+                              candidatura.status,
+                            )}
+                          </span>
+                          {!temCurriculo && (
+                            <span className="vacancy-resume-missing-badge">
+                              Sem currículo
+                            </span>
+                          )}
                         </span>
-                      )}
-                      <span className={`vacancy-stage stage-${candidatura.etapa}`}>
-                        {candidatura.etapa.replaceAll('_', ' ')}
                       </span>
-                      <span className={`vacancy-application-status application-${candidatura.status}`}>
-                        {candidatura.status.replaceAll('_', ' ')}
-                      </span>
-                    </div>
-                  </article>
-                )
-              })}
 
-              {candidaturasDaVaga.length === 0 && (
-                <div className="vacancy-candidates-empty">
-                  <div>VG</div>
-                  <strong>Nenhum candidato vinculado</strong>
-                  <p>
-                    Os candidatos aparecerão aqui quando forem cadastrados
-                    nesta vaga.
-                  </p>
-                </div>
-              )}
+                      {salvandoEste && (
+                        <span className="vacancy-triage-saving">Salvando...</span>
+                      )}
+                    </button>
+                  )
+                })}
+
+                {candidatosDaVagaFiltrados.length === 0 && (
+                  <div className="vacancy-candidates-empty compact">
+                    <div>VG</div>
+                    <strong>Nenhum candidato neste filtro</strong>
+                    <p>Altere o filtro acima para visualizar outros candidatos.</p>
+                  </div>
+                )}
+              </aside>
+
+              <section className="vacancy-resume-panel">
+                {candidatoTriagemSelecionado ? (
+                  <>
+                    <header className="vacancy-resume-header">
+                      <div>
+                        <span className="vacancies-eyebrow">Currículo</span>
+                        <h3>{candidatoTriagemSelecionado.candidato.nome_completo}</h3>
+                        <p>
+                          {candidatoTriagemSelecionado.candidato.email || 'Sem e-mail'}
+                          {candidatoTriagemSelecionado.candidato.whatsapp
+                            ? ` · ${candidatoTriagemSelecionado.candidato.whatsapp}`
+                            : ''}
+                        </p>
+                      </div>
+
+                      <div className="vacancy-resume-actions">
+                        {curriculoSelecionadoUrl && (
+                          <a
+                            href={curriculoSelecionadoUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Abrir no Drive
+                          </a>
+                        )}
+
+                        <div className="vacancy-triage-menu">
+                          <button
+                            type="button"
+                            aria-label="Ações do candidato"
+                            onClick={() =>
+                              setMenuTriagemAbertoId((atual) =>
+                                atual === candidatoTriagemSelecionado.candidatura.id
+                                  ? null
+                                  : candidatoTriagemSelecionado.candidatura.id,
+                              )
+                            }
+                          >
+                            ⋮
+                          </button>
+
+                          {menuTriagemAbertoId ===
+                            candidatoTriagemSelecionado.candidatura.id && (
+                            <div className="vacancy-triage-menu-list" role="menu">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  atualizarTriagemCurriculo(
+                                    candidatoTriagemSelecionado.candidatura,
+                                    'em_analise',
+                                  )
+                                }
+                                disabled={
+                                  salvandoTriagemId ===
+                                  candidatoTriagemSelecionado.candidatura.id
+                                }
+                              >
+                                Mandar para Em análise
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  atualizarTriagemCurriculo(
+                                    candidatoTriagemSelecionado.candidatura,
+                                    'banco_talentos',
+                                  )
+                                }
+                                disabled={
+                                  salvandoTriagemId ===
+                                  candidatoTriagemSelecionado.candidatura.id
+                                }
+                              >
+                                Mandar para Banco de Talentos
+                              </button>
+
+                              <button
+                                className="danger"
+                                type="button"
+                                onClick={() =>
+                                  atualizarTriagemCurriculo(
+                                    candidatoTriagemSelecionado.candidatura,
+                                    'reprovar',
+                                  )
+                                }
+                                disabled={
+                                  salvandoTriagemId ===
+                                  candidatoTriagemSelecionado.candidatura.id
+                                }
+                              >
+                                Recusar candidato
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </header>
+
+                    <div className="vacancy-resume-meta-grid">
+                      <div>
+                        <small>Entrada</small>
+                        <strong>
+                          {formatDateTime(
+                            candidatoTriagemSelecionado.candidatura.data_entrada,
+                          )}
+                        </strong>
+                      </div>
+                      <div>
+                        <small>Origem</small>
+                        <strong>
+                          {candidatoTriagemSelecionado.candidato.origem || '—'}
+                        </strong>
+                      </div>
+                      <div>
+                        <small>Arquivo</small>
+                        <strong>
+                          {candidatoTriagemSelecionado.candidato.curriculo_drive_nome ||
+                            'Currículo'}
+                        </strong>
+                      </div>
+                    </div>
+
+                    {(candidatoTriagemSelecionado.candidato.observacoes ||
+                      candidatoTriagemSelecionado.candidatura.observacoes ||
+                      candidatoTriagemSelecionado.candidatura.motivo_reprovacao) && (
+                      <div className="vacancy-resume-notes">
+                        {candidatoTriagemSelecionado.candidato.observacoes && (
+                          <p>
+                            <strong>Observação do candidato:</strong>{' '}
+                            {candidatoTriagemSelecionado.candidato.observacoes}
+                          </p>
+                        )}
+
+                        {candidatoTriagemSelecionado.candidatura.observacoes && (
+                          <p>
+                            <strong>Observação da candidatura:</strong>{' '}
+                            {candidatoTriagemSelecionado.candidatura.observacoes}
+                          </p>
+                        )}
+
+                        {candidatoTriagemSelecionado.candidatura.motivo_reprovacao && (
+                          <p>
+                            <strong>Motivo da recusa:</strong>{' '}
+                            {candidatoTriagemSelecionado.candidatura.motivo_reprovacao}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {curriculoPreviewUrl ? (
+                      <div className="vacancy-resume-frame-wrap">
+                        <iframe
+                          title={`Currículo de ${candidatoTriagemSelecionado.candidato.nome_completo}`}
+                          src={curriculoPreviewUrl}
+                          allow="fullscreen"
+                        />
+                      </div>
+                    ) : (
+                      <div className="vacancy-resume-empty">
+                        <strong>Currículo não localizado</strong>
+                        <p>
+                          Este candidato ainda não possui link de currículo salvo no
+                          Google Drive.
+                        </p>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="vacancy-resume-empty">
+                    <strong>Selecione um candidato</strong>
+                    <p>
+                      A lista lateral mostra os candidatos vinculados a esta vaga.
+                    </p>
+                  </div>
+                )}
+              </section>
             </div>
           </section>
         </div>
