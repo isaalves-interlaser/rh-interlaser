@@ -54,6 +54,15 @@ type Candidato = {
   whatsapp: string | null
 }
 
+type BeneficioConfig = {
+  codigo: string
+  nome: string
+  descricao: string | null
+  active: boolean
+  padrao: boolean
+  ordem: number
+}
+
 type Vaga = {
   id: string
   numero: number
@@ -129,6 +138,12 @@ const statusLabels: Record<VagaStatus, string> = {
   preenchida: 'Fechada',
 }
 
+const statusCadastroOptions: VagaStatus[] = [
+  'aberta',
+  'suspensa',
+  'preenchida',
+]
+
 const prioridadeLabels: Record<VagaPrioridade, string> = {
   normal: 'Normal',
   alta: 'Alta',
@@ -186,28 +201,62 @@ function nullableText(value: string) {
   return normalized || null
 }
 
-function getPortalVagaUrl(vagaId: string) {
-  const publicUrl = (import.meta.env.VITE_APP_PUBLIC_URL || window.location.origin)
+function getPortalBaseUrl() {
+  const configuredUrl = String(import.meta.env.VITE_APP_PUBLIC_URL ?? '')
+    .trim()
     .replace(/\/$/, '')
 
-  return `${publicUrl}/vagas/${vagaId}`
+  if (configuredUrl) return configuredUrl
+
+  return window.location.origin.replace(/\/$/, '')
+}
+
+function getPortalVagaUrl(vagaId: string) {
+  return `${getPortalBaseUrl()}/vagas/${vagaId}`
 }
 
 async function copyTextToClipboard(value: string) {
-  if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(value)
-    return
+  try {
+    if (navigator.clipboard?.writeText && window.isSecureContext) {
+      await navigator.clipboard.writeText(value)
+      return true
+    }
+  } catch {
+    // Usa alternativa manual abaixo.
   }
 
   const textarea = document.createElement('textarea')
   textarea.value = value
   textarea.setAttribute('readonly', 'true')
   textarea.style.position = 'fixed'
-  textarea.style.opacity = '0'
+  textarea.style.left = '-9999px'
+  textarea.style.top = '0'
   document.body.appendChild(textarea)
+  textarea.focus()
   textarea.select()
-  document.execCommand('copy')
-  document.body.removeChild(textarea)
+
+  try {
+    const copied = document.execCommand('copy')
+    document.body.removeChild(textarea)
+    return copied
+  } catch {
+    document.body.removeChild(textarea)
+    return false
+  }
+}
+
+function beneficiosToText(beneficios: BeneficioConfig[]) {
+  return beneficios
+    .map((beneficio) => beneficio.nome.trim())
+    .filter(Boolean)
+    .join('\n')
+}
+
+function selectedBenefitNames(value: string) {
+  return value
+    .split('\n')
+    .map((item) => item.trim())
+    .filter(Boolean)
 }
 
 
@@ -221,6 +270,7 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
   const [filiais, setFiliais] = useState<Filial[]>([])
   const [candidaturas, setCandidaturas] = useState<Candidatura[]>([])
   const [candidatos, setCandidatos] = useState<Candidato[]>([])
+  const [beneficiosConfig, setBeneficiosConfig] = useState<BeneficioConfig[]>([])
   const [vagaDetalhesId, setVagaDetalhesId] = useState<string | null>(null)
   const [form, setForm] = useState<VagaForm>(initialForm)
   const [editandoId, setEditandoId] = useState<string | null>(null)
@@ -244,6 +294,7 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
       vagasResult,
       candidaturasResult,
       candidatosResult,
+      beneficiosResult,
     ] = await Promise.all([
         supabase
           .from('empresas')
@@ -267,6 +318,12 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
           .from('candidatos')
           .select('id, numero, nome_completo, email, whatsapp')
           .order('nome_completo'),
+        supabase
+          .from('beneficios_configuracao')
+          .select('codigo, nome, descricao, active, padrao, ordem')
+          .eq('active', true)
+          .order('ordem')
+          .order('nome'),
       ])
 
     if (
@@ -274,14 +331,16 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
       filiaisResult.error ||
       vagasResult.error ||
       candidaturasResult.error ||
-      candidatosResult.error
+      candidatosResult.error ||
+      beneficiosResult.error
     ) {
       console.error(
         empresasResult.error ||
           filiaisResult.error ||
           vagasResult.error ||
           candidaturasResult.error ||
-          candidatosResult.error,
+          candidatosResult.error ||
+          beneficiosResult.error,
       )
       setErro('Não foi possível carregar os dados das vagas.')
       setCarregando(false)
@@ -295,6 +354,7 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
       (candidaturasResult.data ?? []) as Candidatura[],
     )
     setCandidatos((candidatosResult.data ?? []) as Candidato[])
+    setBeneficiosConfig((beneficiosResult.data ?? []) as BeneficioConfig[])
     setCarregando(false)
   }, [])
 
@@ -322,6 +382,19 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
         (filial) => filial.empresa_id === form.empresa_id,
       ),
     [filiais, form.empresa_id],
+  )
+
+  const beneficiosPadraoTexto = useMemo(
+    () =>
+      beneficiosToText(
+        beneficiosConfig.filter((beneficio) => beneficio.padrao),
+      ),
+    [beneficiosConfig],
+  )
+
+  const beneficiosSelecionados = useMemo(
+    () => selectedBenefitNames(form.beneficios),
+    [form.beneficios],
   )
 
   const vagasFiltradas = useMemo(() => {
@@ -400,7 +473,10 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
     : []
 
   function abrirNovaVaga() {
-    setForm(initialForm)
+    setForm({
+      ...initialForm,
+      beneficios: beneficiosPadraoTexto,
+    })
     setEditandoId(null)
     setErro('')
     setMensagem('')
@@ -553,22 +629,38 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
 
     if (!vaga.publicar_portal || vaga.status !== 'aberta') {
       setErro(
-        'A vaga precisa estar Aberta e publicada no portal para copiar o link público.',
+        'Para copiar o link público, deixe a vaga com Status Aberta e Publicar no portal = Sim.',
       )
       return
     }
 
     const link = getPortalVagaUrl(vaga.id)
+    const copied = await copyTextToClipboard(link)
 
-    try {
-      await copyTextToClipboard(link)
+    if (copied) {
       setMensagem(
         `Link da vaga VAG-${String(vaga.numero).padStart(6, '0')} copiado com sucesso.`,
       )
-    } catch (error) {
-      console.error('Erro ao copiar link da vaga:', error)
-      setErro('Não foi possível copiar o link automaticamente. Abra a vaga pública e copie pela barra do navegador.')
+      return
     }
+
+    window.prompt('Copie o link da vaga:', link)
+    setMensagem('Link da vaga gerado. Copie pela janela exibida.')
+  }
+
+  function toggleBeneficio(nome: string) {
+    setForm((atual) => {
+      const atuais = selectedBenefitNames(atual.beneficios)
+      const existe = atuais.includes(nome)
+      const proximos = existe
+        ? atuais.filter((item) => item !== nome)
+        : [...atuais, nome]
+
+      return {
+        ...atual,
+        beneficios: proximos.join('\n'),
+      }
+    })
   }
 
   async function excluirVaga(vaga: Vaga) {
@@ -833,12 +925,7 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
                         <button
                           type="button"
                           onClick={() => copiarLinkDaVaga(vaga)}
-                          disabled={!vaga.publicar_portal || vaga.status !== 'aberta'}
-                          title={
-                            vaga.publicar_portal && vaga.status === 'aberta'
-                              ? 'Copiar link público da vaga'
-                              : 'Disponível apenas para vagas abertas e publicadas'
-                          }
+                          title="Copiar link público da vaga"
                         >
                           Copiar link
                         </button>
@@ -1225,9 +1312,9 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
                     }
                     disabled={salvando}
                   >
-                    {Object.entries(statusLabels).map(([value, label]) => (
+                    {statusCadastroOptions.map((value) => (
                       <option key={value} value={value}>
-                        {label}
+                        {statusLabels[value]}
                       </option>
                     ))}
                   </select>
@@ -1250,36 +1337,26 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
                 </div>
 
                 <div className="vacancies-form-group full">
-                  <label>Publicação da vaga</label>
-                  <div className="vacancies-publication-card">
-                    <div>
-                      <strong>Publicar no portal?</strong>
-                      <span>
-                        Quando marcado como “Sim”, a vaga aparecerá para os
-                        candidatos na página pública, desde que o status esteja
-                        como Aberta.
-                      </span>
-                    </div>
-
-                    <select
+                  <label className="vacancies-toggle-card" htmlFor="vaga-publicar-portal">
+                    <input
                       id="vaga-publicar-portal"
-                      value={form.publicar_portal ? 'sim' : 'nao'}
+                      type="checkbox"
+                      checked={form.publicar_portal}
                       onChange={(event) =>
                         setForm((atual) => ({
                           ...atual,
-                          publicar_portal: event.target.value === 'sim',
+                          publicar_portal: event.target.checked,
                         }))
                       }
                       disabled={salvando}
-                    >
-                      <option value="nao">Não publicar</option>
-                      <option value="sim">Publicar no portal</option>
-                    </select>
-                  </div>
-                  <small>
-                    Use “Não publicar” para deixar a vaga preparada internamente
-                    antes de liberar para os candidatos.
-                  </small>
+                    />
+                    <span>
+                      <strong>Publicar no portal?</strong>
+                      <small>
+                        Quando marcado, a vaga aparece na página pública se o status estiver Aberta.
+                      </small>
+                    </span>
+                  </label>
                 </div>
 
                 <div className="vacancies-form-section-title">
@@ -1358,20 +1435,42 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
                 </div>
 
                 <div className="vacancies-form-group full">
-                  <label htmlFor="vaga-beneficios">Benefícios</label>
-                  <textarea
-                    id="vaga-beneficios"
-                    value={form.beneficios}
-                    onChange={(event) =>
-                      setForm((atual) => ({
-                        ...atual,
-                        beneficios: event.target.value,
-                      }))
-                    }
-                    disabled={salvando}
-                    rows={3}
-                    placeholder="Ex.: Vale transporte, refeição, cesta básica, convênio médico."
-                  />
+                  <label>Benefícios</label>
+                  <div className="vacancies-benefits-picker">
+                    {beneficiosConfig.map((beneficio) => (
+                      <label
+                        className={
+                          beneficiosSelecionados.includes(beneficio.nome)
+                            ? 'vacancies-benefit-option selected'
+                            : 'vacancies-benefit-option'
+                        }
+                        key={beneficio.codigo}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={beneficiosSelecionados.includes(beneficio.nome)}
+                          onChange={() => toggleBeneficio(beneficio.nome)}
+                          disabled={salvando}
+                        />
+                        <span>
+                          <strong>{beneficio.nome}</strong>
+                          {beneficio.descricao && (
+                            <small>{beneficio.descricao}</small>
+                          )}
+                        </span>
+                      </label>
+                    ))}
+
+                    {beneficiosConfig.length === 0 && (
+                      <div className="vacancies-benefits-empty">
+                        Nenhum benefício ativo cadastrado. Cadastre em Configurações &gt; Benefícios.
+                      </div>
+                    )}
+                  </div>
+                  <small>
+                    Cadastre e ative os benefícios em Configurações &gt; Benefícios.
+                    O candidato verá apenas os itens selecionados aqui.
+                  </small>
                 </div>
 
                 <div className="vacancies-form-group">

@@ -9,6 +9,7 @@ import Onboarding from './Onboarding'
 import DashboardHome from './DashboardHome'
 import EmpresasFiliais from './EmpresasFiliais'
 import DocumentosConfiguracao from './DocumentosConfiguracao'
+import BeneficiosConfiguracao from './BeneficiosConfiguracao'
 import Contratos from './Contratos'
 import Relatorios from './Relatorios'
 import './Dashboard.css'
@@ -25,6 +26,7 @@ type PageId =
   | 'usuarios'
   | 'empresas-filiais'
   | 'documentacao-config'
+  | 'beneficios-config'
 
 type UserRole = 'admin' | 'rh' | 'gestor' | 'consulta'
 
@@ -240,6 +242,11 @@ const settingsMenuItems: MenuItem[] = [
   {
     id: 'documentacao-config',
     label: 'Documentação',
+    icon: 'documents',
+  },
+  {
+    id: 'beneficios-config',
+    label: 'Benefícios',
     icon: 'documents',
   },
 ]
@@ -624,6 +631,11 @@ function Dashboard({
           {activePage === 'documentacao-config' &&
             canManageHrSettings && (
               <DocumentosConfiguracao />
+            )}
+
+          {activePage === 'beneficios-config' &&
+            canManageHrSettings && (
+              <BeneficiosConfiguracao />
             )}
         </div>
       </main>
