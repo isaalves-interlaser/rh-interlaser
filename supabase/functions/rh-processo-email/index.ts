@@ -388,7 +388,7 @@ Deno.serve(async (request: Request) => {
     const { data: application, error: applicationError } = await admin
       .from('candidaturas')
       .select(
-        'id, candidato_id, vaga_id, teste_inicio, teste_local, teste_google_event_id, teste_google_event_link, exame_inicio, exame_local, exame_status, exame_google_event_id, exame_google_event_link, observacoes',
+      'id, candidato_id, vaga_id, teste_inicio, teste_local, teste_google_event_id, teste_google_event_link, teste_email_enviado_em, exame_inicio, exame_local, exame_status, exame_google_event_id, exame_google_event_link, exame_email_enviado_em, observacoes',
       )
       .eq('id', candidaturaId)
       .single()
@@ -493,29 +493,59 @@ Deno.serve(async (request: Request) => {
       ? 'Agendamento de teste — Interlaser'
       : 'Agendamento de exame admissional — Interlaser'
 
-    await sendEmail({
-      accessToken,
-      to: recipient,
-      subject,
-      html: buildHtml({
-        tipo,
-        candidatoNome: candidate.nome_completo,
-        vagaCargo: vacancy.cargo,
-        vagaSetor: vacancy.setor,
-        inicio,
-        local,
-        observacoes: application.observacoes,
-        exameStatus: application.exame_status,
-      }),
-    })
+    const emailJaEnviado = isTest
+    ? application.teste_email_enviado_em
+    : application.exame_email_enviado_em
+
+    let emailMessage = ''
+
+    if (emailJaEnviado) {
+      emailMessage = isTest
+        ? 'Teste atualizado no Google Agenda. O e-mail já havia sido enviado anteriormente, por isso não foi reenviado.'
+        : 'Exame atualizado no Google Agenda. O e-mail já havia sido enviado anteriormente, por isso não foi reenviado.'
+    } else {
+      await sendEmail({
+        accessToken,
+        to: recipient,
+        subject,
+        html: buildHtml({
+          tipo,
+          candidatoNome: candidate.nome_completo,
+          vagaCargo: vacancy.cargo,
+          vagaSetor: vacancy.setor,
+          inicio,
+          local,
+          observacoes: application.observacoes,
+          exameStatus: application.exame_status,
+        }),
+      })
+
+      const emailUpdatePayload = isTest
+        ? {
+            teste_email_enviado_em: new Date().toISOString(),
+            teste_email_ultimo_erro: null,
+          }
+        : {
+            exame_email_enviado_em: new Date().toISOString(),
+            exame_email_ultimo_erro: null,
+          }
+
+      await admin
+        .from('candidaturas')
+        .update(emailUpdatePayload)
+        .eq('id', candidaturaId)
+
+      emailMessage = isTest
+        ? 'Teste criado no Google Agenda e e-mail enviado ao candidato.'
+        : 'Exame criado no Google Agenda e e-mail enviado ao candidato.'
+    }
 
     return json({
       ok: true,
-      message: isTest
-        ? 'Teste criado no Google Agenda e e-mail enviado ao candidato.'
-        : 'Exame criado no Google Agenda e e-mail enviado ao candidato.',
+      message: emailMessage,
       googleEventId: calendarEvent.eventId,
       googleEventLink: calendarEvent.eventLink,
+      emailEnviado: !emailJaEnviado,
     })
   } catch (error) {
     console.error('Erro em rh-processo-email:', error)
