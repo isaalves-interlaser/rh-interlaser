@@ -186,6 +186,30 @@ function nullableText(value: string) {
   return normalized || null
 }
 
+function getPortalVagaUrl(vagaId: string) {
+  const publicUrl = (import.meta.env.VITE_APP_PUBLIC_URL || window.location.origin)
+    .replace(/\/$/, '')
+
+  return `${publicUrl}/vagas/${vagaId}`
+}
+
+async function copyTextToClipboard(value: string) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value)
+    return
+  }
+
+  const textarea = document.createElement('textarea')
+  textarea.value = value
+  textarea.setAttribute('readonly', 'true')
+  textarea.style.position = 'fixed'
+  textarea.style.opacity = '0'
+  document.body.appendChild(textarea)
+  textarea.select()
+  document.execCommand('copy')
+  document.body.removeChild(textarea)
+}
+
 
 type VagasProps = {
   responsavelRhEmail?: string
@@ -523,6 +547,30 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
     await carregarDados()
   }
 
+  async function copiarLinkDaVaga(vaga: Vaga) {
+    setErro('')
+    setMensagem('')
+
+    if (!vaga.publicar_portal || vaga.status !== 'aberta') {
+      setErro(
+        'A vaga precisa estar Aberta e publicada no portal para copiar o link público.',
+      )
+      return
+    }
+
+    const link = getPortalVagaUrl(vaga.id)
+
+    try {
+      await copyTextToClipboard(link)
+      setMensagem(
+        `Link da vaga VAG-${String(vaga.numero).padStart(6, '0')} copiado com sucesso.`,
+      )
+    } catch (error) {
+      console.error('Erro ao copiar link da vaga:', error)
+      setErro('Não foi possível copiar o link automaticamente. Abra a vaga pública e copie pela barra do navegador.')
+    }
+  }
+
   async function excluirVaga(vaga: Vaga) {
     setErro('')
     setMensagem('')
@@ -784,6 +832,19 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
 
                         <button
                           type="button"
+                          onClick={() => copiarLinkDaVaga(vaga)}
+                          disabled={!vaga.publicar_portal || vaga.status !== 'aberta'}
+                          title={
+                            vaga.publicar_portal && vaga.status === 'aberta'
+                              ? 'Copiar link público da vaga'
+                              : 'Disponível apenas para vagas abertas e publicadas'
+                          }
+                        >
+                          Copiar link
+                        </button>
+
+                        <button
+                          type="button"
                           onClick={() => abrirEdicao(vaga)}
                         >
                           Editar
@@ -816,7 +877,7 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
 
               {vagasFiltradas.length === 0 && (
                 <tr>
-                  <td colSpan={11}>
+                  <td colSpan={12}>
                     <div className="vacancies-empty">
                       <div>VG</div>
                       <strong>Nenhuma vaga encontrada</strong>

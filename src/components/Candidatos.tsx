@@ -82,6 +82,15 @@ type Vaga = {
   status: string
 }
 
+type CandidateHistoryItem = {
+  id: string
+  date: string | null
+  title: string
+  description: string
+  tag?: string
+  tone?: 'neutral' | 'success' | 'warning' | 'danger'
+}
+
 type CandidatoForm = {
   nome_completo: string
   email: string
@@ -200,6 +209,26 @@ function formatCurrency(value: number | null) {
     style: 'currency',
     currency: 'BRL',
   }).format(value)
+}
+
+function formatDateTime(value: string | null) {
+  if (!value) {
+    return 'Data não informada'
+  }
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return 'Data não informada'
+  }
+
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
 }
 
 function Candidatos() {
@@ -400,6 +429,105 @@ function Candidatos() {
         : [],
     [candidatoSelecionado, candidaturasPorCandidato],
   )
+
+  const historicoCandidato = useMemo<CandidateHistoryItem[]>(() => {
+    if (!candidatoSelecionado) {
+      return []
+    }
+
+    const eventos: CandidateHistoryItem[] = [
+      {
+        id: `cadastro-${candidatoSelecionado.id}`,
+        date: candidatoSelecionado.created_at,
+        title: 'Cadastro criado',
+        description: 'Candidato registrado no sistema de RH.',
+        tag: origemLabels[candidatoSelecionado.origem],
+        tone: 'neutral',
+      },
+    ]
+
+    for (const application of candidaturasSelecionadas) {
+      const vaga = vagas.find((item) => item.id === application.vaga_id)
+      const vagaLabel = vaga
+        ? `VAG-${String(vaga.numero).padStart(6, '0')} — ${vaga.cargo}`
+        : 'Vaga não encontrada'
+
+      eventos.push({
+        id: `candidatura-${application.id}`,
+        date: application.created_at ?? application.data_entrada,
+        title: 'Candidatura vinculada',
+        description: `${vagaLabel}${vaga?.setor ? ` · ${vaga.setor}` : ''}`,
+        tag: etapaLabels[application.etapa],
+        tone: application.status === 'contratado' ? 'success' : 'neutral',
+      })
+
+      if (application.updated_at && application.updated_at !== application.created_at) {
+        eventos.push({
+          id: `atualizacao-${application.id}`,
+          date: application.updated_at,
+          title: 'Processo atualizado',
+          description: `${vagaLabel} está em “${etapaLabels[application.etapa]}” com situação “${statusLabels[application.status]}”.`,
+          tag: statusLabels[application.status],
+          tone:
+            application.status === 'reprovado' || application.status === 'desistente'
+              ? 'danger'
+              : application.status === 'contratado'
+                ? 'success'
+                : 'warning',
+        })
+      }
+
+      if (application.proxima_acao || application.proxima_acao_em) {
+        eventos.push({
+          id: `proxima-acao-${application.id}`,
+          date: application.proxima_acao_em ?? application.updated_at ?? application.created_at,
+          title: 'Próxima ação definida',
+          description: application.proxima_acao ?? 'Acompanhar próxima etapa do processo.',
+          tag: vagaLabel,
+          tone: 'warning',
+        })
+      }
+
+      if (application.observacoes) {
+        eventos.push({
+          id: `observacao-${application.id}`,
+          date: application.updated_at ?? application.created_at,
+          title: 'Observação da candidatura',
+          description: application.observacoes,
+          tag: vagaLabel,
+          tone: 'neutral',
+        })
+      }
+
+      if (application.motivo_reprovacao) {
+        eventos.push({
+          id: `reprovacao-${application.id}`,
+          date: application.updated_at ?? application.created_at,
+          title: 'Motivo de reprovação',
+          description: application.motivo_reprovacao,
+          tag: vagaLabel,
+          tone: 'danger',
+        })
+      }
+
+      if (application.parecer_final) {
+        eventos.push({
+          id: `parecer-${application.id}`,
+          date: application.updated_at ?? application.created_at,
+          title: 'Parecer final registrado',
+          description: application.parecer_final,
+          tag: vagaLabel,
+          tone: application.status === 'contratado' ? 'success' : 'neutral',
+        })
+      }
+    }
+
+    return eventos.sort((a, b) => {
+      const dateA = a.date ? new Date(a.date).getTime() : 0
+      const dateB = b.date ? new Date(b.date).getTime() : 0
+      return dateB - dateA
+    })
+  }, [candidatoSelecionado, candidaturasSelecionadas, vagas])
 
   function escolherCandidaturaPrincipal(
     applications: Candidatura[],
@@ -1152,6 +1280,51 @@ function Candidatos() {
                   <div className="candidate-details-notes">
                     <span>Observações</span>
                     <p>{candidatoSelecionado.observacoes}</p>
+                  </div>
+                )}
+              </section>
+
+              <section className="candidate-details-section">
+                <div className="candidate-details-section-header">
+                  <div>
+                    <h3>Histórico do candidato</h3>
+                    <p>
+                      Linha do tempo com cadastro, candidaturas, atualizações,
+                      observações e pareceres registrados.
+                    </p>
+                  </div>
+                </div>
+
+                {historicoCandidato.length > 0 ? (
+                  <div className="candidate-history-timeline">
+                    {historicoCandidato.map((item) => (
+                      <article
+                        className={`candidate-history-item ${item.tone ?? 'neutral'}`}
+                        key={item.id}
+                      >
+                        <span className="candidate-history-dot" aria-hidden="true" />
+
+                        <div className="candidate-history-content">
+                          <div className="candidate-history-top">
+                            <strong>{item.title}</strong>
+                            <span>{formatDateTime(item.date)}</span>
+                          </div>
+
+                          <p>{item.description}</p>
+
+                          {item.tag && (
+                            <small>{item.tag}</small>
+                          )}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="candidate-details-no-application">
+                    <strong>Nenhum histórico encontrado</strong>
+                    <p>
+                      As movimentações futuras do candidato aparecerão aqui.
+                    </p>
                   </div>
                 )}
               </section>
