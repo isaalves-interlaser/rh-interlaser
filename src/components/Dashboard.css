@@ -25,6 +25,7 @@
 }
 
 .sidebar-brand {
+  flex: 0 0 auto;
   padding: 0 9px 24px;
   display: flex;
   align-items: center;
@@ -158,26 +159,22 @@
 
 .sidebar-submenu {
   display: grid;
-  grid-template-rows: 0fr;
+  gap: 2px;
+  max-height: 0;
   overflow: hidden;
   opacity: 0;
   transition:
-    grid-template-rows 0.2s ease,
-    opacity 0.2s ease;
+    max-height 0.22s ease,
+    opacity 0.18s ease;
 }
 
 .sidebar-submenu.open {
-  grid-template-rows: 1fr;
+  max-height: 260px;
   opacity: 1;
 }
 
 .sidebar-submenu::before {
-  content: '';
-  min-height: 0;
-}
-
-.sidebar-submenu.open::before {
-  display: none;
+  content: none;
 }
 
 .sidebar-submenu-item {
@@ -220,7 +217,9 @@
 }
 
 .sidebar-user {
-  padding: 16px 8px 0;
+  flex: 0 0 auto;
+  margin-top: 12px;
+  padding: 14px 8px 0;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -472,9 +471,11 @@
     left: 0;
     z-index: 80;
     width: min(286px, 86vw);
-    min-height: 100vh;
-    height: 100vh;
-    padding: 24px 16px 18px;
+    min-height: 100dvh;
+    height: 100dvh;
+    max-height: 100dvh;
+    padding: 18px 14px 14px;
+    overflow: hidden;
     transform: translateX(-105%);
     transition: transform 0.22s ease;
   }
@@ -533,12 +534,16 @@
   }
 
   .sidebar-brand {
-    padding-bottom: 24px;
+    padding-bottom: 16px;
   }
 
   .sidebar-navigation {
-    padding-top: 25px;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding-top: 18px;
+    padding-bottom: 12px;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .sidebar-main-menu {
@@ -553,6 +558,7 @@
 
   .sidebar-menu-item {
     width: 100%;
+    min-height: 42px;
     flex: initial;
   }
 
@@ -561,12 +567,13 @@
   }
 
   .sidebar-submenu.open {
-    display: grid;
+    max-height: 260px;
     overflow: hidden;
   }
 
   .sidebar-submenu-item {
     width: calc(100% - 10px);
+    min-height: 36px;
     flex: initial;
     margin-left: 10px;
     padding-left: 22px;
@@ -577,6 +584,9 @@
   }
 
   .sidebar-user {
+    flex: 0 0 auto;
+    margin-top: 8px;
+    padding-top: 10px;
     display: flex;
   }
 
@@ -622,5 +632,33 @@
 
   .statistics-grid {
     grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 380px) {
+  .system-sidebar {
+    width: min(270px, 84vw);
+    padding: 14px 12px 12px;
+  }
+
+  .sidebar-brand {
+    padding-bottom: 12px;
+  }
+
+  .sidebar-brand-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .sidebar-navigation {
+    padding-top: 14px;
+  }
+
+  .sidebar-menu-item {
+    min-height: 39px;
+    font-size: 11px;
+  }
+
+  .sidebar-submenu-item {
+    min-height: 34px;
   }
 }
