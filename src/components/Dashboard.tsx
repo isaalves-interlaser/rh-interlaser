@@ -54,6 +54,7 @@ type MenuIconName =
   | 'dashboard'
   | 'pipeline'
   | 'candidates'
+  | 'talent-bank'
   | 'vacancies'
   | 'calendar'
   | 'onboarding'
@@ -110,6 +111,15 @@ function SidebarIcon({ name }: { name: SidebarIconName }) {
         <svg {...commonProps} aria-hidden="true">
           <circle cx="12" cy="8" r="3.2" stroke="currentColor" strokeWidth="1.8" />
           <path d="M5.5 20a6.5 6.5 0 0 1 13 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+      )
+    case 'talent-bank':
+      return (
+        <svg {...commonProps} aria-hidden="true">
+          <path d="M4.5 9.5h15v8.2a2.3 2.3 0 0 1-2.3 2.3H6.8a2.3 2.3 0 0 1-2.3-2.3V9.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+          <path d="M7 9.5V7.2A2.2 2.2 0 0 1 9.2 5h5.6A2.2 2.2 0 0 1 17 7.2v2.3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          <path d="M10.8 13.2 12 10.9l1.2 2.3 2.6.4-1.9 1.8.5 2.6-2.4-1.2L9.6 18l.5-2.6-1.9-1.8 2.6-.4Z" stroke="currentColor" strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M4.5 9.5 7.2 13h1.6M19.5 9.5 16.8 13h-1.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       )
     case 'vacancies':
@@ -209,7 +219,7 @@ const mainMenuItems: MenuItem[] = [
   {
     id: 'banco-talentos',
     label: 'Banco de Talentos',
-    icon: 'candidates',
+    icon: 'talent-bank',
   },
   {
     id: 'vagas',
