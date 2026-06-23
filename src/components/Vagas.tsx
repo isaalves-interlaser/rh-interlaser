@@ -60,6 +60,7 @@ type Candidato = {
   curriculo_drive_file_id: string | null
   curriculo_drive_url: string | null
   curriculo_drive_nome: string | null
+  banco_talentos_area: BancoTalentosArea | null
 }
 
 type TriagemFiltro =
@@ -69,6 +70,22 @@ type TriagemFiltro =
   | 'banco_talentos'
   | 'reprovados'
 
+type BancoTalentosArea = 'administrativo' | 'producao'
+
+type BancoTalentosTriagemForm = {
+  area: BancoTalentosArea | ''
+  observacao: string
+}
+
+type BancoTalentosTriagemModal = {
+  candidatura: Candidatura
+  candidato: Candidato
+}
+
+type BancoTalentosTriagemDetalhes = {
+  area: BancoTalentosArea
+  observacao: string
+}
 
 type BeneficioConfig = {
   codigo: string
@@ -186,6 +203,11 @@ const candidaturaStatusLabels: Record<string, string> = {
   suspenso: 'Suspenso',
   banco_talentos: 'Banco de talentos',
   contratado: 'Contratado',
+}
+
+const bancoTalentosAreaLabels: Record<BancoTalentosArea, string> = {
+  administrativo: 'Administrativo',
+  producao: 'Produção',
 }
 
 const prioridadeLabels: Record<VagaPrioridade, string> = {
@@ -384,6 +406,25 @@ function candidaturaEstaRecusada(candidatura: Candidatura) {
   return candidatura.status === 'reprovado'
 }
 
+function criarRegistroHistorico(texto: string) {
+  const agora = new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(new Date())
+
+  return `[${agora}] ${texto}`
+}
+
+function adicionarObservacaoHistorico(
+  observacaoAtual: string | null | undefined,
+  texto: string,
+) {
+  const registro = criarRegistroHistorico(texto)
+  const observacao = observacaoAtual?.trim()
+
+  return observacao ? `${observacao}\n\n${registro}` : registro
+}
+
 type VagasProps = {
   responsavelRhEmail?: string
   onOpenPipeline?: () => void
@@ -405,6 +446,10 @@ function Vagas({ onOpenPipeline }: VagasProps) {
     useState<TriagemFiltro>('todos')
   const [menuTriagemAbertoId, setMenuTriagemAbertoId] =
     useState<string | null>(null)
+  const [bancoTalentosTriagem, setBancoTalentosTriagem] =
+    useState<BancoTalentosTriagemModal | null>(null)
+  const [bancoTalentosTriagemForm, setBancoTalentosTriagemForm] =
+    useState<BancoTalentosTriagemForm>({ area: '', observacao: '' })
   const [salvandoTriagemId, setSalvandoTriagemId] =
     useState<string | null>(null)
   const [form, setForm] = useState<VagaForm>(initialForm)
@@ -452,7 +497,7 @@ function Vagas({ onOpenPipeline }: VagasProps) {
           .order('data_entrada', { ascending: false }),
         supabase
           .from('candidatos')
-          .select('id, numero, nome_completo, email, whatsapp, origem, observacoes, curriculo_path, curriculo_drive_file_id, curriculo_drive_url, curriculo_drive_nome')
+          .select('id, numero, nome_completo, email, whatsapp, origem, observacoes, curriculo_path, curriculo_drive_file_id, curriculo_drive_url, curriculo_drive_nome, banco_talentos_area')
           .order('nome_completo'),
         supabase
           .from('beneficios_configuracao')
@@ -716,6 +761,7 @@ function Vagas({ onOpenPipeline }: VagasProps) {
     setCandidaturaSelecionadaId(null)
     setFiltroTriagem('todos')
     setMenuTriagemAbertoId(null)
+    setBancoTalentosTriagem(null)
   }
 
   function fecharTriagem() {
@@ -723,6 +769,7 @@ function Vagas({ onOpenPipeline }: VagasProps) {
     setCandidaturaSelecionadaId(null)
     setFiltroTriagem('todos')
     setMenuTriagemAbertoId(null)
+    setBancoTalentosTriagem(null)
   }
 
   function abrirNovaVaga() {
@@ -922,6 +969,48 @@ function Vagas({ onOpenPipeline }: VagasProps) {
     })
   }
 
+  function abrirBancoTalentosDaTriagem(
+    candidatura: Candidatura,
+    candidato: Candidato,
+  ) {
+    setMenuTriagemAbertoId(null)
+    setErro('')
+    setMensagem('')
+    setBancoTalentosTriagem({ candidatura, candidato })
+    setBancoTalentosTriagemForm({
+      area: candidato.banco_talentos_area ?? '',
+      observacao: '',
+    })
+  }
+
+  function fecharBancoTalentosDaTriagem() {
+    if (salvandoTriagemId) return
+
+    setBancoTalentosTriagem(null)
+    setBancoTalentosTriagemForm({ area: '', observacao: '' })
+  }
+
+  async function confirmarBancoTalentosDaTriagem() {
+    if (!bancoTalentosTriagem) return
+
+    if (!bancoTalentosTriagemForm.area) {
+      setErro('Selecione a área do Banco de Talentos para continuar.')
+      return
+    }
+
+    await atualizarTriagemCurriculo(
+      bancoTalentosTriagem.candidatura,
+      'banco_talentos',
+      {
+        area: bancoTalentosTriagemForm.area,
+        observacao: bancoTalentosTriagemForm.observacao.trim(),
+      },
+    )
+
+    setBancoTalentosTriagem(null)
+    setBancoTalentosTriagemForm({ area: '', observacao: '' })
+  }
+
   function abrirPipelineDaTriagem() {
     setMenuTriagemAbertoId(null)
 
@@ -936,6 +1025,7 @@ function Vagas({ onOpenPipeline }: VagasProps) {
   async function atualizarTriagemCurriculo(
     candidatura: Candidatura,
     acao: 'em_analise' | 'banco_talentos' | 'reprovar',
+    detalhesBancoTalentos?: BancoTalentosTriagemDetalhes,
   ) {
     setErro('')
     setMensagem('')
@@ -953,14 +1043,23 @@ function Vagas({ onOpenPipeline }: VagasProps) {
     }
 
     if (acao === 'banco_talentos') {
-      const confirmou = window.confirm(
-        'Mover este candidato para Banco de Talentos?',
-      )
+      if (!detalhesBancoTalentos) {
+        setErro('Informe a área do Banco de Talentos para continuar.')
+        return
+      }
 
-      if (!confirmou) return
+      const areaLabel = bancoTalentosAreaLabels[detalhesBancoTalentos.area]
+      const observacaoRh = detalhesBancoTalentos.observacao
+      const detalhesHistorico = observacaoRh
+        ? ` Movido para Banco de Talentos. Área: ${areaLabel}. Observação do RH: ${observacaoRh}`
+        : ` Movido para Banco de Talentos. Área: ${areaLabel}.`
 
       payload.status = 'banco_talentos'
       payload.motivo_reprovacao = null
+      payload.observacoes = adicionarObservacaoHistorico(
+        candidatura.observacoes,
+        detalhesHistorico.trim(),
+      )
       destinoDrive = 'banco_talentos'
       mensagemSucesso = 'Candidato movido para Banco de Talentos.'
     }
@@ -1003,6 +1102,48 @@ function Vagas({ onOpenPipeline }: VagasProps) {
       return
     }
 
+    let avisoCadastro = ''
+
+    if (acao === 'banco_talentos' && detalhesBancoTalentos) {
+      const candidatoAtual = candidatosPorId.get(candidatura.candidato_id)
+      const areaLabel = bancoTalentosAreaLabels[detalhesBancoTalentos.area]
+      const textoHistorico = detalhesBancoTalentos.observacao
+        ? `Movido para Banco de Talentos. Área: ${areaLabel}. Observação do RH: ${detalhesBancoTalentos.observacao}`
+        : `Movido para Banco de Talentos. Área: ${areaLabel}.`
+
+      const { data: candidatoAtualizado, error: candidatoError } = await supabase
+        .from('candidatos')
+        .update({
+          banco_talentos_area: detalhesBancoTalentos.area,
+          observacoes: adicionarObservacaoHistorico(
+            candidatoAtual?.observacoes,
+            textoHistorico,
+          ),
+        })
+        .eq('id', candidatura.candidato_id)
+        .select(
+          'id, numero, nome_completo, email, whatsapp, origem, observacoes, curriculo_path, curriculo_drive_file_id, curriculo_drive_url, curriculo_drive_nome, banco_talentos_area',
+        )
+        .single()
+
+      if (candidatoError) {
+        console.error(
+          'Erro ao atualizar área do Banco de Talentos:',
+          candidatoError.message,
+        )
+        avisoCadastro =
+          ' A situação foi atualizada, mas não foi possível salvar a área no cadastro do candidato.'
+      } else if (candidatoAtualizado) {
+        setCandidatos((atuais) =>
+          atuais.map((item) =>
+            item.id === candidatoAtualizado.id
+              ? (candidatoAtualizado as Candidato)
+              : item,
+          ),
+        )
+      }
+    }
+
     let avisoDrive = ''
 
     if (destinoDrive) {
@@ -1026,7 +1167,7 @@ function Vagas({ onOpenPipeline }: VagasProps) {
     )
     setCandidaturaSelecionadaId(candidatura.id)
     setSalvandoTriagemId(null)
-    setMensagem(`${mensagemSucesso}${avisoDrive}`)
+    setMensagem(`${mensagemSucesso}${avisoCadastro}${avisoDrive}`)
   }
 
   async function excluirVaga(vaga: Vaga) {
@@ -1580,9 +1721,9 @@ function Vagas({ onOpenPipeline }: VagasProps) {
                                 <button
                                   type="button"
                                   onClick={() =>
-                                    atualizarTriagemCurriculo(
+                                    abrirBancoTalentosDaTriagem(
                                       candidatoTriagemSelecionado.candidatura,
-                                      'banco_talentos',
+                                      candidatoTriagemSelecionado.candidato,
                                     )
                                   }
                                   disabled={
@@ -1699,6 +1840,107 @@ function Vagas({ onOpenPipeline }: VagasProps) {
                 )}
               </section>
             </div>
+          </section>
+        </div>
+      )}
+
+      {bancoTalentosTriagem && (
+        <div
+          className="vacancies-modal-overlay"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              fecharBancoTalentosDaTriagem()
+            }
+          }}
+        >
+          <section
+            className="vacancies-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="titulo-banco-talentos-triagem"
+          >
+            <header className="vacancies-modal-header">
+              <div>
+                <span className="vacancies-eyebrow">Banco de Talentos</span>
+                <h2 id="titulo-banco-talentos-triagem">
+                  Mover candidato para Banco de Talentos
+                </h2>
+                <p className="vacancy-candidates-subtitle">
+                  {bancoTalentosTriagem.candidato.nome_completo}
+                </p>
+              </div>
+
+              <button
+                className="vacancies-close-button"
+                type="button"
+                onClick={fecharBancoTalentosDaTriagem}
+                aria-label="Fechar"
+              >
+                ×
+              </button>
+            </header>
+
+            <div className="vacancies-form-grid">
+              <label className="vacancies-form-group" htmlFor="triagem-banco-area">
+                <span>Área *</span>
+                <select
+                  id="triagem-banco-area"
+                  value={bancoTalentosTriagemForm.area}
+                  onChange={(event) =>
+                    setBancoTalentosTriagemForm((atual) => ({
+                      ...atual,
+                      area: event.target.value as BancoTalentosArea | '',
+                    }))
+                  }
+                >
+                  <option value="">Selecione...</option>
+                  {(Object.keys(bancoTalentosAreaLabels) as BancoTalentosArea[]).map(
+                    (area) => (
+                      <option key={area} value={area}>
+                        {bancoTalentosAreaLabels[area]}
+                      </option>
+                    ),
+                  )}
+                </select>
+              </label>
+
+              <label className="vacancies-form-group full" htmlFor="triagem-banco-observacao">
+                <span>Observação do RH</span>
+                <textarea
+                  id="triagem-banco-observacao"
+                  placeholder="Ex.: Bom perfil para produção, mas não aderente para esta vaga no momento."
+                  value={bancoTalentosTriagemForm.observacao}
+                  onChange={(event) =>
+                    setBancoTalentosTriagemForm((atual) => ({
+                      ...atual,
+                      observacao: event.target.value,
+                    }))
+                  }
+                />
+                <small>
+                  A área e a observação ficarão registradas no cadastro e na candidatura.
+                </small>
+              </label>
+            </div>
+
+            <footer className="vacancies-modal-actions">
+              <button
+                className="vacancies-secondary-button"
+                type="button"
+                onClick={fecharBancoTalentosDaTriagem}
+              >
+                Cancelar
+              </button>
+              <button
+                className="vacancies-primary-button"
+                type="button"
+                onClick={confirmarBancoTalentosDaTriagem}
+                disabled={Boolean(salvandoTriagemId)}
+              >
+                {salvandoTriagemId ? 'Salvando...' : 'Mover para Banco de Talentos'}
+              </button>
+            </footer>
           </section>
         </div>
       )}
