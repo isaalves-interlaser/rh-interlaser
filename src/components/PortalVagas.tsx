@@ -30,6 +30,8 @@ type VagaContrato =
 
 type VagaModalidade = 'presencial' | 'hibrido' | 'remoto'
 
+type BancoTalentosArea = 'administrativo' | 'producao'
+
 type Empresa = {
   id: string
   razao_social: string | null
@@ -77,6 +79,7 @@ type FormularioCandidatura = {
   cidade: string
   uf: string
   observacoes: string
+  areaBancoTalentos: '' | BancoTalentosArea
   consentimento: boolean
 }
 
@@ -102,6 +105,7 @@ const initialForm: FormularioCandidatura = {
   cidade: '',
   uf: '',
   observacoes: '',
+  areaBancoTalentos: '',
   consentimento: false,
 }
 
@@ -118,6 +122,18 @@ const modalidadeLabels: Record<VagaModalidade, string> = {
   presencial: 'Presencial',
   hibrido: 'Híbrido',
   remoto: 'Remoto',
+}
+
+const bancoTalentosAreaLabels: Record<BancoTalentosArea, string> = {
+  administrativo: 'Administrativo',
+  producao: 'Produção',
+}
+
+const bancoTalentosAreaDescriptions: Record<BancoTalentosArea, string> = {
+  administrativo:
+    'Vagas administrativas, RH, financeiro, compras, comercial, PCP e áreas de apoio.',
+  producao:
+    'Vagas de produção, usinagem, solda, montagem, estoque, qualidade e operação.',
 }
 
 const MAX_FILE_SIZE_MB = 10
@@ -433,9 +449,16 @@ function PortalVagas() {
     const cidade = form.cidade.trim()
     const uf = form.uf.trim().toUpperCase()
     const resumeError = validateResume(curriculo)
+    const areaBancoTalentos =
+      view.type === 'talent-bank' ? form.areaBancoTalentos : ''
 
     if (view.type === 'apply' && !vagaSelecionada) {
       setErro('Esta vaga não está disponível para candidatura.')
+      return
+    }
+
+    if (view.type === 'talent-bank' && !areaBancoTalentos) {
+      setErro('Selecione se seu interesse é Administrativo ou Produção.')
       return
     }
 
@@ -482,6 +505,9 @@ function PortalVagas() {
       )
 
       const observacoesPortal = [
+        view.type === 'talent-bank' && areaBancoTalentos
+          ? `Área de interesse no banco de talentos: ${bancoTalentosAreaLabels[areaBancoTalentos]}.`
+          : null,
         nullableText(form.observacoes),
         view.type === 'apply' && vagaSelecionada
           ? `Candidatura enviada pelo portal público para ${buildVacancyCode(vagaSelecionada.numero)} — ${vagaSelecionada.cargo}.`
@@ -505,6 +531,7 @@ function PortalVagas() {
         },
         curriculoDrive,
         observacoes: observacoesPortal,
+        bancoTalentosArea: areaBancoTalentos || null,
       })
 
       try {
@@ -628,6 +655,39 @@ function PortalVagas() {
         )}
 
         <form className="jobs-form" onSubmit={enviarCandidatura}>
+          {isTalentBank && (
+            <section className="jobs-talent-area" aria-label="Área de interesse">
+              <div className="jobs-talent-area-heading">
+                <span>Área de interesse *</span>
+                <strong>Você procura oportunidade em qual área?</strong>
+                <p>
+                  Essa informação ajuda o RH a filtrar melhor os currículos
+                  no banco de talentos.
+                </p>
+              </div>
+
+              <div className="jobs-talent-area-options">
+                {(Object.keys(bancoTalentosAreaLabels) as BancoTalentosArea[]).map(
+                  (area) => (
+                    <button
+                      className={`jobs-talent-area-card ${
+                        form.areaBancoTalentos === area ? 'selected' : ''
+                      }`}
+                      type="button"
+                      key={area}
+                      onClick={() => updateForm('areaBancoTalentos', area)}
+                      disabled={enviando}
+                    >
+                      <span>{area === 'administrativo' ? 'ADM' : 'PROD'}</span>
+                      <strong>{bancoTalentosAreaLabels[area]}</strong>
+                      <small>{bancoTalentosAreaDescriptions[area]}</small>
+                    </button>
+                  ),
+                )}
+              </div>
+            </section>
+          )}
+
           <div className="jobs-form-grid">
             <label>
               Nome completo *

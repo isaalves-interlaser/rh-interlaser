@@ -14,6 +14,8 @@ export type DriveFolderResult = {
   folderName: string
 }
 
+export type BancoTalentosArea = 'administrativo' | 'producao'
+
 async function fileToBase64(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader()
@@ -196,6 +198,7 @@ export async function registrarCandidaturaPublica(params: {
   }
   curriculoDrive: DriveUploadResult
   observacoes: string | null
+  bancoTalentosArea?: BancoTalentosArea | null
 }) {
   const { data, error } = await supabase.functions.invoke<
     | RegistroCandidaturaPublicaResult
@@ -208,6 +211,7 @@ export async function registrarCandidaturaPublica(params: {
       candidato: params.candidato,
       curriculoDrive: params.curriculoDrive,
       observacoes: params.observacoes,
+      bancoTalentosArea: params.bancoTalentosArea ?? null,
     },
   })
 

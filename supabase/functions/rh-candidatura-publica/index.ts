@@ -27,6 +27,7 @@ type RegistroPayload = {
     folderUrl?: string | null
   }
   observacoes?: string | null
+  bancoTalentosArea?: 'administrativo' | 'producao' | null
 }
 
 function supabaseAdmin() {
@@ -52,6 +53,16 @@ function normalizePhone(value: unknown) {
 function nullable(value: unknown) {
   const normalized = text(value)
   return normalized || null
+}
+
+function normalizeBancoTalentosArea(value: unknown) {
+  const normalized = text(value).toLowerCase()
+
+  if (normalized === 'administrativo' || normalized === 'producao') {
+    return normalized
+  }
+
+  return null
 }
 
 function driveFileUrl(fileId: string, fileUrl: string | null | undefined) {
@@ -324,6 +335,7 @@ Deno.serve(async (request) => {
     const cidade = nullable(body.candidato?.cidade)
     const uf = nullable(body.candidato?.uf)?.toUpperCase() ?? null
     const observacoes = nullable(body.observacoes)
+    const bancoTalentosArea = normalizeBancoTalentosArea(body.bancoTalentosArea)
     const curriculo = body.curriculoDrive
 
     if (!nomeCompleto || nomeCompleto.length < 3) {
@@ -340,6 +352,13 @@ Deno.serve(async (request) => {
 
     if (tipo === 'vaga' && !vagaId) {
       return jsonResponse({ ok: false, error: 'Vaga não informada.' }, 400)
+    }
+
+    if (tipo === 'banco_talentos' && !bancoTalentosArea) {
+      return jsonResponse(
+        { ok: false, error: 'Área de interesse do banco de talentos é obrigatória.' },
+        400,
+      )
     }
 
     if (!curriculo?.fileId || !curriculo?.fileName || !curriculo?.folderId) {
@@ -378,6 +397,9 @@ Deno.serve(async (request) => {
           cidade,
           uf,
           origem: tipo === 'banco_talentos' ? 'banco_talentos' : 'site',
+          ...(tipo === 'banco_talentos'
+            ? { banco_talentos_area: bancoTalentosArea }
+            : {}),
           observacoes: mergeObservacoes(candidatoCompleto?.observacoes, observacoes),
           curriculo_path: curriculoUrl,
           curriculo_drive_file_id: curriculo.fileId,
@@ -406,6 +428,7 @@ Deno.serve(async (request) => {
           cidade,
           uf,
           origem: tipo === 'banco_talentos' ? 'banco_talentos' : 'site',
+          banco_talentos_area: tipo === 'banco_talentos' ? bancoTalentosArea : null,
           observacoes,
           curriculo_path: curriculoUrl,
           curriculo_drive_file_id: curriculo.fileId,
