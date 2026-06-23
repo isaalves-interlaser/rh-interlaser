@@ -1,4 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type MouseEvent,
+} from 'react'
 import { supabase } from '../lib/supabase'
 import Usuarios from './Usuarios'
 import Vagas from './Vagas'
@@ -251,6 +256,58 @@ const settingsMenuItems: MenuItem[] = [
   },
 ]
 
+const pageRoutes: Record<PageId, string> = {
+  dashboard: '/sistema',
+  pipeline: '/sistema/pipeline',
+  candidatos: '/sistema/candidatos',
+  vagas: '/sistema/vagas',
+  agenda: '/sistema/agenda',
+  onboarding: '/sistema/onboarding',
+  contratos: '/sistema/contratos',
+  relatorios: '/sistema/relatorios',
+  usuarios: '/sistema/configuracoes/usuarios',
+  'empresas-filiais': '/sistema/configuracoes/empresas-filiais',
+  'documentacao-config': '/sistema/configuracoes/documentacao',
+  'beneficios-config': '/sistema/configuracoes/beneficios',
+}
+
+const routePages = new Map<string, PageId>(
+  Object.entries(pageRoutes).map(([page, route]) => [
+    route,
+    page as PageId,
+  ]),
+)
+
+function normalizePathname(pathname: string) {
+  const normalized = pathname.replace(/\/+$/, '')
+
+  return normalized || '/'
+}
+
+function getPageFromPathname(pathname = window.location.pathname): PageId {
+  const normalizedPathname = normalizePathname(pathname)
+
+  if (normalizedPathname === '/') {
+    return 'dashboard'
+  }
+
+  return routePages.get(normalizedPathname) ?? 'dashboard'
+}
+
+function getPageUrl(page: PageId) {
+  return pageRoutes[page]
+}
+
+function isExternalNavigationClick(event: MouseEvent<HTMLAnchorElement>) {
+  return (
+    event.button !== 0 ||
+    event.metaKey ||
+    event.ctrlKey ||
+    event.shiftKey ||
+    event.altKey
+  )
+}
+
 function formatUserName(email: string) {
   const name = email.split('@')[0]
 
@@ -267,7 +324,9 @@ function Dashboard({
   loading,
   onLogout,
 }: DashboardProps) {
-  const [activePage, setActivePage] = useState<PageId>('dashboard')
+  const [activePage, setActivePage] = useState<PageId>(() =>
+    getPageFromPathname(),
+  )
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [profileError, setProfileError] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -359,6 +418,66 @@ function Dashboard({
   )
 
   useEffect(() => {
+    if (!profile) {
+      return
+    }
+
+    const pageFromUrl = getPageFromPathname()
+    const pageIsVisible = allVisibleItems.some(
+      (item) => item.id === pageFromUrl,
+    )
+
+    if (pageIsVisible) {
+      setActivePage(pageFromUrl)
+
+      if (normalizePathname(window.location.pathname) === '/') {
+        window.history.replaceState(
+          { page: pageFromUrl },
+          '',
+          getPageUrl(pageFromUrl),
+        )
+      }
+
+      return
+    }
+
+    const fallbackPage = allVisibleItems[0]?.id ?? 'dashboard'
+
+    setActivePage(fallbackPage)
+    window.history.replaceState(
+      { page: fallbackPage },
+      '',
+      getPageUrl(fallbackPage),
+    )
+  }, [allVisibleItems, profile])
+
+  useEffect(() => {
+    if (!profile) {
+      return
+    }
+
+    function syncPageWithBrowserHistory() {
+      const nextPage = getPageFromPathname()
+      const pageIsVisible = allVisibleItems.some(
+        (item) => item.id === nextPage,
+      )
+
+      if (pageIsVisible) {
+        setActivePage(nextPage)
+      }
+    }
+
+    window.addEventListener('popstate', syncPageWithBrowserHistory)
+
+    return () => {
+      window.removeEventListener(
+        'popstate',
+        syncPageWithBrowserHistory,
+      )
+    }
+  }, [allVisibleItems, profile])
+
+  useEffect(() => {
     if (isSettingsPage) {
       setSettingsOpen(true)
     }
@@ -378,9 +497,32 @@ function Dashboard({
     }
   }, [])
 
-  function navigate(page: PageId) {
+  function navigate(page: PageId, replace = false) {
+    const nextUrl = getPageUrl(page)
+
     setActivePage(page)
+
+    if (normalizePathname(window.location.pathname) !== nextUrl) {
+      if (replace) {
+        window.history.replaceState({ page }, '', nextUrl)
+      } else {
+        window.history.pushState({ page }, '', nextUrl)
+      }
+    }
+
     setMobileMenuOpen(false)
+  }
+
+  function handleMenuNavigation(
+    event: MouseEvent<HTMLAnchorElement>,
+    page: PageId,
+  ) {
+    if (isExternalNavigationClick(event)) {
+      return
+    }
+
+    event.preventDefault()
+    navigate(page)
   }
 
   if (!profile && !profileError) {
@@ -453,22 +595,26 @@ function Dashboard({
 
           <div className="sidebar-main-menu">
             {visibleMainItems.map((item) => (
-              <button
+              <a
                 className={
                   activePage === item.id
                     ? 'sidebar-menu-item active'
                     : 'sidebar-menu-item'
                 }
-                type="button"
+                href={getPageUrl(item.id)}
                 key={item.id}
-                onClick={() => navigate(item.id)}
-                aria-pressed={activePage === item.id}
+                onClick={(event) =>
+                  handleMenuNavigation(event, item.id)
+                }
+                aria-current={
+                  activePage === item.id ? 'page' : undefined
+                }
               >
                 <span className="menu-icon" aria-hidden="true">
                   <SidebarIcon name={item.icon} />
                 </span>
                 <span>{item.label}</span>
-              </button>
+              </a>
             ))}
           </div>
 
@@ -512,23 +658,27 @@ function Dashboard({
                 }
               >
                 {visibleSettingsItems.map((item) => (
-                  <button
+                  <a
                     className={
                       activePage === item.id
                         ? 'sidebar-submenu-item active'
                         : 'sidebar-submenu-item'
                     }
-                    type="button"
+                    href={getPageUrl(item.id)}
                     key={item.id}
-                    onClick={() => navigate(item.id)}
-                    aria-pressed={activePage === item.id}
+                    onClick={(event) =>
+                      handleMenuNavigation(event, item.id)
+                    }
+                    aria-current={
+                      activePage === item.id ? 'page' : undefined
+                    }
                   >
                     <span className="submenu-line" />
                     <span className="menu-icon" aria-hidden="true">
                       <SidebarIcon name={item.icon} />
                     </span>
                     <span>{item.label}</span>
-                  </button>
+                  </a>
                 ))}
               </div>
             </div>
@@ -598,7 +748,7 @@ function Dashboard({
             <DashboardHome
               userName={userName}
               onNavigate={(page) =>
-                setActivePage(page as PageId)
+                navigate(page as PageId)
               }
             />
           )}
