@@ -389,7 +389,7 @@ type VagasProps = {
   onOpenPipeline?: () => void
 }
 
-function Vagas({ responsavelRhEmail = '', onOpenPipeline }: VagasProps) {
+function Vagas({ onOpenPipeline }: VagasProps) {
   const [vagas, setVagas] = useState<Vaga[]>([])
   const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [filiais, setFiliais] = useState<Filial[]>([])
@@ -1933,10 +1933,6 @@ function Vagas({ responsavelRhEmail = '', onOpenPipeline }: VagasProps) {
                   </label>
                 </div>
 
-                <div className="vacancies-form-section-title">
-                  <strong>Informações públicas da vaga</strong>
-                  <span>Esses textos aparecem para o candidato na página de detalhes da vaga.</span>
-                </div>
 
                 <div className="vacancies-form-group full">
                   <label htmlFor="vaga-resumo-publico">Resumo para o card da vaga</label>
@@ -2098,18 +2094,6 @@ function Vagas({ responsavelRhEmail = '', onOpenPipeline }: VagasProps) {
                   />
                 </div>
 
-                {!editandoId && (
-                  <div className="vacancies-form-group full">
-                    <label>E-mail de notificação do RH</label>
-                    <div className="vacancies-email-preview">
-                      <strong>{responsavelRhEmail || 'E-mail não localizado'}</strong>
-                      <span>
-                        E-mail do usuário logado. A pasta da vaga será criada
-                        automaticamente no Google Drive após salvar.
-                      </span>
-                    </div>
-                  </div>
-                )}
 
               </div>
 
