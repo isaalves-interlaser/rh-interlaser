@@ -1,0 +1,553 @@
+.talent-bank-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.talent-bank-header {
+  align-items: center;
+  background: linear-gradient(135deg, #b4330d, #ff751a);
+  border-radius: 18px;
+  color: #ffffff;
+  display: flex;
+  justify-content: space-between;
+  overflow: hidden;
+  padding: 28px;
+  position: relative;
+}
+
+.talent-bank-header::after {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  content: '';
+  height: 180px;
+  position: absolute;
+  right: -40px;
+  top: -70px;
+  width: 180px;
+}
+
+.talent-bank-header h2 {
+  font-size: 1.7rem;
+  line-height: 1.2;
+  margin: 8px 0;
+}
+
+.talent-bank-header p {
+  color: rgba(255, 255, 255, 0.88);
+  margin: 0;
+  max-width: 780px;
+}
+
+.talent-bank-header button,
+.talent-bank-primary-action,
+.talent-bank-secondary-action {
+  align-items: center;
+  border-radius: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  font-weight: 800;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 16px;
+  text-decoration: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  white-space: nowrap;
+}
+
+.talent-bank-header button {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  color: #ffffff;
+  position: relative;
+  z-index: 1;
+}
+
+.talent-bank-header button:hover,
+.talent-bank-primary-action:hover,
+.talent-bank-secondary-action:hover {
+  transform: translateY(-1px);
+}
+
+.talent-bank-eyebrow {
+  color: #ff6b13;
+  display: inline-flex;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.talent-bank-header .talent-bank-eyebrow {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.talent-bank-alert {
+  border-radius: 14px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 12px 14px;
+}
+
+.talent-bank-alert.error {
+  background: #fff3f0;
+  border: 1px solid #fecaca;
+  color: #9f1d0b;
+}
+
+.talent-bank-alert.success {
+  background: #ecfdf3;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+.talent-bank-summary-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.talent-bank-summary-grid button {
+  background: #ffffff;
+  border: 1px solid #e3eaf4;
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+  cursor: pointer;
+  min-height: 112px;
+  padding: 18px;
+  text-align: left;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.talent-bank-summary-grid button:hover,
+.talent-bank-summary-grid button.active {
+  border-color: #ff6b13;
+  box-shadow: 0 16px 36px rgba(255, 107, 19, 0.14);
+  transform: translateY(-1px);
+}
+
+.talent-bank-summary-grid span {
+  color: #506080;
+  display: block;
+  font-size: 0.86rem;
+  font-weight: 800;
+  margin-bottom: 14px;
+}
+
+.talent-bank-summary-grid strong {
+  color: #111827;
+  display: block;
+  font-size: 2rem;
+}
+
+.talent-bank-toolbar {
+  background: #ffffff;
+  border: 1px solid #e3eaf4;
+  border-radius: 16px;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(240px, 1fr) 220px 220px;
+  padding: 16px;
+}
+
+.talent-bank-toolbar label,
+.talent-bank-modal label {
+  display: grid;
+  gap: 7px;
+}
+
+.talent-bank-toolbar span,
+.talent-bank-modal label span {
+  color: #17213a;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.talent-bank-toolbar input,
+.talent-bank-toolbar select,
+.talent-bank-modal select {
+  background: #ffffff;
+  border: 1px solid #cfd8e6;
+  border-radius: 12px;
+  color: #111827;
+  font: inherit;
+  min-height: 44px;
+  padding: 0 13px;
+}
+
+.talent-bank-toolbar input:focus,
+.talent-bank-toolbar select:focus,
+.talent-bank-modal select:focus {
+  border-color: #ff6b13;
+  box-shadow: 0 0 0 4px rgba(255, 107, 19, 0.12);
+  outline: none;
+}
+
+.talent-bank-workspace {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  min-height: 660px;
+}
+
+.talent-bank-list-panel,
+.talent-bank-preview-panel {
+  background: #ffffff;
+  border: 1px solid #e3eaf4;
+  border-radius: 18px;
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+.talent-bank-list-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.talent-bank-list-header {
+  align-items: center;
+  border-bottom: 1px solid #eef2f7;
+  display: flex;
+  justify-content: space-between;
+  padding: 18px;
+}
+
+.talent-bank-list-header strong {
+  color: #111827;
+}
+
+.talent-bank-list-header span {
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.talent-bank-candidate-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 720px;
+  overflow: auto;
+  padding: 12px;
+}
+
+.talent-bank-candidate-card {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #e6edf7;
+  border-radius: 15px;
+  cursor: pointer;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 44px minmax(0, 1fr);
+  padding: 13px;
+  position: relative;
+  text-align: left;
+  transition: background 0.2s ease, border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.talent-bank-candidate-card:hover,
+.talent-bank-candidate-card.active {
+  background: #fff8f3;
+  border-color: #ff6b13;
+  box-shadow: 0 12px 28px rgba(255, 107, 19, 0.12);
+}
+
+.talent-bank-avatar {
+  align-items: center;
+  background: #ff6b13;
+  border-radius: 999px;
+  color: #ffffff;
+  display: flex;
+  font-size: 0.82rem;
+  font-weight: 900;
+  height: 44px;
+  justify-content: center;
+  width: 44px;
+}
+
+.talent-bank-card-main {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.talent-bank-card-main strong,
+.talent-bank-card-main small,
+.talent-bank-card-main span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.talent-bank-card-main strong {
+  color: #111827;
+  font-size: 0.92rem;
+}
+
+.talent-bank-card-main small,
+.talent-bank-card-main span {
+  color: #64748b;
+  font-size: 0.76rem;
+}
+
+.talent-bank-card-tags {
+  display: flex;
+  gap: 6px;
+  grid-column: 2;
+  overflow: hidden;
+}
+
+.talent-bank-card-tags em,
+.talent-bank-card-tags small {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.7rem;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1;
+  padding: 6px 8px;
+}
+
+.talent-bank-card-tags em {
+  background: #fff4ed;
+  color: #c2410c;
+}
+
+.talent-bank-card-tags small {
+  background: #eef2ff;
+  color: #3949ab;
+}
+
+.talent-bank-preview-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 22px;
+}
+
+.talent-bank-detail-header {
+  align-items: flex-start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.talent-bank-detail-header h3 {
+  color: #111827;
+  font-size: 1.45rem;
+  margin: 4px 0;
+}
+
+.talent-bank-detail-header p {
+  color: #46556f;
+  margin: 0;
+}
+
+.talent-bank-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.talent-bank-primary-action {
+  background: #ff6b13;
+  border: 1px solid #ff6b13;
+  color: #ffffff;
+}
+
+.talent-bank-primary-action:disabled,
+.talent-bank-secondary-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+
+.talent-bank-secondary-action {
+  background: #ffffff;
+  border: 1px solid #cfd8e6;
+  color: #17213a;
+}
+
+.talent-bank-info-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 14px;
+}
+
+.talent-bank-info-grid div,
+.talent-bank-last-status,
+.talent-bank-note {
+  background: #f8fafc;
+  border: 1px solid #e6edf7;
+  border-radius: 14px;
+  padding: 13px;
+}
+
+.talent-bank-info-grid span,
+.talent-bank-last-status span {
+  color: #64748b;
+  display: block;
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.talent-bank-info-grid strong,
+.talent-bank-last-status strong {
+  color: #17213a;
+  display: block;
+  font-size: 0.9rem;
+}
+
+.talent-bank-note {
+  margin-bottom: 14px;
+}
+
+.talent-bank-note strong {
+  color: #17213a;
+}
+
+.talent-bank-note p {
+  color: #4b5b78;
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+}
+
+.talent-bank-last-status {
+  margin-bottom: 14px;
+}
+
+.talent-bank-last-status small {
+  color: #64748b;
+  display: block;
+  margin-top: 6px;
+}
+
+.talent-bank-cv-frame {
+  background: #111827;
+  border-radius: 15px;
+  flex: 1;
+  min-height: 520px;
+  overflow: hidden;
+}
+
+.talent-bank-cv-frame iframe {
+  background: #ffffff;
+  border: 0;
+  height: 100%;
+  min-height: 520px;
+  width: 100%;
+}
+
+.talent-bank-empty {
+  align-items: center;
+  color: #64748b;
+  display: flex;
+  flex: 1;
+  font-weight: 800;
+  justify-content: center;
+  min-height: 240px;
+  padding: 24px;
+  text-align: center;
+}
+
+.talent-bank-empty.compact {
+  min-height: 180px;
+}
+
+.talent-bank-modal-backdrop {
+  align-items: center;
+  background: rgba(15, 23, 42, 0.45);
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  left: 0;
+  padding: 24px;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 80;
+}
+
+.talent-bank-modal {
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.24);
+  display: grid;
+  gap: 18px;
+  max-width: 560px;
+  padding: 26px;
+  width: min(560px, 100%);
+}
+
+.talent-bank-modal h3 {
+  color: #111827;
+  font-size: 1.35rem;
+  margin: 5px 0;
+}
+
+.talent-bank-modal p {
+  color: #64748b;
+  margin: 0;
+}
+
+.talent-bank-modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+@media (max-width: 1100px) {
+  .talent-bank-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .talent-bank-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .talent-bank-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .talent-bank-candidate-list {
+    max-height: 360px;
+  }
+}
+
+@media (max-width: 760px) {
+  .talent-bank-header,
+  .talent-bank-detail-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .talent-bank-summary-grid,
+  .talent-bank-info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .talent-bank-actions,
+  .talent-bank-modal-actions {
+    flex-direction: column;
+  }
+
+  .talent-bank-primary-action,
+  .talent-bank-secondary-action {
+    width: 100%;
+  }
+
+  .talent-bank-cv-frame,
+  .talent-bank-cv-frame iframe {
+    min-height: 420px;
+  }
+}

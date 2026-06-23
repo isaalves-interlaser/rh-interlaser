@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase'
 import Usuarios from './Usuarios'
 import Vagas from './Vagas'
 import Candidatos from './Candidatos'
+import BancoTalentos from './BancoTalentos'
 import Pipeline from './Pipeline'
 import Agenda from './Agenda'
 import Onboarding from './Onboarding'
@@ -23,6 +24,7 @@ type PageId =
   | 'dashboard'
   | 'pipeline'
   | 'candidatos'
+  | 'banco-talentos'
   | 'vagas'
   | 'agenda'
   | 'onboarding'
@@ -205,6 +207,11 @@ const mainMenuItems: MenuItem[] = [
     icon: 'candidates',
   },
   {
+    id: 'banco-talentos',
+    label: 'Banco de Talentos',
+    icon: 'candidates',
+  },
+  {
     id: 'vagas',
     label: 'Vagas',
     icon: 'vacancies',
@@ -260,6 +267,7 @@ const pageRoutes: Record<PageId, string> = {
   dashboard: '/sistema',
   pipeline: '/sistema/pipeline',
   candidatos: '/sistema/candidatos',
+  'banco-talentos': '/sistema/banco-talentos',
   vagas: '/sistema/vagas',
   agenda: '/sistema/agenda',
   onboarding: '/sistema/onboarding',
@@ -756,6 +764,8 @@ function Dashboard({
           {activePage === 'pipeline' && <Pipeline />}
 
           {activePage === 'candidatos' && <Candidatos />}
+
+          {activePage === 'banco-talentos' && <BancoTalentos />}
 
           {activePage === 'vagas' && (
             <Vagas
