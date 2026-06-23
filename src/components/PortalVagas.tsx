@@ -129,13 +129,6 @@ const bancoTalentosAreaLabels: Record<BancoTalentosArea, string> = {
   producao: 'Produção',
 }
 
-const bancoTalentosAreaDescriptions: Record<BancoTalentosArea, string> = {
-  administrativo:
-    'Vagas administrativas, RH, financeiro, compras, comercial, PCP e áreas de apoio.',
-  producao:
-    'Vagas de produção, usinagem, solda, montagem, estoque, qualidade e operação.',
-}
-
 const MAX_FILE_SIZE_MB = 10
 const acceptedExtensions = ['pdf', 'doc', 'docx']
 const CONFIRMATION_STORAGE_KEY = 'rh_candidatura_confirmacao'
@@ -656,36 +649,29 @@ function PortalVagas() {
 
         <form className="jobs-form" onSubmit={enviarCandidatura}>
           {isTalentBank && (
-            <section className="jobs-talent-area" aria-label="Área de interesse">
-              <div className="jobs-talent-area-heading">
-                <span>Área de interesse *</span>
-                <strong>Você procura oportunidade em qual área?</strong>
-                <p>
-                  Essa informação ajuda o RH a filtrar melhor os currículos
-                  no banco de talentos.
-                </p>
-              </div>
-
-              <div className="jobs-talent-area-options">
+            <label className="jobs-talent-area-select">
+              Área de interesse *
+              <select
+                value={form.areaBancoTalentos}
+                onChange={(event) =>
+                  updateForm(
+                    'areaBancoTalentos',
+                    event.target.value as '' | BancoTalentosArea,
+                  )
+                }
+                disabled={enviando}
+                required
+              >
+                <option value="">Selecione...</option>
                 {(Object.keys(bancoTalentosAreaLabels) as BancoTalentosArea[]).map(
                   (area) => (
-                    <button
-                      className={`jobs-talent-area-card ${
-                        form.areaBancoTalentos === area ? 'selected' : ''
-                      }`}
-                      type="button"
-                      key={area}
-                      onClick={() => updateForm('areaBancoTalentos', area)}
-                      disabled={enviando}
-                    >
-                      <span>{area === 'administrativo' ? 'ADM' : 'PROD'}</span>
-                      <strong>{bancoTalentosAreaLabels[area]}</strong>
-                      <small>{bancoTalentosAreaDescriptions[area]}</small>
-                    </button>
+                    <option value={area} key={area}>
+                      {bancoTalentosAreaLabels[area]}
+                    </option>
                   ),
                 )}
-              </div>
-            </section>
+              </select>
+            </label>
           )}
 
           <div className="jobs-form-grid">
