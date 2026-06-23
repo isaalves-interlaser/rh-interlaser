@@ -758,7 +758,10 @@ function Dashboard({
           {activePage === 'candidatos' && <Candidatos />}
 
           {activePage === 'vagas' && (
-            <Vagas responsavelRhEmail={userEmail} />
+            <Vagas
+              responsavelRhEmail={userEmail}
+              onOpenPipeline={() => navigate('pipeline')}
+            />
           )}
 
           {activePage === 'agenda' && <Agenda />}

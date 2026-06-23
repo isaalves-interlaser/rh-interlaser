@@ -371,11 +371,25 @@ function getCurriculoPreviewUrl(candidato: Candidato | null) {
   return originalUrl
 }
 
-type VagasProps = {
-  responsavelRhEmail?: string
+
+function candidaturaEstaEmAnalise(candidatura: Candidatura) {
+  return candidatura.status === 'ativo' && candidatura.etapa === 'em_analise'
 }
 
-function Vagas({ responsavelRhEmail = '' }: VagasProps) {
+function candidaturaEstaNoBancoTalentos(candidatura: Candidatura) {
+  return candidatura.status === 'banco_talentos'
+}
+
+function candidaturaEstaRecusada(candidatura: Candidatura) {
+  return candidatura.status === 'reprovado'
+}
+
+type VagasProps = {
+  responsavelRhEmail?: string
+  onOpenPipeline?: () => void
+}
+
+function Vagas({ responsavelRhEmail = '', onOpenPipeline }: VagasProps) {
   const [vagas, setVagas] = useState<Vaga[]>([])
   const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [filiais, setFiliais] = useState<Filial[]>([])
@@ -897,6 +911,17 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
         beneficios: proximos.join('\n'),
       }
     })
+  }
+
+  function abrirPipelineDaTriagem() {
+    setMenuTriagemAbertoId(null)
+
+    if (onOpenPipeline) {
+      onOpenPipeline()
+      return
+    }
+
+    window.location.assign('/sistema/pipeline')
   }
 
   async function atualizarTriagemCurriculo(
@@ -1513,54 +1538,73 @@ function Vagas({ responsavelRhEmail = '' }: VagasProps) {
                           {menuTriagemAbertoId ===
                             candidatoTriagemSelecionado.candidatura.id && (
                             <div className="vacancy-triage-menu-list" role="menu">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  atualizarTriagemCurriculo(
-                                    candidatoTriagemSelecionado.candidatura,
-                                    'em_analise',
-                                  )
-                                }
-                                disabled={
-                                  salvandoTriagemId ===
-                                  candidatoTriagemSelecionado.candidatura.id
-                                }
-                              >
-                                Mandar para Em análise
-                              </button>
+                              {candidaturaEstaEmAnalise(
+                                candidatoTriagemSelecionado.candidatura,
+                              ) ? (
+                                <button
+                                  type="button"
+                                  onClick={abrirPipelineDaTriagem}
+                                >
+                                  Abrir no Pipeline
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    atualizarTriagemCurriculo(
+                                      candidatoTriagemSelecionado.candidatura,
+                                      'em_analise',
+                                    )
+                                  }
+                                  disabled={
+                                    salvandoTriagemId ===
+                                    candidatoTriagemSelecionado.candidatura.id
+                                  }
+                                >
+                                  Mandar para Em análise
+                                </button>
+                              )}
 
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  atualizarTriagemCurriculo(
-                                    candidatoTriagemSelecionado.candidatura,
-                                    'banco_talentos',
-                                  )
-                                }
-                                disabled={
-                                  salvandoTriagemId ===
-                                  candidatoTriagemSelecionado.candidatura.id
-                                }
-                              >
-                                Mandar para Banco de Talentos
-                              </button>
+                              {!candidaturaEstaNoBancoTalentos(
+                                candidatoTriagemSelecionado.candidatura,
+                              ) && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    atualizarTriagemCurriculo(
+                                      candidatoTriagemSelecionado.candidatura,
+                                      'banco_talentos',
+                                    )
+                                  }
+                                  disabled={
+                                    salvandoTriagemId ===
+                                    candidatoTriagemSelecionado.candidatura.id
+                                  }
+                                >
+                                  Mandar para Banco de Talentos
+                                </button>
+                              )}
 
-                              <button
-                                className="danger"
-                                type="button"
-                                onClick={() =>
-                                  atualizarTriagemCurriculo(
-                                    candidatoTriagemSelecionado.candidatura,
-                                    'reprovar',
-                                  )
-                                }
-                                disabled={
-                                  salvandoTriagemId ===
-                                  candidatoTriagemSelecionado.candidatura.id
-                                }
-                              >
-                                Recusar candidato
-                              </button>
+                              {!candidaturaEstaRecusada(
+                                candidatoTriagemSelecionado.candidatura,
+                              ) && (
+                                <button
+                                  className="danger"
+                                  type="button"
+                                  onClick={() =>
+                                    atualizarTriagemCurriculo(
+                                      candidatoTriagemSelecionado.candidatura,
+                                      'reprovar',
+                                    )
+                                  }
+                                  disabled={
+                                    salvandoTriagemId ===
+                                    candidatoTriagemSelecionado.candidatura.id
+                                  }
+                                >
+                                  Recusar candidato
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
