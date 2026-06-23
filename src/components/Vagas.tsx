@@ -389,6 +389,8 @@ type VagasProps = {
   onOpenPipeline?: () => void
 }
 
+type VagaModalTab = 'dados' | 'publicacao' | 'beneficios'
+
 function Vagas({ onOpenPipeline }: VagasProps) {
   const [vagas, setVagas] = useState<Vaga[]>([])
   const [empresas, setEmpresas] = useState<Empresa[]>([])
@@ -408,6 +410,7 @@ function Vagas({ onOpenPipeline }: VagasProps) {
   const [form, setForm] = useState<VagaForm>(initialForm)
   const [editandoId, setEditandoId] = useState<string | null>(null)
   const [modalAberto, setModalAberto] = useState(false)
+  const [abaModalVaga, setAbaModalVaga] = useState<VagaModalTab>('dados')
   const [carregando, setCarregando] = useState(true)
   const [salvando, setSalvando] = useState(false)
   const [excluindoId, setExcluindoId] = useState<string | null>(null)
@@ -730,6 +733,7 @@ function Vagas({ onOpenPipeline }: VagasProps) {
     setEditandoId(null)
     setErro('')
     setMensagem('')
+    setAbaModalVaga('dados')
     setModalAberto(true)
   }
 
@@ -757,6 +761,7 @@ function Vagas({ onOpenPipeline }: VagasProps) {
     setEditandoId(vaga.id)
     setErro('')
     setMensagem('')
+    setAbaModalVaga('dados')
     setModalAberto(true)
   }
 
@@ -766,6 +771,7 @@ function Vagas({ onOpenPipeline }: VagasProps) {
     setModalAberto(false)
     setEditandoId(null)
     setForm(initialForm)
+    setAbaModalVaga('dados')
     setErro('')
   }
 
@@ -775,16 +781,19 @@ function Vagas({ onOpenPipeline }: VagasProps) {
     setMensagem('')
 
     if (!form.empresa_id) {
+      setAbaModalVaga('dados')
       setErro('Selecione a empresa.')
       return
     }
 
     if (!form.filial_id) {
+      setAbaModalVaga('dados')
       setErro('Selecione a filial.')
       return
     }
 
     if (!form.cargo.trim() || !form.setor.trim()) {
+      setAbaModalVaga('dados')
       setErro('Informe o cargo e o setor.')
       return
     }
@@ -1730,395 +1739,480 @@ function Vagas({ onOpenPipeline }: VagasProps) {
             </header>
 
             <form onSubmit={salvarVaga}>
-              <div className="vacancies-form-grid">
-                <div className="vacancies-form-group">
-                  <label htmlFor="vaga-empresa">Empresa *</label>
-                  <select
-                    id="vaga-empresa"
-                    value={form.empresa_id}
-                    onChange={(event) =>
-                      setForm((atual) => ({
-                        ...atual,
-                        empresa_id: event.target.value,
-                        filial_id: '',
-                      }))
-                    }
-                    disabled={salvando}
-                  >
-                    <option value="">Selecione</option>
-                    {empresas.map((empresa) => (
-                      <option key={empresa.id} value={empresa.id}>
-                        {nomeEmpresa(empresa)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <div className="vacancies-modal-tabs" role="tablist" aria-label="Etapas do cadastro da vaga">
+                <button
+                  type="button"
+                  className={abaModalVaga === 'dados' ? 'active' : ''}
+                  onClick={() => setAbaModalVaga('dados')}
+                >
+                  <strong>1</strong>
+                  Dados da vaga
+                </button>
 
-                <div className="vacancies-form-group">
-                  <label htmlFor="vaga-filial">Filial *</label>
-                  <select
-                    id="vaga-filial"
-                    value={form.filial_id}
-                    onChange={(event) =>
-                      setForm((atual) => ({
-                        ...atual,
-                        filial_id: event.target.value,
-                      }))
-                    }
-                    disabled={salvando || !form.empresa_id}
-                  >
-                    <option value="">Selecione</option>
-                    {filiaisDisponiveis.map((filial) => (
-                      <option key={filial.id} value={filial.id}>
-                        {nomeFilial(filial)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <button
+                  type="button"
+                  className={abaModalVaga === 'publicacao' ? 'active' : ''}
+                  onClick={() => setAbaModalVaga('publicacao')}
+                >
+                  <strong>2</strong>
+                  Portal público
+                </button>
 
-                <div className="vacancies-form-group">
-                  <label htmlFor="vaga-cargo">Cargo *</label>
-                  <input
-                    id="vaga-cargo"
-                    type="text"
-                    value={form.cargo}
-                    onChange={(event) =>
-                      setForm((atual) => ({
-                        ...atual,
-                        cargo: event.target.value,
-                      }))
-                    }
-                    disabled={salvando}
-                  />
-                </div>
+                <button
+                  type="button"
+                  className={abaModalVaga === 'beneficios' ? 'active' : ''}
+                  onClick={() => setAbaModalVaga('beneficios')}
+                >
+                  <strong>3</strong>
+                  Benefícios e observações
+                </button>
+              </div>
 
-                <div className="vacancies-form-group">
-                  <label htmlFor="vaga-setor">Setor *</label>
-                  <input
-                    id="vaga-setor"
-                    type="text"
-                    value={form.setor}
-                    onChange={(event) =>
-                      setForm((atual) => ({
-                        ...atual,
-                        setor: event.target.value,
-                      }))
-                    }
-                    disabled={salvando}
-                  />
-                </div>
+              {abaModalVaga === 'dados' && (
+                <div className="vacancies-form-section-tab">
+                  <div className="vacancies-form-section-title">
+                    <span>Dados internos</span>
+                    <p>Campos usados pelo RH para controlar a vaga dentro do sistema.</p>
+                  </div>
 
-
-
-                <div className="vacancies-form-group">
-                  <label htmlFor="vaga-contrato">Contrato *</label>
-                  <select
-                    id="vaga-contrato"
-                    value={form.tipo_contrato}
-                    onChange={(event) =>
-                      setForm((atual) => ({
-                        ...atual,
-                        tipo_contrato: event.target.value as VagaContrato,
-                      }))
-                    }
-                    disabled={salvando}
-                  >
-                    {Object.entries(contratoLabels).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="vacancies-form-group">
-                  <label htmlFor="vaga-modalidade">Modalidade *</label>
-                  <select
-                    id="vaga-modalidade"
-                    value={form.modalidade}
-                    onChange={(event) =>
-                      setForm((atual) => ({
-                        ...atual,
-                        modalidade: event.target.value as VagaModalidade,
-                      }))
-                    }
-                    disabled={salvando}
-                  >
-                    {Object.entries(modalidadeLabels).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="vacancies-form-group">
-                  <label htmlFor="vaga-prioridade">Prioridade</label>
-                  <select
-                    id="vaga-prioridade"
-                    value={form.prioridade}
-                    onChange={(event) =>
-                      setForm((atual) => ({
-                        ...atual,
-                        prioridade: event.target.value as VagaPrioridade,
-                      }))
-                    }
-                    disabled={salvando}
-                  >
-                    {Object.entries(prioridadeLabels).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="vacancies-form-group">
-                  <label htmlFor="vaga-status">Status</label>
-                  <select
-                    id="vaga-status"
-                    value={form.status}
-                    onChange={(event) =>
-                      setForm((atual) => ({
-                        ...atual,
-                        status: event.target.value as VagaStatus,
-                      }))
-                    }
-                    disabled={salvando}
-                  >
-                    {statusCadastroOptions.map((value) => (
-                      <option key={value} value={value}>
-                        {statusLabels[value]}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="vacancies-form-group">
-                  <label htmlFor="vaga-prazo">Prazo da vaga</label>
-                  <input
-                    id="vaga-prazo"
-                    type="date"
-                    value={form.data_limite}
-                    onChange={(event) =>
-                      setForm((atual) => ({
-                        ...atual,
-                        data_limite: event.target.value,
-                      }))
-                    }
-                    disabled={salvando}
-                  />
-                </div>
-
-                <div className="vacancies-form-group full">
-                  <label className="vacancies-toggle-card" htmlFor="vaga-publicar-portal">
-                    <input
-                      id="vaga-publicar-portal"
-                      type="checkbox"
-                      checked={form.publicar_portal}
-                      onChange={(event) =>
-                        setForm((atual) => ({
-                          ...atual,
-                          publicar_portal: event.target.checked,
-                        }))
-                      }
-                      disabled={salvando}
-                    />
-                    <span>
-                      <strong>Publicar no portal?</strong>
-                      <small>
-                        Quando marcado, a vaga aparece na página pública se o status estiver Aberta.
-                      </small>
-                    </span>
-                  </label>
-                </div>
-
-
-                <div className="vacancies-form-group full">
-                  <label htmlFor="vaga-resumo-publico">Resumo para o card da vaga</label>
-                  <textarea
-                    id="vaga-resumo-publico"
-                    value={form.resumo_publico}
-                    onChange={(event) =>
-                      setForm((atual) => ({
-                        ...atual,
-                        resumo_publico: event.target.value,
-                      }))
-                    }
-                    disabled={salvando}
-                    rows={2}
-                    maxLength={260}
-                    placeholder="Ex.: Atuação no apoio às rotinas de RH, atendimento interno e organização de documentos."
-                  />
-                  <small>Texto curto. Ele aparece nos cards e no início da página de detalhes.</small>
-                </div>
-
-                <div className="vacancies-form-group full">
-                  <label htmlFor="vaga-descricao-publica">Descrição da vaga</label>
-                  <textarea
-                    id="vaga-descricao-publica"
-                    value={form.descricao_publica}
-                    onChange={(event) =>
-                      setForm((atual) => ({
-                        ...atual,
-                        descricao_publica: event.target.value,
-                      }))
-                    }
-                    disabled={salvando}
-                    rows={4}
-                    placeholder="Descreva o objetivo da vaga e o contexto da área."
-                  />
-                </div>
-
-                <div className="vacancies-form-group full">
-                  <label htmlFor="vaga-atividades">Atividades principais</label>
-                  <textarea
-                    id="vaga-atividades"
-                    value={form.atividades}
-                    onChange={(event) =>
-                      setForm((atual) => ({
-                        ...atual,
-                        atividades: event.target.value,
-                      }))
-                    }
-                    disabled={salvando}
-                    rows={4}
-                    placeholder="Liste as principais atividades da função."
-                  />
-                </div>
-
-                <div className="vacancies-form-group full">
-                  <label htmlFor="vaga-requisitos">Requisitos</label>
-                  <textarea
-                    id="vaga-requisitos"
-                    value={form.requisitos}
-                    onChange={(event) =>
-                      setForm((atual) => ({
-                        ...atual,
-                        requisitos: event.target.value,
-                      }))
-                    }
-                    disabled={salvando}
-                    rows={4}
-                    placeholder="Ex.: Ensino médio completo, experiência na área, conhecimento em pacote Office."
-                  />
-                </div>
-
-                <div className="vacancies-form-group full">
-                  <label>Benefícios</label>
-                  <div className="vacancies-benefits-picker">
-                    {beneficiosConfig.map((beneficio) => (
-                      <label
-                        className={
-                          beneficiosSelecionados.includes(beneficio.nome)
-                            ? 'vacancies-benefit-option selected'
-                            : 'vacancies-benefit-option'
+                  <div className="vacancies-form-grid">
+                    <div className="vacancies-form-group">
+                      <label htmlFor="vaga-empresa">Empresa *</label>
+                      <select
+                        id="vaga-empresa"
+                        value={form.empresa_id}
+                        onChange={(event) =>
+                          setForm((atual) => ({
+                            ...atual,
+                            empresa_id: event.target.value,
+                            filial_id: '',
+                          }))
                         }
-                        key={beneficio.codigo}
+                        disabled={salvando}
                       >
+                        <option value="">Selecione</option>
+                        {empresas.map((empresa) => (
+                          <option key={empresa.id} value={empresa.id}>
+                            {nomeEmpresa(empresa)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="vacancies-form-group">
+                      <label htmlFor="vaga-filial">Filial *</label>
+                      <select
+                        id="vaga-filial"
+                        value={form.filial_id}
+                        onChange={(event) =>
+                          setForm((atual) => ({
+                            ...atual,
+                            filial_id: event.target.value,
+                          }))
+                        }
+                        disabled={salvando || !form.empresa_id}
+                      >
+                        <option value="">Selecione</option>
+                        {filiaisDisponiveis.map((filial) => (
+                          <option key={filial.id} value={filial.id}>
+                            {nomeFilial(filial)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="vacancies-form-group">
+                      <label htmlFor="vaga-cargo">Cargo *</label>
+                      <input
+                        id="vaga-cargo"
+                        type="text"
+                        value={form.cargo}
+                        onChange={(event) =>
+                          setForm((atual) => ({
+                            ...atual,
+                            cargo: event.target.value,
+                          }))
+                        }
+                        disabled={salvando}
+                      />
+                    </div>
+
+                    <div className="vacancies-form-group">
+                      <label htmlFor="vaga-setor">Setor *</label>
+                      <input
+                        id="vaga-setor"
+                        type="text"
+                        value={form.setor}
+                        onChange={(event) =>
+                          setForm((atual) => ({
+                            ...atual,
+                            setor: event.target.value,
+                          }))
+                        }
+                        disabled={salvando}
+                      />
+                    </div>
+
+                    <div className="vacancies-form-group">
+                      <label htmlFor="vaga-contrato">Contrato *</label>
+                      <select
+                        id="vaga-contrato"
+                        value={form.tipo_contrato}
+                        onChange={(event) =>
+                          setForm((atual) => ({
+                            ...atual,
+                            tipo_contrato: event.target.value as VagaContrato,
+                          }))
+                        }
+                        disabled={salvando}
+                      >
+                        {Object.entries(contratoLabels).map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="vacancies-form-group">
+                      <label htmlFor="vaga-modalidade">Modalidade *</label>
+                      <select
+                        id="vaga-modalidade"
+                        value={form.modalidade}
+                        onChange={(event) =>
+                          setForm((atual) => ({
+                            ...atual,
+                            modalidade: event.target.value as VagaModalidade,
+                          }))
+                        }
+                        disabled={salvando}
+                      >
+                        {Object.entries(modalidadeLabels).map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="vacancies-form-group">
+                      <label htmlFor="vaga-prioridade">Prioridade</label>
+                      <select
+                        id="vaga-prioridade"
+                        value={form.prioridade}
+                        onChange={(event) =>
+                          setForm((atual) => ({
+                            ...atual,
+                            prioridade: event.target.value as VagaPrioridade,
+                          }))
+                        }
+                        disabled={salvando}
+                      >
+                        {Object.entries(prioridadeLabels).map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="vacancies-form-group">
+                      <label htmlFor="vaga-status">Status</label>
+                      <select
+                        id="vaga-status"
+                        value={form.status}
+                        onChange={(event) =>
+                          setForm((atual) => ({
+                            ...atual,
+                            status: event.target.value as VagaStatus,
+                          }))
+                        }
+                        disabled={salvando}
+                      >
+                        {statusCadastroOptions.map((value) => (
+                          <option key={value} value={value}>
+                            {statusLabels[value]}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="vacancies-form-group">
+                      <label htmlFor="vaga-prazo">Prazo da vaga</label>
+                      <input
+                        id="vaga-prazo"
+                        type="date"
+                        value={form.data_limite}
+                        onChange={(event) =>
+                          setForm((atual) => ({
+                            ...atual,
+                            data_limite: event.target.value,
+                          }))
+                        }
+                        disabled={salvando}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {abaModalVaga === 'publicacao' && (
+                <div className="vacancies-form-section-tab">
+                  <div className="vacancies-form-section-title">
+                    <span>Informações públicas</span>
+                    <p>Textos que o candidato verá no portal de vagas da Interlaser.</p>
+                  </div>
+
+                  <div className="vacancies-form-grid">
+                    <div className="vacancies-form-group full">
+                      <label className="vacancies-toggle-card" htmlFor="vaga-publicar-portal">
                         <input
+                          id="vaga-publicar-portal"
                           type="checkbox"
-                          checked={beneficiosSelecionados.includes(beneficio.nome)}
-                          onChange={() => toggleBeneficio(beneficio.nome)}
+                          checked={form.publicar_portal}
+                          onChange={(event) =>
+                            setForm((atual) => ({
+                              ...atual,
+                              publicar_portal: event.target.checked,
+                            }))
+                          }
                           disabled={salvando}
                         />
                         <span>
-                          <strong>{beneficio.nome}</strong>
-                          {beneficio.descricao && (
-                            <small>{beneficio.descricao}</small>
-                          )}
+                          <strong>Publicar no portal?</strong>
+                          <small>
+                            Quando marcado, a vaga aparece na página pública se o status estiver Aberta.
+                          </small>
                         </span>
                       </label>
-                    ))}
+                    </div>
 
-                    {beneficiosConfig.length === 0 && (
-                      <div className="vacancies-benefits-empty">
-                        Nenhum benefício ativo cadastrado. Cadastre em Configurações &gt; Benefícios.
-                      </div>
-                    )}
+                    <div className="vacancies-form-group full">
+                      <label htmlFor="vaga-resumo-publico">Resumo para o card da vaga</label>
+                      <textarea
+                        id="vaga-resumo-publico"
+                        value={form.resumo_publico}
+                        onChange={(event) =>
+                          setForm((atual) => ({
+                            ...atual,
+                            resumo_publico: event.target.value,
+                          }))
+                        }
+                        disabled={salvando}
+                        rows={2}
+                        maxLength={260}
+                        placeholder="Ex.: Atuação no apoio às rotinas de RH, atendimento interno e organização de documentos."
+                      />
+                      <small>Texto curto. Ele aparece nos cards e no início da página de detalhes.</small>
+                    </div>
+
+                    <div className="vacancies-form-group full">
+                      <label htmlFor="vaga-descricao-publica">Descrição da vaga</label>
+                      <textarea
+                        id="vaga-descricao-publica"
+                        value={form.descricao_publica}
+                        onChange={(event) =>
+                          setForm((atual) => ({
+                            ...atual,
+                            descricao_publica: event.target.value,
+                          }))
+                        }
+                        disabled={salvando}
+                        rows={4}
+                        placeholder="Descreva o objetivo da vaga e o contexto da área."
+                      />
+                    </div>
+
+                    <div className="vacancies-form-group full">
+                      <label htmlFor="vaga-atividades">Atividades principais</label>
+                      <textarea
+                        id="vaga-atividades"
+                        value={form.atividades}
+                        onChange={(event) =>
+                          setForm((atual) => ({
+                            ...atual,
+                            atividades: event.target.value,
+                          }))
+                        }
+                        disabled={salvando}
+                        rows={4}
+                        placeholder="Liste as principais atividades da função."
+                      />
+                    </div>
+
+                    <div className="vacancies-form-group full">
+                      <label htmlFor="vaga-requisitos">Requisitos</label>
+                      <textarea
+                        id="vaga-requisitos"
+                        value={form.requisitos}
+                        onChange={(event) =>
+                          setForm((atual) => ({
+                            ...atual,
+                            requisitos: event.target.value,
+                          }))
+                        }
+                        disabled={salvando}
+                        rows={4}
+                        placeholder="Ex.: Ensino médio completo, experiência na área, conhecimento em pacote Office."
+                      />
+                    </div>
                   </div>
-                  <small>
-                    Cadastre e ative os benefícios em Configurações &gt; Benefícios.
-                    O candidato verá apenas os itens selecionados aqui.
-                  </small>
+                </div>
+              )}
+
+              {abaModalVaga === 'beneficios' && (
+                <div className="vacancies-form-section-tab">
+                  <div className="vacancies-form-section-title">
+                    <span>Benefícios e detalhes finais</span>
+                    <p>Complete os itens exibidos no portal e observações públicas da vaga.</p>
+                  </div>
+
+                  <div className="vacancies-form-grid">
+                    <div className="vacancies-form-group full">
+                      <label>Benefícios</label>
+                      <div className="vacancies-benefits-picker">
+                        {beneficiosConfig.map((beneficio) => (
+                          <label
+                            className={
+                              beneficiosSelecionados.includes(beneficio.nome)
+                                ? 'vacancies-benefit-option selected'
+                                : 'vacancies-benefit-option'
+                            }
+                            key={beneficio.codigo}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={beneficiosSelecionados.includes(beneficio.nome)}
+                              onChange={() => toggleBeneficio(beneficio.nome)}
+                              disabled={salvando}
+                            />
+                            <span>
+                              <strong>{beneficio.nome}</strong>
+                              {beneficio.descricao && (
+                                <small>{beneficio.descricao}</small>
+                              )}
+                            </span>
+                          </label>
+                        ))}
+
+                        {beneficiosConfig.length === 0 && (
+                          <div className="vacancies-benefits-empty">
+                            Nenhum benefício ativo cadastrado. Cadastre em Configurações &gt; Benefícios.
+                          </div>
+                        )}
+                      </div>
+                      <small>
+                        Cadastre e ative os benefícios em Configurações &gt; Benefícios.
+                        O candidato verá apenas os itens selecionados aqui.
+                      </small>
+                    </div>
+
+                    <div className="vacancies-form-group">
+                      <label htmlFor="vaga-horario">Horário de trabalho</label>
+                      <input
+                        id="vaga-horario"
+                        type="text"
+                        value={form.horario_trabalho}
+                        onChange={(event) =>
+                          setForm((atual) => ({
+                            ...atual,
+                            horario_trabalho: event.target.value,
+                          }))
+                        }
+                        disabled={salvando}
+                        placeholder="Ex.: Segunda a sexta, 07h30 às 17h18"
+                      />
+                    </div>
+
+                    <div className="vacancies-form-group">
+                      <label htmlFor="vaga-salario">Faixa salarial</label>
+                      <input
+                        id="vaga-salario"
+                        type="text"
+                        value={form.salario_faixa}
+                        onChange={(event) =>
+                          setForm((atual) => ({
+                            ...atual,
+                            salario_faixa: event.target.value,
+                          }))
+                        }
+                        disabled={salvando}
+                        placeholder="Ex.: A combinar"
+                      />
+                    </div>
+
+                    <div className="vacancies-form-group full">
+                      <label htmlFor="vaga-observacoes-publicas">Observações públicas</label>
+                      <textarea
+                        id="vaga-observacoes-publicas"
+                        value={form.observacoes_publicas}
+                        onChange={(event) =>
+                          setForm((atual) => ({
+                            ...atual,
+                            observacoes_publicas: event.target.value,
+                          }))
+                        }
+                        disabled={salvando}
+                        rows={3}
+                        placeholder="Informações extras que podem aparecer para o candidato."
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <footer className="vacancies-modal-actions vacancies-modal-actions-split">
+                <div className="vacancies-modal-nav-actions">
+                  <button
+                    className="vacancies-secondary-button"
+                    type="button"
+                    onClick={() => setAbaModalVaga('dados')}
+                    disabled={salvando || abaModalVaga === 'dados'}
+                  >
+                    Dados
+                  </button>
+
+                  <button
+                    className="vacancies-secondary-button"
+                    type="button"
+                    onClick={() => setAbaModalVaga('publicacao')}
+                    disabled={salvando || abaModalVaga === 'publicacao'}
+                  >
+                    Portal
+                  </button>
+
+                  <button
+                    className="vacancies-secondary-button"
+                    type="button"
+                    onClick={() => setAbaModalVaga('beneficios')}
+                    disabled={salvando || abaModalVaga === 'beneficios'}
+                  >
+                    Benefícios
+                  </button>
                 </div>
 
-                <div className="vacancies-form-group">
-                  <label htmlFor="vaga-horario">Horário de trabalho</label>
-                  <input
-                    id="vaga-horario"
-                    type="text"
-                    value={form.horario_trabalho}
-                    onChange={(event) =>
-                      setForm((atual) => ({
-                        ...atual,
-                        horario_trabalho: event.target.value,
-                      }))
-                    }
+                <div className="vacancies-modal-save-actions">
+                  <button
+                    className="vacancies-secondary-button"
+                    type="button"
+                    onClick={fecharModal}
                     disabled={salvando}
-                    placeholder="Ex.: Segunda a sexta, 07h30 às 17h18"
-                  />
-                </div>
+                  >
+                    Cancelar
+                  </button>
 
-                <div className="vacancies-form-group">
-                  <label htmlFor="vaga-salario">Faixa salarial</label>
-                  <input
-                    id="vaga-salario"
-                    type="text"
-                    value={form.salario_faixa}
-                    onChange={(event) =>
-                      setForm((atual) => ({
-                        ...atual,
-                        salario_faixa: event.target.value,
-                      }))
-                    }
+                  <button
+                    className="vacancies-primary-button"
+                    type="submit"
                     disabled={salvando}
-                    placeholder="Ex.: A combinar"
-                  />
+                  >
+                    {salvando
+                      ? 'Salvando...'
+                      : editandoId
+                        ? 'Salvar alterações'
+                        : 'Criar vaga'}
+                  </button>
                 </div>
-
-                <div className="vacancies-form-group full">
-                  <label htmlFor="vaga-observacoes-publicas">Observações públicas</label>
-                  <textarea
-                    id="vaga-observacoes-publicas"
-                    value={form.observacoes_publicas}
-                    onChange={(event) =>
-                      setForm((atual) => ({
-                        ...atual,
-                        observacoes_publicas: event.target.value,
-                      }))
-                    }
-                    disabled={salvando}
-                    rows={3}
-                    placeholder="Informações extras que podem aparecer para o candidato."
-                  />
-                </div>
-
-
-              </div>
-
-
-              <footer className="vacancies-modal-actions">
-                <button
-                  className="vacancies-secondary-button"
-                  type="button"
-                  onClick={fecharModal}
-                  disabled={salvando}
-                >
-                  Cancelar
-                </button>
-
-                <button
-                  className="vacancies-primary-button"
-                  type="submit"
-                  disabled={salvando}
-                >
-                  {salvando
-                    ? 'Salvando...'
-                    : editandoId
-                      ? 'Salvar alterações'
-                      : 'Criar vaga'}
-                </button>
               </footer>
             </form>
           </section>

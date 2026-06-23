@@ -1060,19 +1060,6 @@ function DashboardHome({
         <button
           className="dashboard-home-metric"
           type="button"
-          onClick={() => onNavigate('agenda')}
-        >
-          <div className="dashboard-home-metric-top">
-            <span>Agenda de hoje</span>
-            <div><DashboardIcon type="calendar" /></div>
-          </div>
-          <strong>{metrics.agendaHoje}</strong>
-          <small>Entrevistas, testes e exames do dia</small>
-        </button>
-
-        <button
-          className="dashboard-home-metric"
-          type="button"
           onClick={() => onNavigate('contratos')}
         >
           <div className="dashboard-home-metric-top">
@@ -1086,14 +1073,14 @@ function DashboardHome({
         <button
           className="dashboard-home-metric"
           type="button"
-          onClick={() => onNavigate('contratos')}
+          onClick={() => onNavigate('onboarding')}
         >
           <div className="dashboard-home-metric-top">
-            <span>Avaliações próximas</span>
-            <div><DashboardIcon type="checklist" /></div>
+            <span>Onboardings ativos</span>
+            <div><DashboardIcon type="onboarding" /></div>
           </div>
-          <strong>{metrics.avaliacoesVencendo}</strong>
-          <small>Vencidas ou vencendo em até 3 dias</small>
+          <strong>{metrics.onboardingsAtivos}</strong>
+          <small>Integrações em andamento ou bloqueadas</small>
         </button>
 
         <button

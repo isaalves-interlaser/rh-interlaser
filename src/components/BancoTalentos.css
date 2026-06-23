@@ -551,3 +551,47 @@
     min-height: 420px;
   }
 }
+
+.talent-bank-modal textarea {
+  background: #ffffff;
+  border: 1px solid #cfd8e6;
+  border-radius: 12px;
+  color: #111827;
+  font: inherit;
+  min-height: 88px;
+  padding: 12px 13px;
+  resize: vertical;
+}
+
+.talent-bank-modal textarea:focus {
+  border-color: #ff6b13;
+  box-shadow: 0 0 0 4px rgba(255, 107, 19, 0.12);
+  outline: none;
+}
+
+.talent-bank-email-toggle {
+  align-items: flex-start;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 14px;
+  display: flex !important;
+  gap: 12px !important;
+  padding: 13px 14px;
+}
+
+.talent-bank-email-toggle input {
+  accent-color: #ff6b13;
+  margin-top: 3px;
+}
+
+.talent-bank-email-toggle span {
+  display: grid;
+  gap: 4px;
+}
+
+.talent-bank-email-toggle small {
+  color: #7c4a1d;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.45;
+}

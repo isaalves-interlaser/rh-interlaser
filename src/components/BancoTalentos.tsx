@@ -218,6 +218,17 @@ function getUltimaCandidatura(candidaturas: CandidaturaBanco[]) {
   )[0]
 }
 
+function appendObservation(previous: string | null | undefined, next: string) {
+  const current = previous?.trim()
+  const value = next.trim()
+
+  if (!current) {
+    return value
+  }
+
+  return `${current}\n\n---\n\n${value}`
+}
+
 function BancoTalentos() {
   const [candidatos, setCandidatos] = useState<CandidatoBanco[]>([])
   const [candidaturas, setCandidaturas] = useState<CandidaturaBanco[]>([])
@@ -232,6 +243,8 @@ function BancoTalentos() {
   const [mensagem, setMensagem] = useState('')
   const [modalVinculoAberto, setModalVinculoAberto] = useState(false)
   const [vagaSelecionadaId, setVagaSelecionadaId] = useState('')
+  const [enviarEmailVinculo, setEnviarEmailVinculo] = useState(true)
+  const [observacaoVinculo, setObservacaoVinculo] = useState('')
 
   const carregarDados = useCallback(async () => {
     setCarregando(true)
@@ -433,6 +446,8 @@ function BancoTalentos() {
     setMensagem('')
     setErro('')
     setVagaSelecionadaId('')
+    setEnviarEmailVinculo(true)
+    setObservacaoVinculo('')
     setModalVinculoAberto(true)
   }
 
@@ -449,6 +464,15 @@ function BancoTalentos() {
       return
     }
 
+    const vagaSelecionada = vagasAbertas.find(
+      (vaga) => vaga.id === vagaSelecionadaId,
+    )
+
+    if (!vagaSelecionada) {
+      setErro('A vaga selecionada não foi encontrada.')
+      return
+    }
+
     setSalvando(true)
     setErro('')
     setMensagem('')
@@ -458,6 +482,14 @@ function BancoTalentos() {
         candidatura.candidato_id === selecionado.id &&
         candidatura.vaga_id === vagaSelecionadaId,
     )
+
+    const historicoBase = `${formatDateTime(new Date().toISOString())} — Candidato vinculado à vaga ${codigoVaga(vagaSelecionada.numero)} — ${vagaSelecionada.cargo} a partir do Banco de Talentos.`
+    const historicoComObservacao = observacaoVinculo.trim()
+      ? `${historicoBase}
+Observação do RH: ${observacaoVinculo.trim()}`
+      : historicoBase
+
+    let candidaturaId = candidaturaExistente?.id ?? null
 
     if (candidaturaExistente) {
       if (
@@ -474,8 +506,11 @@ function BancoTalentos() {
         .update({
           etapa: 'recebido',
           status: 'ativo',
-          observacoes:
-            'Candidato reativado a partir do Banco de Talentos.',
+          observacoes: appendObservation(
+            candidaturaExistente.observacoes,
+            `Candidato reativado a partir do Banco de Talentos.
+${historicoComObservacao}`,
+          ),
         })
         .eq('id', candidaturaExistente.id)
 
@@ -486,29 +521,84 @@ function BancoTalentos() {
         return
       }
     } else {
-      const { error: insertError } = await supabase
+      const { data: candidaturaCriada, error: insertError } = await supabase
         .from('candidaturas')
         .insert({
           candidato_id: selecionado.id,
           vaga_id: vagaSelecionadaId,
           etapa: 'recebido',
           status: 'ativo',
-          observacoes:
-            'Candidato vinculado a partir do Banco de Talentos.',
+          observacoes: `Candidato vinculado a partir do Banco de Talentos.
+${historicoComObservacao}`,
         })
+        .select('id')
+        .single<{ id: string }>()
 
-      if (insertError) {
+      if (insertError || !candidaturaCriada) {
         console.error(insertError)
         setErro('Não foi possível vincular o candidato à vaga.')
         setSalvando(false)
         return
+      }
+
+      candidaturaId = candidaturaCriada.id
+    }
+
+    const mensagemHistoricoCandidato = appendObservation(
+      selecionado.observacoes,
+      historicoComObservacao,
+    )
+
+    const { error: candidatoUpdateError } = await supabase
+      .from('candidatos')
+      .update({
+        observacoes: mensagemHistoricoCandidato,
+        origem: selecionado.origem ?? 'banco_talentos',
+      })
+      .eq('id', selecionado.id)
+
+    if (candidatoUpdateError) {
+      console.warn(
+        'Candidatura vinculada, mas não foi possível atualizar o histórico do candidato:',
+        candidatoUpdateError.message,
+      )
+    }
+
+    let emailMensagem = ''
+
+    if (enviarEmailVinculo && selecionado.email) {
+      const { error: emailError } = await supabase.functions.invoke(
+        'rh-banco-talentos-email',
+        {
+          body: {
+            acao: 'notificar-vinculo-vaga',
+            candidato: {
+              nomeCompleto: selecionado.nome_completo,
+              email: selecionado.email,
+            },
+            vaga: {
+              codigo: codigoVaga(vagaSelecionada.numero),
+              cargo: vagaSelecionada.cargo,
+              setor: vagaSelecionada.setor,
+            },
+            candidaturaId,
+            observacao: observacaoVinculo.trim() || null,
+          },
+        },
+      )
+
+      if (emailError) {
+        console.error(emailError)
+        emailMensagem = ' A candidatura foi criada, mas o e-mail não foi enviado.'
+      } else {
+        emailMensagem = ' E-mail enviado ao candidato.'
       }
     }
 
     await carregarDados()
     setModalVinculoAberto(false)
     setSalvando(false)
-    setMensagem('Candidato vinculado à vaga com sucesso.')
+    setMensagem(`Candidato vinculado à vaga com sucesso.${emailMensagem}`)
   }
 
   return (
@@ -822,6 +912,33 @@ function BancoTalentos() {
                 Não existe vaga aberta disponível para vínculo.
               </div>
             )}
+
+            <label>
+              <span>Observação interna do vínculo</span>
+              <textarea
+                rows={3}
+                value={observacaoVinculo}
+                onChange={(event) => setObservacaoVinculo(event.target.value)}
+                placeholder="Ex.: Perfil aproveitado do banco para nova oportunidade."
+                disabled={salvando}
+              />
+            </label>
+
+            <label className="talent-bank-email-toggle">
+              <input
+                type="checkbox"
+                checked={enviarEmailVinculo}
+                onChange={(event) => setEnviarEmailVinculo(event.target.checked)}
+                disabled={salvando || !selecionado.email}
+              />
+              <span>
+                <strong>Enviar e-mail ao candidato</strong>
+                <small>
+                  Avisa que o currículo foi selecionado do Banco de Talentos para uma vaga aberta.
+                  {!selecionado.email ? ' Candidato sem e-mail cadastrado.' : ''}
+                </small>
+              </span>
+            </label>
 
             <div className="talent-bank-modal-actions">
               <button
